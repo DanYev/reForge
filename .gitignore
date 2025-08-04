@@ -10,8 +10,8 @@ reforge/forge/forcefields/rna_reg/RNA*
 reforge/forge/forcefields/rna_reg/plot*
 reforge/forge/forcefields/rna_reg/test*
 reforge/forge/forcefields/rna_pol
-reforge/forge/martini/itp/working
-reforge/forge/martini/itp/notworking
+reforge/martini/itp/working
+reforge/martini/itp/notworking
 *data*
 *slurm*
 custom_config.py
