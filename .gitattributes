@@ -1,0 +1,7 @@
+reforge/forge/forcefields/rna_reg/RNA* merge=ours
+reforge/forge/forcefields/rna_reg/plot* merge=ours
+reforge/forge/forcefields/rna_reg/test* merge=ours
+reforge/forge/forcefields/rna_pol/ merge=ours
+reforge/martini/itp/working/ merge=ours
+reforge/martini/itp/notworking/ merge=ours
+reforge/martini/itp/martini_prna_alpha.itp merge=ours
