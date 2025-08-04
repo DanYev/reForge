@@ -1,6 +1,7 @@
 # Temporary files and build artifacts
 tmp/
 build/
+*.egg-info/
 
 # Documentation outputs
 docs/examples/
@@ -36,6 +37,7 @@ __pycache__/
 
 # Source artifacts and intermediate files
 *mycmath.c
+*rcmath.c
 test.itp
 
 # Reforge forcefield directories and files
