@@ -18,7 +18,7 @@ def nsplit(*x):
 
 # List of available force fields
 forcefields = ["martini30rna", "martini31nucleic"]
-RNA_SYSTEM = "test"
+ITP_SYSTEM = "rna"
 
 
 ###################################
@@ -261,7 +261,7 @@ class Martini30RNA(NucleicForceField):
         "URA": {**bb_mapping, **u_mapping},
     }
 
-    def __init__(self, directory="rna_reg", mol=RNA_SYSTEM, version="new"):
+    def __init__(self, directory="rna_reg", mol=ITP_SYSTEM, version="new"):
         super().__init__(directory, mol, version)
         self.name = "martini30rna"
 
@@ -365,7 +365,7 @@ class Martini31Nucleic(NucleicForceField):
     }
 
     def __init__(self):
-        super().__init__(directory="rna_pol", mol=RNA_SYSTEM, version="new")
+        super().__init__(directory="rna_pol", mol=ITP_SYSTEM, version="new")
         self.name = "martini31nucleic"
         charges = {
             "TDU": 0.5,
@@ -445,7 +445,7 @@ class Martini31Nucleic(NucleicForceField):
             "pair": [],
         }
 
-        a_itp, c_itp, g_itp, u_itp = NucleicForceField.read_itps(RNA_SYSTEM, "polar", "new")
+        a_itp, c_itp, g_itp, u_itp = NucleicForceField.read_itps(ITP_SYSTEM, "polar", "new")
 
         mapping_a = nsplit("TA1 TA2 TA3 TA4 TA5 TA6")
         connectivity_a, itp_params_a = self.itp_to_indata(a_itp)

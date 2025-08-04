@@ -1,59 +1,50 @@
-tmp
-build
-docs/examples/systems
-tests/test
-workflows/systems
-workflows/png
-docs/source/auto_examples
+# Temporary files and build artifacts
+tmp/
+build/
+*.egg-info/
+
+# Documentation outputs
+docs/examples/
+docs/source/auto_examples/
 docs/source/sg_execution_times.rst
+
+# Test files and directories
+tests/
+
+# Workflow outputs
+workflows/systems/
+workflows/png/
+
+# Data dumps and Slurm logs
 *data*
 *slurm*
+
+# Configuration and environment overrides
 custom_config.py
-.cache
-.pytest_cache
-__pycache__
-.metadata
+dev.yml
+
+# Caches and metadata
+.cache/
+.pytest_cache/
+__pycache__/
+.metadata/
 .DS_Store
-*todo.txt
-*.err
-*.out
-*.pdf
-*.egg*
-*.ndx
-*.npz
-*.npy
-*.xyz
-*.tmp
-*.pyc
-*.o
-*.cprof
-*.h5
-*.hdf5
-*.pkl
-.nfs*
-*.c
-.*.csv
-*.swp
-*.dSYM
-*.so
-*.tar.gz
-*.md5
-.idea
-*.out
-*.pyf
-*.mod
-*~
-.adxv*
-*.aux
-*.bbl
-*.log
-*.blg
-*.synctex.*
-*.dat
-!*atommass.dat
+
+# Molecular dynamics trajectories and locks
 *.xtc
 *.trr
 *.lock
+
+# Source artifacts and intermediate files
 *mycmath.c
-*test.itp
-dev.yml
+*rcmath.c
+test.itp
+
+# Reforge forcefield directories and files
+reforge/forge/forcefields/rna_reg/RNA*
+reforge/forge/forcefields/rna_reg/plot*
+reforge/forge/forcefields/rna_reg/test*
+reforge/forge/forcefields/rna_pol/
+reforge/martini/itp/working/
+reforge/martini/itp/notworking/
+reforge/martini/itp/martini_prna_alpha.itp
