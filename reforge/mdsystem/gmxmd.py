@@ -520,7 +520,7 @@ class GmxRun(MDRun):
         kwargs.setdefault("f", self.trj)
         kwargs.setdefault("clusters", "cluster.ndx")
         with cd(self.cludir):
-            cli.gmx('extract_cluster', clinput=clinput, **kwargs)
+            cli.gmx('extract-cluster', clinput=clinput, **kwargs)
 
     def covar(self, clinput=None, **kwargs):
         """Calculates and diagonalizes the covariance matrix using GROMACS covar.
