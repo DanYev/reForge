@@ -6,14 +6,6 @@ workflows/systems
 workflows/png
 docs/source/auto_examples
 docs/source/sg_execution_times.rst
-reforge/forge/forcefields/rna_reg/RNA*
-reforge/forge/forcefields/rna_reg/plot*
-reforge/forge/forcefields/rna_reg/test*
-reforge/forge/forcefields/rna_pol
-reforge/martini/itp/working
-reforge/martini/itp/notworking
-reforge/martini/itp/martini_prna_alpha.itp
-reforge/martini/itp/martini_ions.itp
 *data*
 *slurm*
 custom_config.py
@@ -65,3 +57,11 @@ __pycache__
 *mycmath.c
 *test.itp
 dev.yml
+reforge/forge/forcefields/rna_reg/RNA*
+reforge/forge/forcefields/rna_reg/plot*
+reforge/forge/forcefields/rna_reg/test*
+reforge/forge/forcefields/rna_pol
+reforge/martini/itp/working
+reforge/martini/itp/notworking
+reforge/martini/itp/martini_prna_alpha.itp
+reforge/martini/itp/martini_ions.itp
