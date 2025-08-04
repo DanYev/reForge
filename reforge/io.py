@@ -191,7 +191,8 @@ def pull_files(directory, pattern):
         raise FileNotFoundError(
             f"Directory '{directory}' does not exist or is not a directory."
         )
-    return [str(p) for p in base_path.rglob(pattern)]
+    result = [str(p) for p in base_path.rglob(pattern)]
+    return sorted(result)
 
 
 def pull_all_files(directory):

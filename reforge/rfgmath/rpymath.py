@@ -180,7 +180,7 @@ def gfft_ccf(x, y, ntmax=None, center=True, dtype=None):
 
 @memprofit
 @timeit
-def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.95, dtype=None):
+def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
     """Same as "gfft_ccf" but regulates GPU to CPU I/O based on the available GPU memory"""
     logger.info("Computing CCFs on GPU.")
     if dtype is None:
@@ -291,10 +291,13 @@ def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None):
     if ntmax is None or ntmax > (nt + 1) // 2:
         ntmax = (nt + 1) // 2
     corr = np.zeros((nx, ny, ntmax), dtype=dtype)
+    counter = 1
     for seg_x, seg_y in zip(xs_segments, ys_segments):
+        logger.info("Processing part %s", counter)
         corr_seg = fft_ccf(seg_x, seg_y, ntmax=ntmax, mode=mode, center=center, dtype=dtype)
         logger.debug("Segment correlation shape: %s", corr_seg.shape)
         corr += corr_seg
+        counter += 1
     corr /= n
     logger.debug("RMS of correlation: %.6f", np.sqrt(np.average(corr**2)))
     logger.info("Finished calculating cross-correlation.")

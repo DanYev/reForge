@@ -46,10 +46,7 @@ class GmxSystem(MDSystem):
     Most attributes are paths to files and directories needed to set up
     and run the MD simulation.
     """
-
-    MDATDIR = importlib.resources.files("reforge") / "martini" / "datdir"
     MMDPDIR = importlib.resources.files("reforge") / "martini" / "datdir" / "mdp"
-    MITPDIR = importlib.resources.files("reforge") / "martini" / "itp"
 
     def __init__(self, sysdir, sysname):
         """Initializes the MD system with required directories and file paths.
@@ -66,7 +63,6 @@ class GmxSystem(MDSystem):
         self.systop = self.root / "system.top"
         self.sysndx = self.root / "system.ndx"
         self.mdpdir = self.root / "mdp"
-        # Define gro directory (used in make_gro_file)
         self.grodir = self.root / "gro"
 
     def gmx(self, command="-h", clinput=None, clean_wdir=True, **kwargs):
@@ -85,36 +81,13 @@ class GmxSystem(MDSystem):
                 clean_dir()
 
     def prepare_files(self):
-        """Prepares the simulation by creating necessary directories and copying input files.
-
-        The method:
-          - Creates directories for proteins, nucleotides, topologies, maps, mdp files,
-            coarse-grained PDBs, GRO files, MD runs, data, and PNG outputs.
-          - Copies .mdp files from the master MDP directory.
-          - Copies 'water.gro' and 'atommass.dat' from the master data directory.
-          - Copies .itp files from the master ITP directory to the system topology directory.
-        """
-        logger.info("Preparing files and directories")
-        self.prodir.mkdir(parents=True, exist_ok=True)
-        self.nucdir.mkdir(parents=True, exist_ok=True)
-        self.topdir.mkdir(parents=True, exist_ok=True)
-        self.mapdir.mkdir(parents=True, exist_ok=True)
+        """Extension for GROMACS system"""
+        super().prepare_files()
         self.mdpdir.mkdir(parents=True, exist_ok=True)
-        self.cgdir.mkdir(parents=True, exist_ok=True)
-        self.datdir.mkdir(parents=True, exist_ok=True)
-        self.pngdir.mkdir(parents=True, exist_ok=True)
-        # Copy .mdp files from master MDP directory
+        # .mdp files
         for file in self.MMDPDIR.iterdir():
             if file.name.endswith(".mdp"):
                 outpath = self.mdpdir / file.name
-                shutil.copy(file, outpath)
-        # Copy water.gro and atommass.dat from master data directory
-        shutil.copy(self.MDATDIR / "water.gro", self.root)
-        shutil.copy(self.MDATDIR / "atommass.dat", self.root)
-        # Copy .itp files from master ITP directory
-        for file in self.MITPDIR.iterdir():
-            if file.name.endswith(".itp"):
-                outpath = self.topdir / file.name
                 shutil.copy(file, outpath)
 
     def make_cg_structure(self, **kwargs):
@@ -315,9 +288,7 @@ class GmxSystem(MDSystem):
 
 
 class GmxRun(MDRun):
-    """Subclass of GmxSystem for executing molecular dynamics (MD) simulations
-    and performing post-processing analyses.
-    """
+    """Subclass of MDRun for running MD simulations with GROMACS."""
 
     def __init__(self, sysdir, sysname, runname):
         """Initializes the MD run environment with additional directories for analysis.
@@ -365,7 +336,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("em.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "em_cg.mdp")
+        kwargs.setdefault("f", self.mdpdir / "em.mdp")
         kwargs.setdefault("c", self.sysgro)
         kwargs.setdefault("r", self.sysgro)
         kwargs.setdefault("p", self.systop)
@@ -386,7 +357,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("hu.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "hu_cg.mdp")
+        kwargs.setdefault("f", self.mdpdir / "hu.mdp")
         kwargs.setdefault("c", "em.gro")
         kwargs.setdefault("r", "em.gro")
         kwargs.setdefault("p", self.systop)
@@ -407,7 +378,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("eq.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "eq_cg.mdp")
+        kwargs.setdefault("f", self.mdpdir / "eq.mdp")
         kwargs.setdefault("c", "hu.gro")
         kwargs.setdefault("r", "hu.gro")
         kwargs.setdefault("p", self.systop)
@@ -428,7 +399,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("md.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "md_cg.mdp")
+        kwargs.setdefault("f", self.mdpdir / "md.mdp")
         kwargs.setdefault("c", "eq.gro")
         kwargs.setdefault("r", "eq.gro")
         kwargs.setdefault("p", self.systop)
@@ -549,7 +520,7 @@ class GmxRun(MDRun):
         kwargs.setdefault("f", self.trj)
         kwargs.setdefault("clusters", "cluster.ndx")
         with cd(self.cludir):
-            cli.gmx('extract_cluster', clinput=clinput, **kwargs)
+            cli.gmx('extract-cluster', clinput=clinput, **kwargs)
 
     def covar(self, clinput=None, **kwargs):
         """Calculates and diagonalizes the covariance matrix using GROMACS covar.

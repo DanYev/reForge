@@ -18,6 +18,7 @@ Author: DY
 Date: 2025-02-27
 """
 
+import importlib.resources
 from pathlib import Path
 import sys
 import shutil
@@ -37,6 +38,8 @@ class MDSystem:
     Most attributes are paths to files and directories needed to set up
     and run the MD simulation.
     """
+    MDATDIR = importlib.resources.files("reforge") / "martini" / "datdir"
+    MITPDIR = importlib.resources.files("reforge") / "martini" / "itp"
     NUC_RESNAMES = ["A", "C", "G", "U",
                     "RA3", "RA5", "RC3", "RC5", 
                     "RG3", "RG5", "RU3", "RU5",]
@@ -69,7 +72,6 @@ class MDSystem:
         self.pngdir = self.root / "png"
         self.pdbdir = self.root / "pdb"
 
-
     @property
     def chains(self):
         """Retrieves and returns a sorted list of chain identifiers from the
@@ -88,6 +90,32 @@ class MDSystem:
         atoms = io.pdb2atomlist(self.inpdb)
         segments = pdbtools.sort_uld(set(atoms.segids))
         return segments
+
+    def prepare_files(self):
+        """Prepares the simulation by creating necessary directories and copying input files.
+
+        The method:
+          - Creates directories for proteins, nucleotides, topologies, maps, mdp files,
+            coarse-grained PDBs, GRO files, MD runs, data, and PNG outputs.
+          - Copies 'water.gro' and 'atommass.dat' from the master data directory.
+          - Copies .itp files from the master ITP directory to the system topology directory.
+        """
+        logger.info("Preparing files and directories")
+        self.prodir.mkdir(parents=True, exist_ok=True)
+        self.nucdir.mkdir(parents=True, exist_ok=True)
+        self.topdir.mkdir(parents=True, exist_ok=True)
+        self.mapdir.mkdir(parents=True, exist_ok=True)
+        self.cgdir.mkdir(parents=True, exist_ok=True)
+        self.datdir.mkdir(parents=True, exist_ok=True)
+        self.pngdir.mkdir(parents=True, exist_ok=True)
+        # Copy water.gro and atommass.dat from master data directory
+        shutil.copy(self.MDATDIR / "water.gro", self.root)
+        shutil.copy(self.MDATDIR / "atommass.dat", self.root)
+        # Copy .itp files from master ITP directory
+        for file in self.MITPDIR.iterdir():
+            if file.name.endswith(".itp"):
+                outpath = self.topdir / file.name
+                shutil.copy(file, outpath)
 
     def sort_input_pdb(self, in_pdb="inpdb.pdb"):
         """Sorts and renames atoms and chains in the input PDB file.
@@ -394,7 +422,7 @@ class MDSystem:
         np.save(file_mean, mean)
         np.save(file_err, sem)
 
-    def get_td_averages(self, pattern, loop=True):
+    def get_td_averages(self, pattern):
         """Calculates time-dependent averages from a set of numpy files.
 
         Parameters
@@ -405,23 +433,31 @@ class MDSystem:
         Returns:
             numpy.ndarray: The time-dependent average.
         """
+        def slicer(shape): # Slice object to crop arrays to min_shape
+            return tuple(slice(0, s) for s in shape)
+
         logger.info("Getting time-dependent averages")
         files = io.pull_files(self.mddir, pattern)
-        if loop:
+        if files:
             logger.info("Processing %s", files[0])
             average = np.load(files[0])
+            min_shape = average.shape
+            count = 1
             for f in files[1:]:
                 logger.info("Processing %s", f)
                 arr = np.load(f)
-                average += arr
-            average /= len(files)
+                min_shape = tuple(min(s1, s2) for s1, s2 in zip(min_shape, arr.shape))
+                s = slicer(min_shape)
+                average[s] += arr[s]  # ← in-place addition
+                count += 1
+            average = average[s] 
+            average /= count
+            out_file = self.datdir / f"{pattern.split('*')[0]}_av.npy"     
+            np.save(out_file, average)
+            logger.info("Done!")
+            return average
         else:
-            arrays = [np.load(f) for f in files]
-            average = np.average(arrays, axis=0)
-        out_file = self.datdir / f"{pattern.split('*')[0]}_av.npy"     
-        np.save(out_file, average)
-        logger.info("Done!")
-        return average
+            logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
 
 
 class MDRun(MDSystem):
@@ -490,7 +526,8 @@ class MDRun(MDSystem):
             outtag (str, optional): Output file tag for perturbation matrices.
         """
         with cd(self.covdir):
-            cov_files = [p.name for p in sorted(self.covdir.iterdir()) if p.name.startswith(intag)]
+            cov_files = [p.name for p in self.covdir.iterdir() if p.name.startswith(intag)]
+            cov_files = sorted(cov_files)
             for cov_file in cov_files:
                 logger.info("  Processing covariance matrix %s", cov_file)
                 covmat = np.load(self.covdir / cov_file)
@@ -510,7 +547,8 @@ class MDRun(MDSystem):
             outtag (str, optional): Output file tag for DFI values.
         """
         with cd(self.covdir):
-            pert_files = [p.name for p in sorted(self.covdir.iterdir()) if p.name.startswith(intag)]
+            pert_files = [p.name for p in self.covdir.iterdir() if p.name.startswith(intag)]
+            pert_files = sorted(pert_files)
             for pert_file in pert_files:
                 logger.info("  Processing perturbation matrix %s", pert_file)
                 pertmat = np.load(self.covdir / pert_file)
@@ -532,7 +570,8 @@ class MDRun(MDSystem):
             asym (bool, optional): If True, calculates asymmetric DCI.
         """
         with cd(self.covdir):
-            pert_files = [p.name for p in sorted(self.covdir.iterdir()) if p.name.startswith(intag)]
+            pert_files = [p.name for p in self.covdir.iterdir() if p.name.startswith(intag)]
+            pert_files = sorted(pert_files)
             for pert_file in pert_files:
                 logger.info("  Processing perturbation matrix %s", pert_file)
                 pertmat = np.load(self.covdir / pert_file)

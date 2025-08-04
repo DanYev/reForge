@@ -5,17 +5,18 @@ dependencies:
   - python
   - cython
   - cupy
-  - mdanalysis
   - matplotlib
   - memory_profiler
+  - mdanalysis
+  - mdtraj
   - numpy 
   - openmm
   - requests
   - setuptools
   - selenium
   - selenium-manager
-  - pandas
   - packaging
+  - pandas
   - pdbfixer
   - pytest
   - vermouth

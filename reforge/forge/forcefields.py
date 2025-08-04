@@ -166,6 +166,47 @@ class NucleicForceField:
             self.sc_vs3s(resname),
         ]
 
+    @staticmethod
+    def update_non_standard_mapping(mapping):
+        mapping.update({"RA3":mapping["A"],
+                        "RA5":mapping["A"],
+                        "A3":mapping["A"],
+                        "A5":mapping["A"],
+                        "2MA":mapping["A"],
+                        "6MA":mapping["A"],
+                        "RAP":mapping["A"],
+                        "DMA":mapping["A"],
+                        "DHA":mapping["A"],
+                        "SPA":mapping["A"],
+                        "RC3":mapping["C"],
+                        "RC5":mapping["C"],
+                        "C3":mapping["C"],
+                        "C5":mapping["C"],
+                        "5MC":mapping["C"],
+                        "3MP":mapping["C"],
+                        "MRC":mapping["C"],
+                        "NMC":mapping["C"],
+                        "RG3":mapping["G"],
+                        "RG5":mapping["G"],
+                        "G3":mapping["G"],
+                        "G5":mapping["G"],
+                        "1MG":mapping["G"],
+                        "2MG":mapping["G"],
+                        "7MG":mapping["G"],
+                        "MRG":mapping["G"],
+                        "RU3":mapping["U"],
+                        "RU5":mapping["U"],
+                        "U3":mapping["U"],
+                        "U5":mapping["U"],
+                        "4SU":mapping["U"],
+                        "DHU":mapping["U"],
+                        "PSU":mapping["U"],
+                        "5MU":mapping["U"],
+                        "3MU":mapping["U"],
+                        "3MP":mapping["U"],
+                        "MRU":mapping["U"],
+        })
+
 
 ###################################
 ## Martini 3.0 RNA Force Field ##
@@ -199,7 +240,7 @@ class Martini30RNA(NucleicForceField):
     g_mapping = {
         "SC1": ("C8", "H8", "N9"),
         "SC2": ("C4", "N3"),
-        "SC3": ("C2", "N2", "H21", "H22"),
+        "SC3": ("C2", "N2", "H21", "H22",),
         "SC4": ("N1",),
         "SC5": ("C6", "O6"),
         "SC6": ("C5", "N7"),
@@ -210,8 +251,7 @@ class Martini30RNA(NucleicForceField):
         "SC3": ("N3",),
         "SC4": ("C4", "O4"),
     }
-    mapping = {
-        "A": {**bb_mapping, **a_mapping},
+    mapping = { "A": {**bb_mapping, **a_mapping},
         "ADE": {**bb_mapping, **a_mapping},       
         "C": {**bb_mapping, **c_mapping},
         "CYT": {**bb_mapping, **c_mapping},
@@ -300,6 +340,8 @@ class Martini30RNA(NucleicForceField):
         ]
         sc_atoms = (a_atoms, c_atoms, g_atoms, u_atoms)
         self.mapdict = dict(zip(self.resnames, sc_atoms))
+
+        NucleicForceField.update_non_standard_mapping(self.mapping)
 
     def sc_atoms(self, resname):
         """Return side-chain atoms for the given residue."""
