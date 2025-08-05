@@ -32,8 +32,8 @@ from reforge.utils import *
 
 
 def setup(*args):
-    # setup_cg_protein_rna(*args)
-    setup_cg_protein_membrane(*args)
+    setup_cg_protein_rna(*args)
+    # setup_cg_protein_membrane(*args)
 
 
 def setup_cg_protein_rna(sysdir, sysname):
@@ -44,16 +44,16 @@ def setup_cg_protein_rna(sysdir, sysname):
     mdsys.prepare_files() # be careful it can overwrite later files
     mdsys.sort_input_pdb(f"{sysname}.pdb") # sorts chain and atoms in the input file and returns makes mdsys.inpdb file
 
-    # # 1.2.1 Try to clean the input PDB and split the chains based on the type of molecules (protein, RNA/DNA)
-    # mdsys.clean_pdb_mm(add_missing_atoms=False, add_hydrogens=True, pH=7.0)
-    # mdsys.split_chains()
-    # mdsys.clean_chains_mm(add_missing_atoms=True, add_hydrogens=True, pH=7.0)  # if didn't work for the whole PDB
-    
-    # 1.2.2 Same but if we want Go-Model for the proteins
-    mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, sometimes you need to refer to AMBER FF
+    # 1.2.1 Try to clean the input PDB and split the chains based on the type of molecules (protein, RNA/DNA)
+    mdsys.clean_pdb_mm(add_missing_atoms=False, add_hydrogens=True, pH=7.0)
     mdsys.split_chains()
-    mdsys.clean_chains_gmx(clinput='8\n 7\n', ignh='yes', renum='yes')
-    mdsys.get_go_maps(append=True)
+    mdsys.clean_chains_mm(add_missing_atoms=True, add_hydrogens=True, pH=7.0)  # if didn't work for the whole PDB
+    
+    # # 1.2.2 Same but if we want Go-Model for the proteins
+    # mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, sometimes you need to refer to AMBER FF
+    # mdsys.split_chains()
+    # mdsys.clean_chains_gmx(clinput='8\n 7\n', ignh='yes', renum='yes')
+    # mdsys.get_go_maps(append=True)
 
     # 1.3. COARSE-GRAINING. Done separately for each chain. If don't want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=700, el=0.3, eu=0.8, p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
@@ -70,7 +70,7 @@ def setup_cg_protein_rna(sysdir, sysname):
 
     # 1.5. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
-    mdsys.make_system_ndx(backbone_atoms=["BB", "BB1", "BB3"])
+    mdsys.make_system_ndx(backbone_atoms=["BB", "BB2", ])
    
       
 def setup_cg_protein_membrane(sysdir, sysname):
@@ -113,62 +113,33 @@ def setup_cg_protein_membrane(sysdir, sysname):
 
     # 1.5. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 0.System 1.Solute 2.Backbone 3.Solvent 4. Not water. 5-. Chains. Custom groups can be added using AtomList.write_to_ndx()
-    mdsys.make_system_ndx(backbone_atoms=["BB"])
-
-
-def label_segments(in_pdb, out_pdb):
-    def get_domain_label(resid):
-        if 1 <= resid <= 165:
-            return "EC1"  # Extracellular Domain I
-        elif 166 <= resid <= 310:
-            return "EC2"  # Extracellular Domain II
-        elif 311 <= resid <= 480:
-            return "EC3"  # Extracellular Domain III
-        elif 481 <= resid <= 621:
-            return "EC4"  # Extracellular Domain IV
-        elif 622 <= resid <= 644:
-            return "TM"  # Transmembrane domain
-        elif 645 <= resid <= 682:
-            return "JM"  # Juxtamembrane segment
-        elif 683 <= resid <= 711:
-            return "UNK"  # Undefined/Not clearly assigned
-        elif 712 <= resid <= 978:
-            return "KD"  # Kinase domain
-        elif 979 <= resid <= 995:
-            return "CT"  # C-terminal tail
-        else:
-            return "UNK "
-    logger.info("Relabelling Segment IDs")
-    atoms = io.pdb2atomlist(in_pdb)
-    for atom in atoms:
-        atom.segid = get_domain_label(atom.resid) + atom.chid
-    atoms.write_pdb(out_pdb)
+    mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
 
 
 def md(sysdir, sysname, runname, ntomp): 
     mdrun = GmxRun(sysdir, sysname, runname)
     mdrun.prepare_files()
     # Choose appropriate mdp files
-    em_mdp = os.path.join(mdrun.mdpdir, 'em_cgmem.mdp')
-    eq_mdp = os.path.join(mdrun.mdpdir, 'eq_cgmem.mdp')
-    md_mdp = os.path.join(mdrun.mdpdir, 'md_cgmem.mdp')
+    em_mdp = os.path.join(mdrun.mdpdir, 'em_cg.mdp')
+    eq_mdp = os.path.join(mdrun.mdpdir, 'eq_cg.mdp')
+    md_mdp = os.path.join(mdrun.mdpdir, 'md_cg.mdp')
     mdrun.empp(f=em_mdp) # Preprocessing 
     mdrun.mdrun(deffnm='em', ntomp=ntomp) # Actual run
     mdrun.eqpp(f=eq_mdp, c='em.gro', r='em.gro', maxwarn=10) 
     mdrun.mdrun(deffnm='eq', ntomp=ntomp)
     mdrun.mdpp(f=md_mdp, c='eq.gro', r='eq.gro')
-    mdrun.mdrun(deffnm='md', ntomp=ntomp)
+    mdrun.mdrun(deffnm='md', ntomp=ntomp, bonded='gpu')
 
 
 def extend(sysdir, sysname, runname, ntomp):    
     mdsys = GmxSystem(sysdir, sysname)
     mdrun = mdsys.initmd(runname)
-    mdrun.mdrun(deffnm='md', cpi='md.cpt', ntomp=ntomp, nsteps=-2) 
+    mdrun.mdrun(deffnm='md', cpi='md.cpt', bonded='gpu', ntomp=ntomp, nsteps=-2) 
 
 
 def make_ndx(sysdir, sysname, **kwargs):
     mdsys = GmxSystem(sysdir, sysname)
-    mdsys.make_sys_ndx(backbone_atoms=["BB", "BB1", "BB3"])
+    mdsys.make_sys_ndx(backbone_atoms=["BB", "BB2", ])
 
 
 def trjconv(sysdir, sysname, runname, **kwargs):
@@ -197,25 +168,30 @@ def rms_analysis(sysdir, sysname, runname, **kwargs):
     
 def cluster(sysdir, sysname, runname, **kwargs):
     mdrun = GmxRun(sysdir, sysname, runname)
-    b = 100000
-    mdrun.cluster(clinput=f'1\n 1\n', b=b, dt=1000, cutoff=0.15, method='gromos', cl='clusters.pdb', clndx='cluster.ndx', av='yes')
+    clean_dir(mdrun.cludir, 'trajout_Cluster*')
+    k = 1 # k = 1 - solute, k = 2 - backbone.
+    mdrun.cluster(clinput=f'{k}\n 2\n', n=mdrun.sysndx,
+        b=00000, e=1000000, dt=200, 
+        cutoff=0.15, method='linkage', av='yes', 
+        cl='clusters.xtc', clndx='cluster.ndx', )
     mdrun.extract_cluster()
+    clean_dir(mdrun.cludir)
 
 
 def cov_analysis(sysdir, sysname, runname):
     mdrun = GmxRun(sysdir, sysname, runname) 
     clean_dir(mdrun.covdir, '*npy')
     u = mda.Universe(mdrun.str, mdrun.trj, in_memory=True)
-    ag = u.atoms.select_atoms("name BB or name BB1 or name BB3")
+    ag = u.atoms.select_atoms("name BB or name BB2")
     # Begin at 'b' picoseconds, end at 'e', split into 'n' parts, sample each 'sample_rate' frame
-    mdrun.get_covmats(u, ag, b=1000000, e=5000000, n=40, sample_rate=1, outtag='covmat') 
+    mdrun.get_covmats(u, ag, b=100000, e=1000000, n=18, sample_rate=1, outtag='covmat') 
     mdrun.get_pertmats()
     mdrun.get_dfi(outtag='dfi')
     mdrun.get_dci(outtag='dci', asym=False)
     mdrun.get_dci(outtag='asym', asym=True)
     # Calc DCI between segments
     atoms = io.pdb2atomlist(mdrun.solupdb)
-    backbone_anames = ["BB"]
+    backbone_anames = ["BB", "BB2"]
     bb = atoms.mask(backbone_anames, mode='name')
     bb.renum() # Renumber atids form 0, needed to mask numpy arrays
     groups = bb.segments.atids # mask for the arrays
@@ -223,7 +199,7 @@ def cov_analysis(sysdir, sysname, runname):
     mdrun.get_group_dci(groups=groups, labels=labels, asym=False, outtag='dci')
     mdrun.get_group_dci(groups=groups, labels=labels, asym=False, transpose=True, outtag='tdci')
     mdrun.get_group_dci(groups=groups, labels=labels, asym=True, outtag='asym')
-    # clean_dir(mdrun.covdir, 'covmat*')
+    clean_dir(mdrun.covdir, 'covmat*')
 
 
 def tdlrt_analysis(sysdir, sysname, runname):
