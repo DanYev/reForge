@@ -85,10 +85,12 @@ def label_segments(in_pdb, out_pdb):
             return "JM"  # Juxtamembrane segment
         elif 683 <= resid <= 711:
             return "UNK"  # Undefined/Not clearly assigned
-        elif 712 <= resid <= 797:
-            return "KDN"  # Kinase N-lobe domain
-        elif 798 <= resid <= 978:
-            return "KDC"  # Kinase C-lobe domain
+        # elif 712 <= resid <= 797:
+        #     return "KDN"  # Kinase N-lobe domain
+        # elif 798 <= resid <= 978:
+        #     return "KDC"  # Kinase C-lobe domain
+        elif 712 <= resid <= 978:
+            return "KDN"  # Kinase domain
         elif 979 <= resid <= 995:
             return "CT"  # C-terminal tail
         else:
@@ -96,8 +98,12 @@ def label_segments(in_pdb, out_pdb):
     logger.info("Relabelling Segment IDs")
     atoms = io.pdb2atomlist(in_pdb)
     for atom in atoms:
-        atom.segid = get_domain_label(atom.resid) + atom.chid
-    atoms.write_pdb(out_pdb)
+        label = get_domain_label(atom.resid)
+        if label != 'KDN':
+            atom.segid = label + atom.chid
+        else:
+            atom.segid = label 
+        atoms.write_pdb(out_pdb)
 
 
 def md(sysdir, sysname, runname, ntomp): 
@@ -152,10 +158,15 @@ def rms_analysis(sysdir, sysname, runname, **kwargs):
     
 def cluster(sysdir, sysname, runname, **kwargs):
     mdrun = GmxRun(sysdir, sysname, runname)
-    b = 500000
-    mdrun.cluster(clinput=f'1\n 1\n', b=b, dt=1000, cutoff=0.15, method='gromos', 
+    clean_dir(mdrun.cludir, 'trajout_Cluster*')
+    ent_1 = 'seg_KDN'
+    ent_2 = 'seg_KDN'
+    mdrun.cluster(clinput=f'{ent_1}\n {ent_2}\n', n=mdrun.sysndx,
+        b=200000, e=10000000, dt=1000,
+        cutoff=0.23, method='linkage', nlevels='40',
         cl='clusters.pdb', clndx='cluster.ndx', av='yes')
     mdrun.extract_cluster()
+    clean_dir(mdrun.cludir)
 
 
 def cov_analysis(sysdir, sysname, runname):

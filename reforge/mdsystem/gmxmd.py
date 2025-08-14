@@ -271,6 +271,10 @@ class GmxSystem(MDSystem):
         for chid in chids:
             chain = solute.mask(chid, mode="chid")
             chain.write_ndx(self.sysndx, header=f"[ chain_{chid} ]", append=True, wrap=15)
+        segids = set(solute.segids)
+        for segid in segids:
+            segment = solute.mask(segid, mode="segid")
+            segment.write_ndx(self.sysndx, header=f"[ seg_{segid} ]", append=True, wrap=15)
         logger.info("Written index to %s", self.sysndx)
 
     def initmd(self, runname):
