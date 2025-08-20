@@ -492,7 +492,10 @@ class MDRun(MDSystem):
         self.covdir.mkdir(parents=True, exist_ok=True)
         self.lrtdir.mkdir(parents=True, exist_ok=True)
         self.pngdir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(self.root / "atommass.dat", self.rundir)
+        src = self.root / "atommass.dat"
+        if src.exists():
+            shutil.copy(src, self.rundir)
+
         
     def get_covmats(self, u, ag, **kwargs):
         """Calculates covariance matrices by splitting the trajectory into chunks.
