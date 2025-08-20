@@ -73,7 +73,7 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
 
     logger.info("Reading positions...")
     arr = np.array(
-        [ag.positions.flatten() for ts in u.trajectory[::sample_rate] if b < ts.time < e],
+        [ag.positions.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
     arr = np.ascontiguousarray(arr.T)
@@ -87,7 +87,7 @@ def read_velocities(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
     """Saimilar to the previous. Read and return velocities from an MDAnalysis trajectory."""
     logger.info("Reading velocities...")
     arr = np.array(
-        [ag.velocities.flatten() for ts in u.trajectory[::sample_rate] if b < ts.time < e],
+        [ag.velocities.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
     arr = np.ascontiguousarray(arr.T)
