@@ -76,8 +76,8 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
         [ag.positions.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
-    arr = np.ascontiguousarray(arr.T)
-    logger.info("Done!")
+    # arr = np.ascontiguousarray(arr.T)
+    # logger.info("Done!")
     return arr
 
 
@@ -90,8 +90,8 @@ def read_velocities(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
         [ag.velocities.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
-    arr = np.ascontiguousarray(arr.T)
-    logger.info("Done!")
+    # arr = np.ascontiguousarray(arr.T)
+    # logger.info("Done!")
     return arr
 
 
