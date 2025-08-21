@@ -517,7 +517,7 @@ class MDRun(MDSystem):
         outtag = kwargs.pop('outtag', 'covmat')
         logger.info("Calculating covariance matrices...")
         positions = io.read_positions(u, ag, sample_rate=sample_rate, b=b, e=e)
-        mdm.calc_and_save_covmats(positions, outdir=self.covdir, n=n, outtag=outtag)
+        mdm.calc_and_save_covmats(positions.T, outdir=self.covdir, n=n, outtag=outtag)
         logger.info("Finished calculating covariance matrices!")
 
     def get_pertmats(self, intag="covmat", outtag="pertmat"):
