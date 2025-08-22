@@ -15,6 +15,7 @@ dependencies:
   - setuptools
   - selenium
   - selenium-manager
+  - scikit-learn
   - packaging
   - pandas
   - pdbfixer
