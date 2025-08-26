@@ -36,7 +36,6 @@ import tracemalloc
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-
 import cupy as cp
 
 # Use an environment variable (DEBUG=1) to toggle debug logging

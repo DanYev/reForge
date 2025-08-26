@@ -77,8 +77,20 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
         dtype=dtype,
     )
     # arr = np.ascontiguousarray(arr.T)
-    # logger.info("Done!")
+    logger.info("Done reading!")
     return arr
+
+
+@timeit
+@memprofit
+def read_positions_test(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
+    logger.info("Reading positions...")
+    frames = []
+    for ts in u.trajectory:                         # streams frame-by-frame
+        frames.append(ag.positions)                 # (n_sel, 3) in Å              # time in ps (if available)
+    # positions = np.stack(frames, axis=0)          # (n_frames, n_sel, 3)
+    logger.info("Done reading!")
+    # return positions
 
 
 @timeit
