@@ -41,7 +41,7 @@ from reforge.pdbtools import AtomList, System, PDBParser
 
 @timeit
 @memprofit
-def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
+def read_positions_old(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
     """Extract and return positions from an MDAnalysis trajectory.
 
     This function reads the positions for a specified atom group from the 
@@ -83,14 +83,12 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
 
 @timeit
 @memprofit
-def read_positions_test(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
-    logger.info("Reading positions...")
-    frames = []
-    for ts in u.trajectory:                         # streams frame-by-frame
-        frames.append(ag.positions)                 # (n_sel, 3) in Å              # time in ps (if available)
-    # positions = np.stack(frames, axis=0)          # (n_frames, n_sel, 3)
+def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
+    logger.info("Reading positions...") 
+    arr = u.trajectory.timeseries(ag)
+    positions = np.ascontiguousarray(arr.reshape(arr.shape[0], -1))
     logger.info("Done reading!")
-    # return positions
+    return positions
 
 
 @timeit

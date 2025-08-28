@@ -228,32 +228,6 @@ class MmRun(MDRun):
         with open(pdb_file, "w", encoding="utf-8") as file:
             app.PDBFile.writeFile(simulation_obj.topology, positions, file, keepIds=True)
 
-    def em(self, simulation_obj, tolerance=100, max_iterations=1000):
-        """Perform energy minimization for the simulation.
-
-        Parameters
-        ----------
-        simulation_obj : openmm.app.Simulation
-            The simulation object.
-        tolerance : float, optional
-            Tolerance for energy minimization (default: 100).
-        max_iterations : int, optional
-            Maximum number of iterations (default: 1000).
-
-        Notes
-        -----
-        Minimizes the energy, saves the minimized state, and logs progress.
-        """
-        logger.info("Minimizing energy...")
-        log_file = os.path.join(self.rundir, "em.log")
-        reporter = app.StateDataReporter(
-            log_file, 100, step=True, potentialEnergy=True, temperature=True
-        )
-        simulation_obj.reporters.append(reporter)
-        simulation_obj.minimizeEnergy(tolerance, max_iterations)
-        self.save_state(simulation_obj, "em")
-        logger.info("Minimization complete.")
-
     def get_std_reporters(self, append, prefix='md', nout=1000, nlog=10000, nchk=10000, **kwargs):
         kwargs.setdefault("step", True)
         kwargs.setdefault("time", True)
@@ -270,15 +244,76 @@ class MmRun(MDRun):
         log_reporter = app.StateDataReporter(log_file, nlog, append=append, **kwargs)
         xml_reporter = app.CheckpointReporter(xml_file, nchk, writeState=True)
         # If PDBReporter is not used, remove the assignment to avoid unused variable warnings.
-        reporters = [dcd_reporter, xtc_reporter, log_reporter, xml_reporter]
+        reporters = [xtc_reporter, log_reporter, xml_reporter]
         return reporters
 
-    def eq(self, simulation_obj, nsteps=10000, nout=10000, nlog=10000, nchk=10000, **kwargs):
-        """Run equilibration simulation.
+    def em(self, simulation, tolerance=100, max_iterations=1000):
+        """Perform energy minimization for the simulation.
 
         Parameters
         ----------
-        simulation_obj : openmm.app.Simulation
+        simulation : openmm.app.Simulation
+            The simulation object.
+        tolerance : float, optional
+            Tolerance for energy minimization (default: 100).
+        max_iterations : int, optional
+            Maximum number of iterations (default: 1000).
+
+        Notes
+        -----
+        Minimizes the energy, saves the minimized state, and logs progress.
+        """
+        logger.info("Minimizing energy...")
+        log_file = os.path.join(self.rundir, "em.log")
+        reporter = app.StateDataReporter(
+            log_file, 100, step=True, potentialEnergy=True, temperature=True
+        )
+        simulation.reporters.append(reporter)
+        simulation.minimizeEnergy(tolerance, max_iterations)
+        self.save_state(simulation, "em")
+        logger.info("Minimization completed.")
+
+    def hu(self, simulation, temperature, 
+            n_cycles=100, steps_per_cycle=100, 
+            nout=10000, nlog=10000, nchk=100000, **kwargs):
+        """Run equilibration.
+
+        Parameters
+        ----------
+        simulation : openmm.app.Simulation
+            The simulation object.
+        nsteps : int, optional
+            Number of steps for equilibration (default: 10000).
+        nlog : int, optional
+            Logging frequency (default: 10000).
+        **kwargs : dict, optional
+            Additional keyword arguments for the StateDataReporter.
+        Notes
+        -----
+        Loads the minimized state, runs heatup, and saves the final state.
+        """
+        logger.info("Heating up the system...")
+        in_xml = os.path.join(self.rundir, "em.xml")
+        simulation.loadState(in_xml)
+        reporters = self.get_std_reporters(append=False, prefix='hu', nout=nout, nlog=nlog, nchk=nchk, 
+            volume=True, density=True, **kwargs)
+        simulation.reporters = []
+        simulation.reporters.extend(reporters)
+        for i in range(n_cycles):
+            simulation.integrator.setTemperature(temperature*i/n_cycles)
+            simulation.step(steps_per_cycle)
+        self.save_state(simulation, "hu")
+        simulation.reporters.clear()
+        logger.info("Heatup completed.")
+
+    def eq(self, simulation, 
+            n_cycles=100, steps_per_cycle=100, 
+            nout=10000, nlog=10000, nchk=100000, **kwargs):
+        """Run equilibration.
+
+        Parameters
+        ----------
+        simulation : openmm.app.Simulation
             The simulation object.
         nsteps : int, optional
             Number of steps for equilibration (default: 10000).
@@ -289,26 +324,36 @@ class MmRun(MDRun):
 
         Notes
         -----
-        Loads the minimized state, runs equilibration, and saves the equilibrated state.
+        Loads the heated state, runs equilibration, and saves the equilibrated state.
         """
         logger.info("Starting equilibration...")
-        
-        em_xml = os.path.join(self.rundir, "em.xml")
-        simulation_obj.loadState(em_xml)
-        reporters = self.get_std_reporters(append=False, nout=nout, nlog=nlog, nchk=nchk, density=True, **kwargs)
-        simulation_obj.reporters = []
-        simulation_obj.reporters.extend(reporters)
-        simulation_obj.step(nsteps)
-        self.save_state(simulation_obj, "eq")
-        simulation_obj.reporters.clear()
-        logger.info("Equilibration complete.")
+        in_xml = os.path.join(self.rundir, "hu.xml")
+        simulation.loadState(in_xml)
+        reporters = self.get_std_reporters(append=False, prefix='eq', nout=nout, nlog=nlog, nchk=nchk, 
+            volume=True, density=True, **kwargs)
+        simulation.reporters = []
+        simulation.reporters.extend(reporters)
+        enum = enumerate(simulation.system.getForces()) 
+        idx, bb_restraint = [(idx, f) for idx, f in enum if f.getName() == 'BackboneRestraint'][0]
+        fc = bb_restraint.getGlobalParameterDefaultValue(0)
+        fcname = bb_restraint.getGlobalParameterName(0)
+        for i in range(n_cycles):
+            simulation.step(steps_per_cycle)
+            new_fc = fc * (1 - (i + 1) / n_cycles)
+            simulation.context.setParameter(fcname, new_fc)
+        simulation.system.removeForce(idx)
+        simulation.context.reinitialize(preserveState=True)
+        self.save_state(simulation, "eq")
+        simulation.reporters.clear()
+        logger.info("Equilibration completed.")
 
-    def md(self, simulation_obj, nsteps=100000, nout=1000, nlog=10000, nchk=10000, **kwargs):
+    def md(self, simulation, nsteps=100000, 
+            nout=10000, nlog=1000000, nchk=1000000, **kwargs):
         """Run production MD simulation.
 
         Parameters
         ----------
-        simulation_obj : openmm.app.Simulation
+        simulation : openmm.app.Simulation
             The simulation object.
         nsteps : int, optional
             Number of production steps (default: 100000).
@@ -327,27 +372,27 @@ class MmRun(MDRun):
         """
         logger.info("Production run...")
         
-        eq_xml = os.path.join(self.rundir, "eq.xml")
-        pdb_file = os.path.join(self.rundir, "md.pdb")
-        simulation_obj.loadState(eq_xml)
+        in_xml = os.path.join(self.rundir, "eq.xml")
+        simulation.loadState(in_xml)
         reporters = self.get_std_reporters(append=False, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
-        simulation_obj.reporters = []
-        simulation_obj.reporters.extend(reporters)
-        simulation_obj.step(nsteps)
-        self.save_state(simulation_obj, "md")
-        logger.info("Production complete.")
+        simulation.reporters = []
+        simulation.reporters.extend(reporters)
+        simulation.step(nsteps)
+        self.save_state(simulation, "md")
+        logger.info("Production completed.")
 
-    def extend(self, simulation_obj, nsteps=100000, nout=1000, nlog=10000, nchk=10000, **kwargs):
+    def extend(self, simulation, nsteps=100000, 
+            nout=10000, nlog=100000, nchk=100000, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
         xml_file = os.path.join(self.rundir, "md.xml")
-        simulation_obj.loadState(xml_file)
+        simulation.loadState(xml_file)
         reporters = self.get_std_reporters(append=True, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
-        simulation_obj.reporters = []
-        simulation_obj.reporters.extend(reporters)
-        simulation_obj.step(nsteps)
-        self.save_state(simulation_obj, "md")
-        logger.info("Production complete.")
+        simulation.reporters = []
+        simulation.reporters.extend(reporters)
+        simulation.step(nsteps)
+        self.save_state(simulation, "md")
+        logger.info("Production completed.")
 
 
 ################################################################################
