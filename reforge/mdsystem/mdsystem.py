@@ -91,7 +91,7 @@ class MDSystem:
         segments = pdbtools.sort_uld(set(atoms.segids))
         return segments
 
-    def prepare_files(self):
+    def prepare_files(self, pour_martini=False):
         """Prepares the simulation by creating necessary directories and copying input files.
 
         The method:
@@ -103,19 +103,20 @@ class MDSystem:
         logger.info("Preparing files and directories")
         self.prodir.mkdir(parents=True, exist_ok=True)
         self.nucdir.mkdir(parents=True, exist_ok=True)
-        self.topdir.mkdir(parents=True, exist_ok=True)
-        self.mapdir.mkdir(parents=True, exist_ok=True)
-        self.cgdir.mkdir(parents=True, exist_ok=True)
         self.datdir.mkdir(parents=True, exist_ok=True)
         self.pngdir.mkdir(parents=True, exist_ok=True)
-        # Copy water.gro and atommass.dat from master data directory
-        shutil.copy(self.MDATDIR / "water.gro", self.root)
-        shutil.copy(self.MDATDIR / "atommass.dat", self.root)
-        # Copy .itp files from master ITP directory
-        for file in self.MITPDIR.iterdir():
-            if file.name.endswith(".itp"):
-                outpath = self.topdir / file.name
-                shutil.copy(file, outpath)
+        if pour_martini:
+            self.cgdir.mkdir(parents=True, exist_ok=True)
+            self.mapdir.mkdir(parents=True, exist_ok=True)
+            self.topdir.mkdir(parents=True, exist_ok=True)
+            # Copy water.gro and atommass.dat from master data directory
+            shutil.copy(self.MDATDIR / "water.gro", self.root)
+            shutil.copy(self.MDATDIR / "atommass.dat", self.root)
+            # Copy .itp files from master ITP directory
+            for file in self.MITPDIR.iterdir():
+                if file.name.endswith(".itp"):
+                    outpath = self.topdir / file.name
+                    shutil.copy(file, outpath)
 
     def sort_input_pdb(self, in_pdb="inpdb.pdb"):
         """Sorts and renames atoms and chains in the input PDB file.

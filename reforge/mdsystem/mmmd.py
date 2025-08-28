@@ -39,9 +39,9 @@ class MmSystem(MDSystem):
         self.sysgro = self.root / "system.gro"
         self.systop = self.root / "system.top"
         
-    def prepare_files(self):
+    def prepare_files(self, *args, **kwargs):
         """Extension for OpenMM system"""
-        super().prepare_files()
+        super().prepare_files(*args, **kwargs)
 
     def clean_pdb(self, pdb_file, **kwargs):
         """Clean the starting PDB file using PDBfixer by OpenMM.

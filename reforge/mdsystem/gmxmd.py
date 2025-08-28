@@ -80,9 +80,10 @@ class GmxSystem(MDSystem):
             if clean_wdir:
                 clean_dir()
 
-    def prepare_files(self):
+    def prepare_files(self, *args, **kwargs):
         """Extension for GROMACS system"""
-        super().prepare_files()
+        super().prepare_files(*args, **kwargs)
+        self.topdir.mkdir(parents=True, exist_ok=True)
         self.mdpdir.mkdir(parents=True, exist_ok=True)
         # .mdp files
         for file in self.MMDPDIR.iterdir():
