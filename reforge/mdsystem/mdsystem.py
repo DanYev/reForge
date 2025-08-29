@@ -59,7 +59,6 @@ class MDSystem:
         self.root = self.sysdir / sysname
         self.inpdb = self.root / "inpdb.pdb"
         self.solupdb = self.root / "solute.pdb"
-        self.syspdb = self.root / "system.pdb"
         self.prodir = self.root / "proteins"
         self.nucdir = self.root / "nucleotides"
         self.iondir = self.root / "ions"
@@ -71,6 +70,10 @@ class MDSystem:
         self.datdir = self.root / "data"
         self.pngdir = self.root / "png"
         self.pdbdir = self.root / "pdb"
+        self.sysxml = self.root / "system.xml"
+        self.systop = self.root / "system.top"
+        self.sysgro = self.root / "system.gro"
+        self.syspdb = self.root / "system.pdb"
 
     @property
     def chains(self):

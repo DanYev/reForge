@@ -59,8 +59,6 @@ class GmxSystem(MDSystem):
         Sets up paths for various files required for coarse-grained MD simulation.
         """
         super().__init__(sysdir, sysname)
-        self.sysgro = self.root / "system.gro"
-        self.systop = self.root / "system.top"
         self.sysndx = self.root / "system.ndx"
         self.mdpdir = self.root / "mdp"
         self.grodir = self.root / "gro"

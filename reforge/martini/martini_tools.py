@@ -118,7 +118,8 @@ def martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
     kwargs.setdefault("maxwarn", "1000")
-    ss = dssp(aapdb)
+    kwargs.setdefault("from", "amber")
+    # ss = dssp(aapdb)
     with cd(wdir):
         line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
                 "-go-write-file {} -dssp").format(

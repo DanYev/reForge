@@ -35,9 +35,6 @@ class MmSystem(MDSystem):
     def __init__(self, sysdir, sysname, **kwargs):
         """Initialize the MD system with required directories and file paths."""
         super().__init__(sysdir, sysname)
-        self.sysxml = self.root / "system.xml"
-        self.sysgro = self.root / "system.gro"
-        self.systop = self.root / "system.top"
         
     def prepare_files(self, *args, **kwargs):
         """Extension for OpenMM system"""
@@ -347,7 +344,7 @@ class MmRun(MDRun):
         simulation.reporters.clear()
         logger.info("Equilibration completed.")
 
-    def md(self, simulation, nsteps=100000, 
+    def md(self, simulation, time=1000, nsteps=None, 
             nout=10000, nlog=1000000, nchk=1000000, **kwargs):
         """Run production MD simulation.
 
@@ -381,12 +378,23 @@ class MmRun(MDRun):
         self.save_state(simulation, "md")
         logger.info("Production completed.")
 
-    def extend(self, simulation, nsteps=100000, 
-            nout=10000, nlog=100000, nchk=100000, **kwargs):
+    def extend(self, simulation, until_time=1000, nsteps=None, 
+            nout=10000, nlog=1000000, nchk=1000000, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
         xml_file = os.path.join(self.rundir, "md.xml")
         simulation.loadState(xml_file)
+        st = simulation.context.getState()
+        if not nsteps:
+            dt = simulation.integrator.getStepSize()
+            curr_time = st.getTime()
+            logger.info(f"Current time: %s", curr_time)
+            logger.info(f"Extend until: %s", until_time)
+            nsteps = int((until_time - curr_time) / dt)
+            if nsteps <= 0:
+                logger.warning("Current simulation is longer than UNTIL_TIME, exiting!")
+                sys.exit(0) 
+        logger.info(f"Number of steps left: %s", nsteps)
         reporters = self.get_std_reporters(append=True, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
         simulation.reporters = []
         simulation.reporters.extend(reporters)
