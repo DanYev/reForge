@@ -225,7 +225,8 @@ class MmRun(MDRun):
         with open(pdb_file, "w", encoding="utf-8") as file:
             app.PDBFile.writeFile(simulation_obj.topology, positions, file, keepIds=True)
 
-    def get_std_reporters(self, append, prefix='md', nout=1000, nlog=10000, nchk=10000, **kwargs):
+    def get_std_reporters(self, append, prefix='md', velocities_needed=False,
+            nout=1000, nlog=10000, nchk=10000, **kwargs):
         kwargs.setdefault("step", True)
         kwargs.setdefault("time", True)
         kwargs.setdefault("potentialEnergy", True)
@@ -239,12 +240,15 @@ class MmRun(MDRun):
         dcd_reporter = app.DCDReporter(dcd_file, nout, append=append, enforcePeriodicBox=True)
         xtc_reporter = app.XTCReporter(xtc_file, nout, append=append, enforcePeriodicBox=True)
         log_reporter = app.StateDataReporter(log_file, nlog, append=append, **kwargs)
+        stderr_reporter = app.StateDataReporter(sys.stderr, nlog, append=True, **kwargs)
         xml_reporter = app.CheckpointReporter(xml_file, nchk, writeState=True)
-        # If PDBReporter is not used, remove the assignment to avoid unused variable warnings.
-        reporters = [xtc_reporter, log_reporter, xml_reporter]
+        if velocities_needed:
+            reporters = [dcd_reporter, xml_reporter, log_reporter, stderr_reporter]
+        else:
+            reporters = [xtc_reporter, xml_reporter, log_reporter, stderr_reporter]
         return reporters
 
-    def em(self, simulation, tolerance=100, max_iterations=1000):
+    def em(self, simulation, tolerance=10, max_iterations=2000):
         """Perform energy minimization for the simulation.
 
         Parameters
@@ -263,7 +267,7 @@ class MmRun(MDRun):
         logger.info("Minimizing energy...")
         log_file = os.path.join(self.rundir, "em.log")
         reporter = app.StateDataReporter(
-            log_file, 100, step=True, potentialEnergy=True, temperature=True
+            log_file, 100, potentialEnergy=True, totalEnergy=True,
         )
         simulation.reporters.append(reporter)
         simulation.minimizeEnergy(tolerance, max_iterations)
@@ -371,6 +375,11 @@ class MmRun(MDRun):
         
         in_xml = os.path.join(self.rundir, "eq.xml")
         simulation.loadState(in_xml)
+        if not nsteps:
+            dt = simulation.integrator.getStepSize()
+            logger.info(f"Total MD time: %s", time)
+            nsteps = int(time / dt)
+        logger.info(f"Number of steps left: %s", nsteps)
         reporters = self.get_std_reporters(append=False, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
         simulation.reporters = []
         simulation.reporters.extend(reporters)
