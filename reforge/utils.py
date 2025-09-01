@@ -40,11 +40,12 @@ import cupy as cp
 
 # Use an environment variable (DEBUG=1) to toggle debug logging
 DEBUG = os.environ.get("DEBUG", "0") == "1"
-LOG_LEVEL = logging.DEBUG if DEBUG else logging.INFO
-logger = logging.getLogger(__name__)
+LOG_LEVEL = logging.DEBUG if DEBUG else logging.WARNING
 logging.basicConfig(level=LOG_LEVEL, format="[%(levelname)s] %(message)s")
-# logger.debug("Debug mode is enabled.")
-# logger.info("Logger is set up.")
+logger = logging.getLogger("reforge")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+logger.debug("Debug mode is enabled.")
 
 
 def timeit(func):
