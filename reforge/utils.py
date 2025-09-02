@@ -44,7 +44,7 @@ LOG_LEVEL = logging.DEBUG if DEBUG else logging.WARNING
 logging.basicConfig(level=LOG_LEVEL, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("reforge")
 logger.setLevel(logging.INFO)
-logger.propagate = False
+# logger.propagate = False
 logger.debug("Debug mode is enabled.")
 
 
