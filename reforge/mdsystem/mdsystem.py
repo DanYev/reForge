@@ -141,7 +141,7 @@ class MDSystem:
             in_pdb (str, optional): Input PDB file to clean. If None, uses self.inpdb.
             kwargs: Additional keyword arguments for pdbtools.clean_pdb.
         """
-        logger.info("Cleaning the PDB using OpenMM's PDBfixer...")
+        logger.info("Cleaning the PDB with OpenMM's PDBfixer...")
         if not in_pdb:
             in_pdb = self.inpdb
         pdbtools.clean_pdb(in_pdb, in_pdb, **kwargs)

@@ -26,6 +26,7 @@ Date: 2025-02-27
 import sys
 from pathlib import Path
 from typing import List
+from reforge.utils import logger
 
 ###################################
 ## Classes and Functions ##
@@ -758,7 +759,7 @@ def sort_pdb(in_pdb, out_pdb):
     sort_chains_atoms(atoms)
     rename_chains_for_gromacs(atoms)
     atoms.write_pdb(out_pdb)
-    print("Chains and atoms sorted, renamed and saved to %s" % out_pdb)
+    logger.info("Chains and atoms sorted, renamed and saved to %s" % out_pdb)
 
 
 def clean_pdb(in_pdb, out_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0):
@@ -768,26 +769,26 @@ def clean_pdb(in_pdb, out_pdb, add_missing_atoms=False, add_hydrogens=False, pH=
         from openmm.app import PDBFile         # pylint: disable=import-outside-toplevel
     except ImportError as e:
         raise ImportError("PDBFixer or OpenMM not available") from e
-    print("Processing %s" % in_pdb, file=sys.stderr)
+    logger.info("Processing %s" % in_pdb, )
     pdb = PDBFixer(filename=str(in_pdb))
-    print("Removing heterogens and checking for missing residues...", file=sys.stderr)
+    logger.info("Removing heterogens and checking for missing residues...", )
     pdb.removeHeterogens(False)
     pdb.findMissingResidues()
-    print("Replacing non-standard residues...", file=sys.stderr)
+    logger.info("Replacing non-standard residues...", )
     pdb.findNonstandardResidues()
     pdb.replaceNonstandardResidues()
     if add_missing_atoms:
-        print("Adding missing atoms...", file=sys.stderr)
+        logger.info("Adding missing atoms...", )
         pdb.findMissingAtoms()
         pdb.addMissingAtoms()
     if add_hydrogens:
-        print("Adding missing hydrogens...", file=sys.stderr)
+        logger.info("Adding missing hydrogens...", )
         pdb.addMissingHydrogens(pH)
     topology = pdb.topology
     positions = pdb.positions
     with open(out_pdb, "w", encoding="utf-8") as outfile:
         PDBFile.writeFile(topology, positions, outfile)
-    print("Written cleaned PDB to %s" % out_pdb, file=sys.stderr)
+    logger.info("Written cleaned PDB to %s" % out_pdb, )
 
 
 def rename_chain_in_pdb(in_pdb, new_chain_id):
