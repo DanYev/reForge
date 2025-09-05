@@ -17,6 +17,7 @@ Usage:
 Author: DY
 """
 
+import logging
 import os
 import sys
 import shutil
@@ -25,7 +26,7 @@ from openmm import app
 from openmm.unit import nanometer, molar
 from reforge import cli, pdbtools, io
 from reforge.pdbtools import AtomList
-from reforge.utils import cd, clean_dir, logger
+from reforge.utils import cd, clean_dir, logger, timeit, memprofit
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 
 
@@ -229,6 +230,7 @@ class MmRun(MDRun):
             nout=1000, nlog=10000, nchk=10000, **kwargs):
         kwargs.setdefault("step", True)
         kwargs.setdefault("time", True)
+        kwargs.setdefault("elapsedTime", True)
         kwargs.setdefault("potentialEnergy", True)
         kwargs.setdefault("temperature", True)
         kwargs.setdefault("density", False)
@@ -240,7 +242,7 @@ class MmRun(MDRun):
         dcd_reporter = app.DCDReporter(dcd_file, nout, append=append, enforcePeriodicBox=True)
         xtc_reporter = app.XTCReporter(xtc_file, nout, append=append, enforcePeriodicBox=True)
         log_reporter = app.StateDataReporter(log_file, nlog, append=append, **kwargs)
-        stderr_reporter = app.StateDataReporter(sys.stderr, nlog, append=True, **kwargs)
+        stderr_reporter = app.StateDataReporter(sys.stderr, nlog, append=False, **kwargs)
         xml_reporter = app.CheckpointReporter(xml_file, nchk, writeState=True)
         if velocities_needed:
             reporters = [dcd_reporter, xml_reporter, log_reporter, stderr_reporter]
@@ -248,15 +250,17 @@ class MmRun(MDRun):
             reporters = [xtc_reporter, xml_reporter, log_reporter, stderr_reporter]
         return reporters
 
-    def em(self, simulation, tolerance=10, max_iterations=2000):
+    @memprofit(level=logging.INFO)
+    @timeit(level=logging.INFO, unit='auto')
+    def em(self, simulation, tolerance=10, max_iterations=1000):
         """Perform energy minimization for the simulation.
 
         Parameters
         ----------
         simulation : openmm.app.Simulation
             The simulation object.
-        tolerance : float, optional
-            Tolerance for energy minimization (default: 100).
+        tolerance [kJ/nm/mol] : float, optional
+            RMSF force tolerance for energy minimization (default: 10).
         max_iterations : int, optional
             Maximum number of iterations (default: 1000).
 
@@ -265,15 +269,13 @@ class MmRun(MDRun):
         Minimizes the energy, saves the minimized state, and logs progress.
         """
         logger.info("Minimizing energy...")
-        log_file = os.path.join(self.rundir, "em.log")
-        reporter = app.StateDataReporter(
-            log_file, 100, potentialEnergy=True, totalEnergy=True,
-        )
-        simulation.reporters.append(reporter)
-        simulation.minimizeEnergy(tolerance, max_iterations)
+        simulation.minimizeEnergy(tolerance=tolerance, maxIterations=max_iterations)
         self.save_state(simulation, "em")
         logger.info("Minimization completed.")
 
+    
+    @memprofit(level=logging.INFO)
+    @timeit(level=logging.INFO, unit='auto')
     def hu(self, simulation, temperature, 
             n_cycles=100, steps_per_cycle=100, 
             nout=10000, nlog=10000, nchk=100000, **kwargs):
@@ -307,6 +309,8 @@ class MmRun(MDRun):
         simulation.reporters.clear()
         logger.info("Heatup completed.")
 
+    @memprofit(level=logging.INFO)
+    @timeit(level=logging.INFO, unit='auto')
     def eq(self, simulation, 
             n_cycles=100, steps_per_cycle=100, 
             nout=10000, nlog=10000, nchk=100000, **kwargs):
@@ -348,6 +352,8 @@ class MmRun(MDRun):
         simulation.reporters.clear()
         logger.info("Equilibration completed.")
 
+    @memprofit(level=logging.INFO)
+    @timeit(level=logging.INFO, unit='auto')
     def md(self, simulation, time=1000, nsteps=None, 
             nout=10000, nlog=1000000, nchk=1000000, **kwargs):
         """Run production MD simulation.
@@ -372,7 +378,6 @@ class MmRun(MDRun):
         Loads the equilibrated state, runs production, and saves the final simulation state.
         """
         logger.info("Production run...")
-        
         in_xml = os.path.join(self.rundir, "eq.xml")
         simulation.loadState(in_xml)
         if not nsteps:
@@ -387,6 +392,8 @@ class MmRun(MDRun):
         self.save_state(simulation, "md")
         logger.info("Production completed.")
 
+    @memprofit(level=logging.INFO)
+    @timeit(level=logging.INFO, unit='auto')
     def extend(self, simulation, until_time=1000, nsteps=None, 
             nout=10000, nlog=1000000, nchk=1000000, **kwargs):
         """Extend production MD simulation"""
