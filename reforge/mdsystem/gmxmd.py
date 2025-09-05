@@ -59,8 +59,6 @@ class GmxSystem(MDSystem):
         Sets up paths for various files required for coarse-grained MD simulation.
         """
         super().__init__(sysdir, sysname)
-        self.sysgro = self.root / "system.gro"
-        self.systop = self.root / "system.top"
         self.sysndx = self.root / "system.ndx"
         self.mdpdir = self.root / "mdp"
         self.grodir = self.root / "gro"
@@ -80,9 +78,10 @@ class GmxSystem(MDSystem):
             if clean_wdir:
                 clean_dir()
 
-    def prepare_files(self):
+    def prepare_files(self, *args, **kwargs):
         """Extension for GROMACS system"""
-        super().prepare_files()
+        super().prepare_files(*args, **kwargs)
+        self.topdir.mkdir(parents=True, exist_ok=True)
         self.mdpdir.mkdir(parents=True, exist_ok=True)
         # .mdp files
         for file in self.MMDPDIR.iterdir():

@@ -59,7 +59,6 @@ class MDSystem:
         self.root = self.sysdir / sysname
         self.inpdb = self.root / "inpdb.pdb"
         self.solupdb = self.root / "solute.pdb"
-        self.syspdb = self.root / "system.pdb"
         self.prodir = self.root / "proteins"
         self.nucdir = self.root / "nucleotides"
         self.iondir = self.root / "ions"
@@ -71,6 +70,10 @@ class MDSystem:
         self.datdir = self.root / "data"
         self.pngdir = self.root / "png"
         self.pdbdir = self.root / "pdb"
+        self.sysxml = self.root / "system.xml"
+        self.systop = self.root / "system.top"
+        self.sysgro = self.root / "system.gro"
+        self.syspdb = self.root / "system.pdb"
 
     @property
     def chains(self):
@@ -91,7 +94,7 @@ class MDSystem:
         segments = pdbtools.sort_uld(set(atoms.segids))
         return segments
 
-    def prepare_files(self):
+    def prepare_files(self, pour_martini=False):
         """Prepares the simulation by creating necessary directories and copying input files.
 
         The method:
@@ -103,19 +106,20 @@ class MDSystem:
         logger.info("Preparing files and directories")
         self.prodir.mkdir(parents=True, exist_ok=True)
         self.nucdir.mkdir(parents=True, exist_ok=True)
-        self.topdir.mkdir(parents=True, exist_ok=True)
-        self.mapdir.mkdir(parents=True, exist_ok=True)
-        self.cgdir.mkdir(parents=True, exist_ok=True)
         self.datdir.mkdir(parents=True, exist_ok=True)
         self.pngdir.mkdir(parents=True, exist_ok=True)
-        # Copy water.gro and atommass.dat from master data directory
-        shutil.copy(self.MDATDIR / "water.gro", self.root)
-        shutil.copy(self.MDATDIR / "atommass.dat", self.root)
-        # Copy .itp files from master ITP directory
-        for file in self.MITPDIR.iterdir():
-            if file.name.endswith(".itp"):
-                outpath = self.topdir / file.name
-                shutil.copy(file, outpath)
+        if pour_martini:
+            self.cgdir.mkdir(parents=True, exist_ok=True)
+            self.mapdir.mkdir(parents=True, exist_ok=True)
+            self.topdir.mkdir(parents=True, exist_ok=True)
+            # Copy water.gro and atommass.dat from master data directory
+            shutil.copy(self.MDATDIR / "water.gro", self.root)
+            shutil.copy(self.MDATDIR / "atommass.dat", self.root)
+            # Copy .itp files from master ITP directory
+            for file in self.MITPDIR.iterdir():
+                if file.name.endswith(".itp"):
+                    outpath = self.topdir / file.name
+                    shutil.copy(file, outpath)
 
     def sort_input_pdb(self, in_pdb="inpdb.pdb"):
         """Sorts and renames atoms and chains in the input PDB file.
@@ -137,7 +141,7 @@ class MDSystem:
             in_pdb (str, optional): Input PDB file to clean. If None, uses self.inpdb.
             kwargs: Additional keyword arguments for pdbtools.clean_pdb.
         """
-        logger.info("Cleaning the PDB using OpenMM's PDBfixer...")
+        logger.info("Cleaning the PDB with OpenMM's PDBfixer...")
         if not in_pdb:
             in_pdb = self.inpdb
         pdbtools.clean_pdb(in_pdb, in_pdb, **kwargs)
@@ -492,7 +496,10 @@ class MDRun(MDSystem):
         self.covdir.mkdir(parents=True, exist_ok=True)
         self.lrtdir.mkdir(parents=True, exist_ok=True)
         self.pngdir.mkdir(parents=True, exist_ok=True)
-        shutil.copy(self.root / "atommass.dat", self.rundir)
+        src = self.root / "atommass.dat"
+        if src.exists():
+            shutil.copy(src, self.rundir)
+
         
     def get_covmats(self, u, ag, **kwargs):
         """Calculates covariance matrices by splitting the trajectory into chunks.

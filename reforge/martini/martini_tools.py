@@ -118,11 +118,12 @@ def martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
     kwargs.setdefault("maxwarn", "1000")
-    ss = dssp(aapdb)
+    kwargs.setdefault("from", "amber")
+    # ss = dssp(aapdb)
     with cd(wdir):
         line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
-                "-go-write-file {} -ss {}").format(
-                    name, go_eps, go_low, go_up, go_res_dist, go_write_file, ss)
+                "-go-write-file {} -dssp").format(
+                    name, go_eps, go_low, go_up, go_res_dist, go_write_file)
         cli.run("martinize2", line, **kwargs)
         append_to("go_atomtypes.itp", os.path.join(topdir, "go_atomtypes.itp"))
         append_to("go_nbparams.itp", os.path.join(topdir, "go_nbparams.itp"))

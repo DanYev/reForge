@@ -44,7 +44,7 @@ from openmm.app import PDBFile, Topology
 from openmm.app import amberprmtopfile as prmtop
 from openmm.app import element as elem
 from openmm.app import forcefield as ff
-from martini_openmm_vsites import (
+from .martini_openmm_vsites import (
     LinearSite,
     OutOfPlane,
     VSiteManager,

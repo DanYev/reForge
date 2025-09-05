@@ -41,7 +41,7 @@ from reforge.pdbtools import AtomList, System, PDBParser
 
 @timeit
 @memprofit
-def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
+def read_positions_old(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
     """Extract and return positions from an MDAnalysis trajectory.
 
     This function reads the positions for a specified atom group from the 
@@ -73,12 +73,22 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
 
     logger.info("Reading positions...")
     arr = np.array(
-        [ag.positions.flatten() for ts in u.trajectory[::sample_rate] if b < ts.time < e],
+        [ag.positions.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
-    arr = np.ascontiguousarray(arr.T)
-    logger.info("Done!")
+    # arr = np.ascontiguousarray(arr.T)
+    logger.info("Done reading!")
     return arr
+
+
+@timeit
+@memprofit
+def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
+    logger.info("Reading positions...") 
+    arr = u.trajectory.timeseries(ag)
+    positions = np.ascontiguousarray(arr.reshape(arr.shape[0], -1))
+    logger.info("Done reading!")
+    return positions
 
 
 @timeit
@@ -87,11 +97,11 @@ def read_velocities(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
     """Saimilar to the previous. Read and return velocities from an MDAnalysis trajectory."""
     logger.info("Reading velocities...")
     arr = np.array(
-        [ag.velocities.flatten() for ts in u.trajectory[::sample_rate] if b < ts.time < e],
+        [ag.velocities.flatten() for ts in u.trajectory[::sample_rate] if b <= ts.time <= e],
         dtype=dtype,
     )
-    arr = np.ascontiguousarray(arr.T)
-    logger.info("Done!")
+    # arr = np.ascontiguousarray(arr.T)
+    # logger.info("Done!")
     return arr
 
 

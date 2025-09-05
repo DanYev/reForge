@@ -2,7 +2,7 @@ name: reforge
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python>=3.13
   - cython
   - cupy
   - matplotlib
@@ -10,14 +10,13 @@ dependencies:
   - mdanalysis
   - mdtraj
   - numpy 
-  - openmm
-  - requests
-  - setuptools
+  - openmm>=8.3.1
   - selenium
-  - selenium-manager
+  - setuptools
+  - scikit-learn
   - packaging
   - pandas
   - pdbfixer
   - pytest
   - vermouth
-  - webdriver-manager 
+  - webdriver-manager
