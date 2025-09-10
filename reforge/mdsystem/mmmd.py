@@ -22,6 +22,7 @@ import os
 import sys
 import shutil
 import openmm as mm
+from mdtraj.reporters import HDF5Reporter
 from openmm import app
 from openmm.unit import nanometer, molar
 from reforge import cli, pdbtools, io
@@ -234,18 +235,18 @@ class MmRun(MDRun):
         kwargs.setdefault("potentialEnergy", True)
         kwargs.setdefault("temperature", True)
         kwargs.setdefault("density", False)
-        dcd_file = os.path.join(self.rundir, f"{prefix}.dcd")
+        h5_file = os.path.join(self.rundir, f"{prefix}.h5")
         xtc_file = os.path.join(self.rundir, f"{prefix}.xtc")
         log_file = os.path.join(self.rundir, f"{prefix}.log")
         xml_file = os.path.join(self.rundir, f"{prefix}.xml")
         pdb_file = os.path.join(self.rundir, f"{prefix}.pdb")
-        dcd_reporter = app.DCDReporter(dcd_file, nout, append=append, enforcePeriodicBox=True)
+        h5_reporter = HDF5Reporter(h5_file, reportInterval=nout, velocities=True, coordinates=True)
         xtc_reporter = app.XTCReporter(xtc_file, nout, append=append, enforcePeriodicBox=True)
         log_reporter = app.StateDataReporter(log_file, nlog, append=append, **kwargs)
         stderr_reporter = app.StateDataReporter(sys.stderr, nlog, append=False, **kwargs)
         xml_reporter = app.CheckpointReporter(xml_file, nchk, writeState=True)
         if velocities_needed:
-            reporters = [dcd_reporter, xml_reporter, log_reporter, stderr_reporter]
+            reporters = [h5_reporter, xml_reporter, log_reporter, stderr_reporter]
         else:
             reporters = [xtc_reporter, xml_reporter, log_reporter, stderr_reporter]
         return reporters
