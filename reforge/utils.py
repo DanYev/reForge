@@ -41,10 +41,10 @@ import cupy as cp
 
 # Use an environment variable (DEBUG=1) to toggle debug logging
 DEBUG = os.environ.get("DEBUG", "0") == "1"
-LOG_LEVEL = logging.DEBUG if DEBUG else logging.WARNING
-logging.basicConfig(level=LOG_LEVEL, format="[%(levelname)s] %(message)s")
+logging.basicConfig(format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("reforge")
-logger.setLevel(logging.INFO)
+LOG_LEVEL = logging.DEBUG if DEBUG else logging.INFO
+logger.setLevel(LOG_LEVEL)
 logger.debug("Debug mode is enabled.")
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

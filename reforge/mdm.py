@@ -126,10 +126,10 @@ def calc_and_save_covmats(positions, outdir, n=1, outtag="covmat", dtype=np.floa
     -------
     None
     """
-    trajs = np.array_split(positions, n, axis=0)
+    trajs = np.array_split(positions, n, axis=-1)
     for idx, traj in enumerate(trajs, start=1):
         logger.info("Processing covariance matrix %d", idx)
-        covmat = covariance_matrix(traj.T, dtype=dtype)
+        covmat = covariance_matrix(traj, dtype=dtype)
         outfile = os.path.join(outdir, f"{outtag}_{idx}.npy")
         np.save(outfile, covmat)
         logger.info("Saved covariance matrix to %s", outfile)

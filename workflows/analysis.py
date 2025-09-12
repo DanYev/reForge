@@ -30,7 +30,7 @@ def pca_trajs(sysdir, sysname):
     logger.info("Reading trajectories")
     u = mda.Universe(tops[0], trajs, in_memory_step=step, ) # in_memory=True)
     ag = u.atoms.select_atoms(selection)
-    positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9)
+    positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9).T
     # PCA
     logger.info("Doing PCA")
     frames = np.arange(len(u.trajectory)) 
@@ -125,7 +125,7 @@ def clust_cov(sysdir, sysname):
         dtype = np.float32
         positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9, dtype=dtype)
         logger.info("Calculating")
-        covmat = mdm.covariance_matrix(positions.T, dtype=dtype)
+        covmat = mdm.covariance_matrix(positions, dtype=dtype)
         pertmat = mdm.perturbation_matrix_iso(covmat, dtype=dtype)
         dfi_res = mdm.dfi(pertmat)
         idx = 'filt' if cluster == mdsys.datdir / "filtered.xtc" else idx

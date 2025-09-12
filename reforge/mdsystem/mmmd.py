@@ -226,28 +226,19 @@ class MmRun(MDRun):
         with open(pdb_file, "w", encoding="utf-8") as file:
             app.PDBFile.writeFile(simulation_obj.topology, positions, file, keepIds=True)
 
-    def get_std_reporters(self, append, prefix='md', velocities_needed=False,
-            nout=1000, nlog=10000, nchk=10000, **kwargs):
+    def get_std_reporters(self, append, prefix='md', nlog=10000, nchk=10000, **kwargs):
         kwargs.setdefault("step", True)
         kwargs.setdefault("time", True)
         kwargs.setdefault("elapsedTime", True)
         kwargs.setdefault("potentialEnergy", True)
         kwargs.setdefault("temperature", True)
         kwargs.setdefault("density", False)
-        dcd_file = os.path.join(self.rundir, f"{prefix}.dcd")
-        xtc_file = os.path.join(self.rundir, f"{prefix}.xtc")
         log_file = os.path.join(self.rundir, f"{prefix}.log")
         xml_file = os.path.join(self.rundir, f"{prefix}.xml")
-        pdb_file = os.path.join(self.rundir, f"{prefix}.pdb")
-        dcd_reporter = app.DCDReporter(dcd_file, nout, append=append, enforcePeriodicBox=True)
-        xtc_reporter = app.XTCReporter(xtc_file, nout, append=append, enforcePeriodicBox=True)
         log_reporter = app.StateDataReporter(log_file, nlog, append=append, **kwargs)
         stderr_reporter = app.StateDataReporter(sys.stderr, nlog, append=False, **kwargs)
         xml_reporter = app.CheckpointReporter(xml_file, nchk, writeState=True)
-        if velocities_needed:
-            reporters = [dcd_reporter, xml_reporter, log_reporter, stderr_reporter]
-        else:
-            reporters = [xtc_reporter, xml_reporter, log_reporter, stderr_reporter]
+        reporters = [xml_reporter, log_reporter, stderr_reporter]
         return reporters
 
     @memprofit(level=logging.INFO)
@@ -277,8 +268,7 @@ class MmRun(MDRun):
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
     def hu(self, simulation, temperature, 
-            n_cycles=100, steps_per_cycle=100, 
-            nout=10000, nlog=10000, nchk=100000, **kwargs):
+            n_cycles=100, steps_per_cycle=100, **kwargs):
         """Run equilibration.
 
         Parameters
@@ -287,10 +277,8 @@ class MmRun(MDRun):
             The simulation object.
         nsteps : int, optional
             Number of steps for equilibration (default: 10000).
-        nlog : int, optional
-            Logging frequency (default: 10000).
         **kwargs : dict, optional
-            Additional keyword arguments for the StateDataReporter.
+            Additional keyword arguments.
         Notes
         -----
         Loads the minimized state, runs heatup, and saves the final state.
@@ -298,22 +286,16 @@ class MmRun(MDRun):
         logger.info("Heating up the system...")
         in_xml = os.path.join(self.rundir, "em.xml")
         simulation.loadState(in_xml)
-        reporters = self.get_std_reporters(append=False, prefix='hu', nout=nout, nlog=nlog, nchk=nchk, 
-            volume=True, density=True, **kwargs)
-        simulation.reporters = []
-        simulation.reporters.extend(reporters)
         for i in range(n_cycles):
             simulation.integrator.setTemperature(temperature*i/n_cycles)
             simulation.step(steps_per_cycle)
         self.save_state(simulation, "hu")
-        simulation.reporters.clear()
         logger.info("Heatup completed.")
 
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
     def eq(self, simulation, 
-            n_cycles=100, steps_per_cycle=100, 
-            nout=10000, nlog=10000, nchk=100000, **kwargs):
+            n_cycles=100, steps_per_cycle=100, **kwargs):
         """Run equilibration.
 
         Parameters
@@ -322,10 +304,8 @@ class MmRun(MDRun):
             The simulation object.
         nsteps : int, optional
             Number of steps for equilibration (default: 10000).
-        nlog : int, optional
-            Logging frequency (default: 10000).
         **kwargs : dict, optional
-            Additional keyword arguments for the StateDataReporter.
+            Additional keyword arguments.
 
         Notes
         -----
@@ -334,10 +314,6 @@ class MmRun(MDRun):
         logger.info("Starting equilibration...")
         in_xml = os.path.join(self.rundir, "hu.xml")
         simulation.loadState(in_xml)
-        reporters = self.get_std_reporters(append=False, prefix='eq', nout=nout, nlog=nlog, nchk=nchk, 
-            volume=True, density=True, **kwargs)
-        simulation.reporters = []
-        simulation.reporters.extend(reporters)
         enum = enumerate(simulation.system.getForces()) 
         idx, bb_restraint = [(idx, f) for idx, f in enum if f.getName() == 'BackboneRestraint'][0]
         fc = bb_restraint.getGlobalParameterDefaultValue(0)
@@ -349,13 +325,11 @@ class MmRun(MDRun):
         simulation.system.removeForce(idx)
         simulation.context.reinitialize(preserveState=True)
         self.save_state(simulation, "eq")
-        simulation.reporters.clear()
         logger.info("Equilibration completed.")
 
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
-    def md(self, simulation, time=1000, nsteps=None, 
-            nout=10000, nlog=1000000, nchk=1000000, **kwargs):
+    def md(self, simulation, time=1000, nsteps=None, **kwargs):
         """Run production MD simulation.
 
         Parameters
@@ -364,14 +338,8 @@ class MmRun(MDRun):
             The simulation object.
         nsteps : int, optional
             Number of production steps (default: 100000).
-        nout : int, optional
-            Frequency for writing trajectory frames (default: 1000).
-        nlog : int, optional
-            Logging frequency (default: 10000).
-        nchk : int, optional
-            Checkpoint frequency (default: 10000).
         **kwargs : dict, optional
-            Additional keyword arguments for the StateDataReporter.
+            Additional keyword arguments.
 
         Notes
         -----
@@ -385,17 +353,13 @@ class MmRun(MDRun):
             logger.info(f"Total MD time: %s", time)
             nsteps = int(time / dt)
         logger.info(f"Number of steps left: %s", nsteps)
-        reporters = self.get_std_reporters(append=False, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
-        simulation.reporters = []
-        simulation.reporters.extend(reporters)
         simulation.step(nsteps)
         self.save_state(simulation, "md")
         logger.info("Production completed.")
 
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
-    def extend(self, simulation, until_time=1000, nsteps=None, 
-            nout=10000, nlog=1000000, nchk=1000000, **kwargs):
+    def extend(self, simulation, until_time=1000, nsteps=None, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
         xml_file = os.path.join(self.rundir, "md.xml")
@@ -411,9 +375,6 @@ class MmRun(MDRun):
                 logger.warning("Current simulation is longer than UNTIL_TIME, exiting!")
                 sys.exit(0) 
         logger.info(f"Number of steps left: %s", nsteps)
-        reporters = self.get_std_reporters(append=True, nout=nout, nlog=nlog, nchk=nchk, **kwargs)
-        simulation.reporters = []
-        simulation.reporters.extend(reporters)
         simulation.step(nsteps)
         self.save_state(simulation, "md")
         logger.info("Production completed.")
