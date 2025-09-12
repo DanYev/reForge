@@ -77,7 +77,6 @@ def read_positions(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
         dtype=dtype,
     )
     arr = np.ascontiguousarray(arr.T)
-    logger.info("Done reading!")
     return arr
 
 
@@ -87,7 +86,6 @@ def read_positions_tmp(u, ag, b=0, e=10000000, sample_rate=1, dtype=np.float32):
     logger.info("Reading positions...") 
     arr = u.trajectory.timeseries(ag)
     positions = np.ascontiguousarray(arr.reshape(arr.shape[0], -1))
-    logger.info("Done reading!")
     return positions
 
 

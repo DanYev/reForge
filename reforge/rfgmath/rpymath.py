@@ -99,8 +99,8 @@ def pfft_ccf(x, y, ntmax=None, center=False, dtype=None):
     """Compute the correlation function using a parallel FFT-based method.
     
     Parameters:
-        x (np.ndarray): First input signal.
-        y (np.ndarray): Second input signal.
+        x (np.ndarray): First input signal of shape (n_coords, n_samples).
+        y (np.ndarray): Second input signal of shape (n_coords, n_samples).
         ntmax (int, optional): Maximum number of time samples to retain.
         center (bool, optional): If True, subtract the mean.
         dtype (data-type, optional): Desired data type.
@@ -145,8 +145,8 @@ def gfft_ccf(x, y, ntmax=None, center=True, dtype=None):
     """Compute the correlation function on the GPU using FFT.
     
     Parameters:
-        x (np.ndarray): First input signal.
-        y (np.ndarray): Second input signal.
+        x (np.ndarray): first input signal of shape (n_coords, n_samples).
+        y (np.ndarray): second input signal of shape (n_coords, n_samples).
         ntmax (int, optional): Maximum number of time samples to retain.
         center (bool, optional): If True, subtract the mean.
         dtype (data-type, optional): Desired CuPy data type (default: inferred from x).
@@ -310,8 +310,8 @@ def gfft_conv(x, y, loop=False, dtype=None):
     """Compute element-wise convolution between two signals on the GPU using FFT.
     
     Parameters:
-        x (np.ndarray): First input signal.
-        y (np.ndarray): Second input signal.
+        xs (np.ndarray): First input signal of shape (n_coords, n_samples).
+        ys (np.ndarray): Second input signal of shape (n_coords, n_samples).
         loop (bool, optional): If True, use a loop-based computation.
         dtype (data-type, optional): Desired CuPy data type.
     
@@ -348,8 +348,8 @@ def sfft_cpsd(x, y, ntmax=None, center=True, loop=True, dtype=np.float64):
     """Compute the Cross-Power Spectral Density (CPSD) between two signals using FFT.
     
     Parameters:
-        x (np.ndarray): First input signal.
-        y (np.ndarray): Second input signal.
+        xs (np.ndarray): First input signal of shape (n_coords, n_samples).
+        ys (np.ndarray): Second input signal of shape (n_coords, n_samples).
         ntmax (int, optional): Number of frequency bins to retain.
         center (bool, optional): If True, mean-center the signals.
         loop (bool, optional): If True, use loop-based computation.
