@@ -426,15 +426,12 @@ class MDSystem:
         np.save(file_mean, mean)
         np.save(file_err, sem)
 
-
     def get_td_averages(self, pattern):
         """Calculates time-dependent averages from a set of numpy files.
-
         Parameters
         ----------
             fname (str): Filename pattern to pull files from the MD runs directory.
             loop (bool, optional): If True, processes files sequentially (default: True).
-
         Returns:
             numpy.ndarray: The time-dependent average.
         """
