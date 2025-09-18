@@ -266,7 +266,7 @@ def fft_ccf(*args, mode="serial", **kwargs):
             result = gfft_ccf_auto(*args, **kwargs)
         else:
             logger.warning("No CUDA device detected, falling back on CPU")
-            result = pfft_ccf(*args, **kwargs)
+            result = sfft_ccf(*args, **kwargs)
         return result
     raise ValueError("Currently 'mode' should be 'serial', 'parallel' or 'gpu'.")
 
