@@ -428,18 +428,15 @@ class MDSystem:
 
     def get_td_averages(self, pattern):
         """Calculates time-dependent averages from a set of numpy files.
-
         Parameters
         ----------
             fname (str): Filename pattern to pull files from the MD runs directory.
             loop (bool, optional): If True, processes files sequentially (default: True).
-
         Returns:
             numpy.ndarray: The time-dependent average.
         """
         def slicer(shape): # Slice object to crop arrays to min_shape
             return tuple(slice(0, s) for s in shape)
-
         logger.info("Getting time-dependent averages")
         files = io.pull_files(self.mddir, pattern)
         if files:
@@ -447,15 +444,16 @@ class MDSystem:
             average = np.load(files[0])
             min_shape = average.shape
             count = 1
-            for f in files[1:]:
-                logger.info("Processing %s", f)
-                arr = np.load(f)
-                min_shape = tuple(min(s1, s2) for s1, s2 in zip(min_shape, arr.shape))
-                s = slicer(min_shape)
-                average[s] += arr[s]  # ← in-place addition
-                count += 1
-            average = average[s] 
-            average /= count
+            if len(files) > 1:
+                for f in files[1:]:
+                    logger.info("Processing %s", f)
+                    arr = np.load(f)
+                    min_shape = tuple(min(s1, s2) for s1, s2 in zip(min_shape, arr.shape))
+                    s = slicer(min_shape)
+                    average[s] += arr[s]  # ← in-place addition
+                    count += 1
+                average = average[s] 
+                average /= count
             out_file = self.datdir / f"{pattern.split('*')[0]}_av.npy"     
             np.save(out_file, average)
             logger.info("Done!")

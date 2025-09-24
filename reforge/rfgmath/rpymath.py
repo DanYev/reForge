@@ -257,7 +257,16 @@ def fft_ccf(*args, mode="serial", **kwargs):
     if mode == "parallel":
         return pfft_ccf(*args, **kwargs)
     if mode == "gpu":
-        result = gfft_ccf_auto(*args, **kwargs)
+        try:
+            has_cuda = cp.is_available()
+        except Exception as e:
+            logger.warning(f"CuPy is not available: {e}")
+            has_cuda = False
+        if has_cuda:
+            result = gfft_ccf_auto(*args, **kwargs)
+        else:
+            logger.warning("No CUDA device detected, falling back on CPU")
+            result = sfft_ccf(*args, **kwargs)
         return result
     raise ValueError("Currently 'mode' should be 'serial', 'parallel' or 'gpu'.")
 

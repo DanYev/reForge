@@ -21,9 +21,13 @@ import logging
 import os
 import sys
 import shutil
+import numpy as np
+import MDAnalysis as mda
+from MDAnalysis.lib.util import get_ext
+from MDAnalysis.lib.mdamath import triclinic_box
 import openmm as mm
 from openmm import app
-from openmm.unit import nanometer, molar
+from openmm.unit import angstrom, nanometer, molar, kilojoules_per_mole, kelvin, bar, nanoseconds, femtoseconds, picosecond
 from reforge import cli, pdbtools, io
 from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir, logger, timeit, memprofit
@@ -218,7 +222,7 @@ class MmRun(MDRun):
         -----
         Saves the simulation state as an XML file and writes the current positions to a PDB file.
         """
-        pdb_file = os.path.join(self.rundir, file_prefix + ".pdb")
+        pdb_file = os.path.join(self.rundir, file_prefix + "_state.pdb")
         xml_file = os.path.join(self.rundir, file_prefix + ".xml")
         simulation_obj.saveState(xml_file)
         state = simulation_obj.context.getState(getPositions=True)
@@ -264,7 +268,6 @@ class MmRun(MDRun):
         self.save_state(simulation, "em")
         logger.info("Minimization completed.")
 
-    
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
     def hu(self, simulation, temperature, 
@@ -378,6 +381,129 @@ class MmRun(MDRun):
         simulation.step(nsteps)
         self.save_state(simulation, "md")
         logger.info("Production completed.")
+
+
+class MmReporter(object):
+    """Most of this code is adapted from https://github.com/sef43/openmm-mdanalysis-reporter.
+    MDAReporter outputs a series of frames from a Simulation to any file format supported by MDAnalysis.
+    To use it, create a MDAReporter, then add it to the Simulation's list of reporters.
+    """
+    def __init__(
+        self,
+        file,
+        reportInterval,
+        enforcePeriodicBox=None,
+        selection: str = None,
+        writer_kwargs: dict = None
+    ):
+        """Create a MDAReporter.
+        Parameters
+        ----------
+        file : string
+            The file to write to
+        reportInterval : int
+            The interval (in time steps) at which to write frames
+        enforcePeriodicBox: bool
+            Specifies whether particle positions should be translated so the center of every molecule
+            lies in the same periodic box.  If None (the default), it will automatically decide whether
+            to translate molecules based on whether the system being simulated uses periodic boundary
+            conditions.
+        selection : str
+            MDAnalysis selection string (https://docs.mdanalysis.org/stable/documentation_pages/selections.html)
+            which will be passed to MDAnalysis.Universe.select_atoms. If None (the default), all atoms will we selected.
+        writer_kwargs : dict
+            Additional keyword arguments to pass to the MDAnalysis.Writer object.
+            
+        """
+        self._reportInterval = reportInterval
+        self._enforcePeriodicBox = enforcePeriodicBox
+        self._filename = file
+        self._topology = None
+        self._nextModel = 0
+        self._mdaUniverse = None
+        self._mdaWriter = None
+        self._selection = selection
+        self._atomGroup = None
+        self._writer_kwargs = writer_kwargs or {}
+
+    def describeNextReport(self, simulation):
+        """Get information about the next report this object will generate.
+        Parameters
+        ----------
+        simulation : Simulation
+            The Simulation to generate a report for
+        Returns
+        -------
+        tuple
+            A six element tuple. The first element is the number of steps
+            until the next report. The next four elements specify whether
+            that report will require positions, velocities, forces, and
+            energies respectively.  The final element specifies whether
+            positions should be wrapped to lie in a single periodic box.
+        """
+        steps = self._reportInterval - simulation.currentStep%self._reportInterval
+        root, ext = get_ext(self._filename) 
+        if ext in ["trr"]:
+            positions, velocities, forces = True, True, True
+        else:
+            positions, velocities, forces = True, False, False
+        return steps, positions, velocities, forces, False, self._enforcePeriodicBox
+
+    def report(self, simulation, state):
+        """Generate a report.
+        Parameters
+        ----------
+        simulation : Simulation
+            The Simulation to generate a report for
+        state : State
+            The current state of the simulation
+        """
+        if self._nextModel == 0:
+            self._topology = simulation.topology
+            dt = simulation.integrator.getStepSize()*self._reportInterval
+            self._mdaUniverse = mda.Universe(
+                simulation.topology,
+                simulation,
+                topology_format='OPENMMTOPOLOGY',
+                format='OPENMMSIMULATION',
+                dt=dt
+            )
+            if self._selection is not None:
+                self._atomGroup = self._mdaUniverse.select_atoms(self._selection)
+            else:
+                self._atomGroup = self._mdaUniverse.atoms
+            self._mdaWriter = mda.Writer(
+                self._filename,
+                n_atoms=len(self._atomGroup),
+                **self._writer_kwargs
+            )
+            self._nextModel += 1
+        # update the positions and velocities if present, convert from OpenMM nm to MDAnalysis angstroms
+        positions = state.getPositions(asNumpy=True).value_in_unit(angstrom)
+        self._mdaUniverse.atoms.positions = positions
+        save_velocities = self.describeNextReport(simulation)[2]
+        if save_velocities:
+            velocities = state.getVelocities(asNumpy=True).value_in_unit(angstrom/picosecond)
+            self._mdaUniverse.atoms.velocities = velocities
+        # update box vectors
+        boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(angstrom)
+        self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
+        self._mdaUniverse.dimensions[:3] = self._sanitize_box_angles(self._mdaUniverse.dimensions[:3])
+        # write to the trajectory file
+        self._mdaWriter.write(self._atomGroup)
+        self._nextModel += 1
+
+    def __del__(self):
+        if self._mdaWriter:
+            self._mdaWriter.close()
+
+    @staticmethod
+    def _sanitize_box_angles(angles):
+        """ Ensure box angles correspond to first quadrant
+        See `discussion on unitcell angles <https://github.com/MDAnalysis/mdanalysis/pull/2917/files#r620558575>`_
+        """
+        inverted = 180 - angles
+        return np.min(np.array([angles, inverted]), axis=0)
 
 
 ################################################################################
