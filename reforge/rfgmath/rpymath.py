@@ -193,13 +193,18 @@ def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
     if center:
         x = x - np.mean(x, axis=-1, keepdims=True)
         y = y - np.mean(y, axis=-1, keepdims=True)
+    logger.debug("GPU memory: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
     x = cp.asarray(x, dtype=dtype)
     y = cp.asarray(y, dtype=dtype)
+    logger.debug("GPU memory, allocated input: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
     x_f = cp.fft.fft(x, n=2*nt, axis=-1)
     y_f = cp.fft.fft(y, n=2*nt, axis=-1)
+    fft_cache_bytes = cp.get_default_memory_pool().used_bytes() # not exact but close enough
+    logger.debug("GPU memory after FFTs: %.1f GB", fft_cache_bytes / 1e9)
+    corr = np.empty(nx * ny  * ntmax, dtype=dtype)
     # Need to calculate how do distribute the memory
     free_bytes, total_bytes = cp.cuda.runtime.memGetInfo() 
-    req_bytes = (x.shape[0] * y.shape[0] * ntmax + 8 * y.shape[0] * nt ) * np.dtype(dtype).itemsize
+    req_bytes = corr.nbytes + fft_cache_bytes + x_f.nbytes
     mem_free = free_bytes >> 20
     mem_total = total_bytes >> 20
     mem_req = req_bytes >> 20
@@ -214,10 +219,10 @@ def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
     n_sweeps = nx // nxmax
     n_remain = nx % nxmax
     logger.debug("Sweeps needed %s, remainder: %s", n_sweeps, n_remain)
-    corr = np.empty(nx * ny  * ntmax, dtype=dtype)
     arr_gpu = cp.empty(nxmax * ny * ntmax, dtype=dtype) # Flat is way faster
     counts = cp.arange(nt, nt - ntmax, -1, dtype=dtype) ** -1
     counts = counts[None, :]
+    logger.debug("GPU memory, allocated OUTPUT: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
     # Calculating CCF for full sweeps:
     for sw in range(n_sweeps):
         logger.debug("Sweep number %s", sw)
@@ -225,9 +230,6 @@ def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
             temp_res = cp.fft.ifft(x_f[i, None, :] * cp.conj(y_f), axis=-1).real[:, :ntmax] * counts # shape (ny, ntmax)
             offset = i * (ny * ntmax) # Compute the offset into the flat array for this block
             arr_gpu[offset: offset + (ny * ntmax)] = temp_res.reshape(-1) # result.reshape(-1) gives a 1D view
-        mem_pool = cp.get_default_memory_pool()
-        used_bytes = mem_pool.used_bytes() >> 20
-        logger.debug("Used: %s Mb", used_bytes)
         corr[ntmax * ny * nxmax * sw : ntmax * ny * nxmax * (sw + 1)] = arr_gpu.get() # Transfer the flat array 
     for i in range(n_remain): # Handling remaining elements:
         result = cp.fft.ifft(x_f[i, None, :] * cp.conj(y_f), axis=-1).real[:, :ntmax] * counts
@@ -235,6 +237,8 @@ def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
         arr_gpu[offset: offset + (ny * ntmax)] = result.reshape(-1)
     if n_remain > 0: # Transfer only the needed portion for the remaining data:
         corr[nxmax * ny * ntmax * n_sweeps: ] = arr_gpu.get()[: n_remain * ny * ntmax]
+    used_bytes = cp.get_default_memory_pool().used_bytes() >> 20
+    logger.debug("Used: %s Mb", used_bytes)
     return corr.reshape(nx, ny, ntmax)
 
 
@@ -273,7 +277,7 @@ def fft_ccf(*args, mode="serial", **kwargs):
 
 @memprofit
 @timeit
-def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None):
+def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None, **kwargs):
     """Compute the average cross-correlation function of two signals by segmenting them.
     
     Parameters:
@@ -303,7 +307,7 @@ def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None):
     counter = 1
     for seg_x, seg_y in zip(xs_segments, ys_segments):
         logger.info("Processing part %s", counter)
-        corr_seg = fft_ccf(seg_x, seg_y, ntmax=ntmax, mode=mode, center=center, dtype=dtype)
+        corr_seg = fft_ccf(seg_x, seg_y, ntmax=ntmax, mode=mode, center=center, dtype=dtype, **kwargs)
         logger.debug("Segment correlation shape: %s", corr_seg.shape)
         corr += corr_seg
         counter += 1
