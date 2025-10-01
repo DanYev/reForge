@@ -33,28 +33,22 @@ def setup(*args):
 def setup_aa(sysdir, sysname):
     mdsys = MmSystem(sysdir, sysname)
     inpdb = mdsys.sysdir / INPDB
-    mdsys.prepare_files()
     mdsys.clean_pdb(inpdb, add_missing_atoms=True, add_hydrogens=True)
     pdb = app.PDBFile(str(mdsys.inpdb))
     model = app.Modeller(pdb.topology, pdb.positions)
     forcefield = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
+    logger.info("Adding solvent and ions")
     model.addSolvent(forcefield, 
         model='tip3p', 
-        boxShape='dodecahedron',
-        padding=1*nanometer,
-        ionicStrength=0.1*molar,
+        boxShape='dodecahedron', #  ‘cube’, ‘dodecahedron’, and ‘octahedron’
+        padding=1.0 * unit.nanometer,
+        ionicStrength=0.1 * unit.molar,
         positiveIon='Na+',
         negativeIon='Cl-')
-    system = forcefield.createSystem(model.topology, 
-        nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0*nanometer, 
-        constraints=app.HBonds)
-    _add_bb_restraints(system, pdb, bb_aname='CA')
     with open(mdsys.syspdb, "w", encoding="utf-8") as file:
         app.PDBFile.writeFile(model.topology, model.positions, file, keepIds=True)    
-    with open(mdsys.sysxml, "w", encoding="utf-8") as file:
-        file.write(mm.XmlSerializer.serialize(system))
-    
+    logger.info("Saved solvated system to %s", mdsys.syspdb)
+
 
 def _add_bb_restraints(system, pdb, bb_aname='CA'):
     restraint = mm.CustomExternalForce('bb_fc*periodicdistance(x, y, z, x0, y0, z0)^2')
@@ -107,7 +101,7 @@ def setup_martini(sysdir, sysname):
         file.write(mm.XmlSerializer.serialize(system))
 
 
-def md(sysdir, sysname, runname, ntomp): 
+def md_npt(sysdir, sysname, runname, ntomp): 
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
@@ -134,6 +128,62 @@ def md(sysdir, sysname, runname, ntomp):
     mdrun.md(simulation, time=TOTAL_TIME, nout=NOUT, velocities_needed=True)
 
 
+def md_nve(sysdir, sysname, runname):
+    # --- Inputs ---
+    mdsys = MmSystem(sysdir, sysname)
+    mdrun = MmRun(sysdir, sysname, runname)
+    logger.info(f"WDIR: %s", mdrun.rundir)
+    mdrun.prepare_files()
+    inpdb = mdsys.root / 'system.pdb'
+    pdb = app.PDBFile(str(inpdb))
+    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
+    # --- Build a system WITHOUT any motion remover; no barostat/thermostat added ---
+    system = ff.createSystem(
+        pdb.topology,
+        nonbondedMethod=app.PME,
+        nonbondedCutoff=1.0 * unit.nanometer,
+        constraints=app.HBonds,
+        removeCMMotion=False,     # important for strict NVE
+        ewaldErrorTolerance=1e-5
+    )
+    # --- NVT integrator (for short equilibration) ---
+    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
+    integrator.setConstraintTolerance(1e-6)
+    simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
+    # --- Reporters (energies to monitor drift) ---
+    log_reporters = [
+        app.StateDataReporter(
+            str(mdrun.rundir / "md.log"), 1000, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True
+        ),
+        app.StateDataReporter(
+            sys.stderr, 1000, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True
+        ),
+    ]
+    simulation.reporters.extend(log_reporters)
+    # --- Initialize state, minimize, equilibrate ---
+    logger.info("Minimizing energy...")
+    simulation.context.setPositions(pdb.positions)
+    simulation.minimizeEnergy(maxIterations=1000)  
+    logger.info("Equilibrating...")
+    simulation.context.setVelocitiesToTemperature(TEMPERATURE)  # set initial kinetic energy
+    simulation.step(10000)  # equilibrate for 10 ps
+    # --- Run NVE (need to change the integrator and reset simulation) ---
+    logger.info("Running NVE production...")
+    integrator = mm.VerletIntegrator(TSTEP)
+    integrator.setConstraintTolerance(1e-6)
+    state = simulation.context.getState(getPositions=True, getVelocities=True)
+    simulation = app.Simulation(pdb.topology, system, integrator)
+    simulation.context.setState(state)
+    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
+    traj_reporter = MmReporter(str(mdrun.rundir / "md.trr"), reportInterval=NOUT, selection=OUT_SELECTION)
+    simulation.reporters.append(traj_reporter)
+    simulation.reporters.extend(log_reporters)
+    simulation.step(100000)  
+    logger.info("Done!")
+
+
 def extend(sysdir, sysname, runname, ntomp):    
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
@@ -155,38 +205,43 @@ def trjconv(sysdir, sysname, runname):
     system = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
-    traj = str(mdrun.rundir / "md.xtc")
-    top = str(system.syspdb)
-    step = 1
-    if not MARTINI:
-        selection = "name CA"
-        out_selection = "name CA" 
-        refpdb = system.root / "inpdb.pdb" 
+    traj = str(mdrun.rundir / "md.trr")
+    top = str(mdrun.rundir / "md.pdb")
+    # top = mdrun.syspdb  # use original topology to avoid missing atoms
+    conv_top = str(mdrun.rundir / "topology.pdb")
+    if SELECTION != OUT_SELECTION:
+        conv_traj = str(mdrun.rundir / f"md_selection.trr")
+        _trjconv_selection(traj, top, conv_traj, conv_top, selection=SELECTION, step=1)
     else:
-        selection = "name BB*"
-        out_selection = "name BB* or name SC* or name CA"
-        refpdb = system.root / "solute.pdb" 
-    # Read
-    logger.info("Reading the trajectory")
-    u = mda.Universe(top, traj)
-    ag = u.atoms.select_atoms(out_selection)
-    ref_u = mda.Universe(refpdb) # 
-    ref_ag = ref_u.atoms.select_atoms(selection)
-    # Create in-memory trajectory with only subset atoms
-    logger.info("Copying the selection trajectory")
-    coords = u.trajectory.timeseries(ag)[::step]
-    u = mda.Merge(ag)  # new Universe with only those atoms
+        conv_traj = traj
+        shutil.copy(top, conv_top)
+    out_traj = str(mdrun.rundir / f"samples.trr")
+    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=True)
+
+
+def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
+    u = mda.Universe(input_top, input_traj)
+    selected_atoms = u.select_atoms(selection)
+    n_atoms = selected_atoms.n_atoms
+    selected_atoms.write(output_top)
+    with mda.Writer(output_traj, n_atoms=n_atoms) as writer:
+        for ts in u.trajectory[::step]:
+            writer.write(selected_atoms)
+    logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
+
+
+def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
+    u = mda.Universe(input_top, input_traj)
     ag = u.atoms
-    u.load_new(coords, format=MemoryReader)
-    # Align
-    u.trajectory.add_transformations(fit_rot_trans(ag.select_atoms(selection), ref_ag,))
-    # Write
-    out_ag = ref_u.atoms.select_atoms(out_selection)
-    out_ag.atoms.write(str(mdrun.rundir / "top.pdb"))
-    ag = u.atoms.select_atoms(out_selection)
+    ref_u = mda.Universe(input_top) 
+    ref_ag = ref_u.atoms
+    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
     logger.info("Converting/Writing Trajecory")
-    with mda.Writer(str(mdrun.rundir / "mdc.xtc"), ag.n_atoms) as W:
+    with mda.Writer(output_traj, ag.n_atoms) as W:
         for ts in u.trajectory:   
+            if transform_vels:
+                transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
+                ag.velocities = transformed_vels
             W.write(ag)
             if ts.frame % 1000 == 0:
                 frame = ts.frame
@@ -194,22 +249,39 @@ def trjconv(sysdir, sysname, runname):
                 logger.info(f"Current frame: %s at %s ns", frame, time_ns)
     logger.info("Done!")
 
-        
-def _get_platform_info():
-    """Report OpenMM platform and hardware information.
+
+def _tranform_velocities(vels, poss, ref_poss):
+    R = _kabsch_rotation(poss, ref_poss)
+    vels_aligned = vels @ R
+    return vels_aligned
     
-    Returns
-    -------
-    dict
-        Dictionary containing platform and hardware information
+
+def _kabsch_rotation(P, Q):
     """
+    Return the 3x3 rotation matrix R that best aligns P onto Q (both Nx3),
+    after removing centroids (i.e., pure rotation via Kabsch).
+    """
+    # subtract centroids
+    Pc = P - P.mean(axis=0)
+    Qc = Q - Q.mean(axis=0)
+    # covariance and SVD
+    H = Pc.T @ Qc
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+    # right-handed correction
+    if np.linalg.det(R) < 0.0:
+        Vt[-1, :] *= -1.0
+        R = Vt.T @ U.T
+    return R
+
+
+def _get_platform_info():
+    """Report OpenMM platform and hardware information."""
     info = {}
-    
     # Get number of available platforms and their names
     num_platforms = mm.Platform.getNumPlatforms()
     info['available_platforms'] = [mm.Platform.getPlatform(i).getName() 
                                  for i in range(num_platforms)]
-    
     # Try to get the fastest platform (usually CUDA or OpenCL)
     platform = None
     for platform_name in ['CUDA', 'OpenCL', 'CPU']:
@@ -218,12 +290,10 @@ def _get_platform_info():
             info['platform'] = platform_name
             break
         except Exception:
-            continue
-            
+            continue 
     if platform is None:
         platform = mm.Platform.getPlatform(0)
         info['platform'] = platform.getName()
-    
     # Get platform properties
     info['properties'] = {}
     try:
@@ -236,10 +306,8 @@ def _get_platform_info():
         info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
     except Exception as e:
         logger.warning(f"Could not get some platform properties: {str(e)}")
-    
     # Get OpenMM version
     info['openmm_version'] = mm.version.full_version
-    
     # Log the information
     logger.info("OpenMM Platform Information:")
     logger.info(f"Available Platforms: {', '.join(info['available_platforms'])}")
@@ -248,22 +316,4 @@ def _get_platform_info():
     logger.info("Platform Properties:")
     for key, value in info['properties'].items():
         logger.info(f"  {key}: {value}")
-    
     return info
-
-
-def sample_emu(sysdir, sysname, runname):
-    mdrun = MDRun(sysdir, sysname, runname)
-    mdrun.prepare_files()
-    sequence = _pdb_to_seq(mdrun.sysdir / INPDB)
-    sample(sequence=sequence, num_samples=1000, batch_size_100=20, output_dir=mdrun.rundir)
-
-
-def _pdb_to_seq(pdb):
-    u = mda.Universe(pdb)
-    protein = u.select_atoms("protein")
-    seq = "".join(res.resname for res in protein.residues)  # three-letter codes
-    seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
-    return seq_oneletter
-
-

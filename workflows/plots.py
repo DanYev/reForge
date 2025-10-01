@@ -189,46 +189,6 @@ def make_enm_pdb(system, label, factor=None):
     set_bfactors_by_residue(system.inpdb, data, data_pdb)
 
 
-def make_delta_pdb(system_1, system_2, label, out_name, filter=True, factor=None):
-    logger.info('Making Delta PDB')
-    data_1 = np.load(os.path.join(system_1.datdir, f'{label}_av.npy'))
-    err_1 = np.load(os.path.join(system_1.datdir, f'{label}_err.npy'))
-    data_2 = np.load(os.path.join(system_2.datdir, f'{label}_av.npy'))
-    err_2 = np.load(os.path.join(system_2.datdir, f'{label}_err.npy'))  
-    if factor:
-        data_1 *= factor
-        err_1 *= factor
-        data_2 *= factor
-        err_2 *= factor
-    data = data_1 - data_2
-    err = np.sqrt(err_1**2 + err_2**2)
-    if filter:
-        mask = np.abs(data) < 2.0 * err
-        data[mask] = 0
-    data_pdb = os.path.join('systems', 'pdb', out_name + '.pdb')
-    err_pdb = os.path.join('systems', 'pdb', out_name + '_err.pdb')
-    set_bfactors_by_residue(system_1.inpdb, data, data_pdb)
-    set_bfactors_by_residue(system_1.inpdb, err, err_pdb) 
-    logger.info('Saved Delta PDB to %s', data_pdb)
-
-
-def make_delta_cg_pdb(system_1, system_2, label, out_name, factor=None):
-    data_1 = np.load(os.path.join(system_1.datdir, f'{label}_av.npy'))
-    err_1 = np.load(os.path.join(system_1.datdir, f'{label}_err.npy'))
-    data_2 = np.load(os.path.join(system_2.datdir, f'{label}_av.npy'))
-    err_2 = np.load(os.path.join(system_2.datdir, f'{label}_err.npy'))  
-    if factor:
-        data_1 *= factor
-        err_1 *= factor
-        data_2 *= factor
-        err_2 *= factor
-    data = data_1 - data_2
-    err = np.sqrt(err_1**2 + err_2**2)
-    data_pdb = os.path.join('systems', 'pdb', out_name + '.pdb')
-    err_pdb = os.path.join('systems', 'pdb', out_name + '_err.pdb')
-    set_bfactors_by_atom(system.root / 'mdci.pdb', data, data_pdb)
-    set_bfactors_by_atom(system.root / 'mdci.pdb', err, err_pdb)
-
 def rmsf_pdb(system):
     logger.info(f'Making RMSF PDB')
     make_cg_pdb(system, 'rmsf', factor=10)
@@ -270,42 +230,8 @@ def runs_metric(system, metric):
     plot_figure(fig, ax, figname=system.sysname.upper(), figpath='png/metric.png',)
 
 
-def make_hpf_pdb(system):
-    data_1 = np.load(os.path.join(system.datdir, f'gdci_T_av.npy'))
-    data_2 = np.load(os.path.join(system.datdir, f'gdci_W_av.npy'))
-    data_3 = np.load(os.path.join(system.datdir, f'gdci_Q_av.npy'))
-    data = (data_1 + data_2) / 2.0
-    data_pdb = os.path.join(system.pngdir, f'hpf.pdb')
-    set_bfactors_by_residue(system.inpdb, data, data_pdb)
-
-
 if __name__ == '__main__':
-    sysdir = 'systems_kras' 
-    system = gmxmd.GmxSystem(sysdir, 'go_gmx')
-    # plot_cluster_dfi(system,)
-    plot_dfi(system, tag="dfi")
-    plot_pdfi(system, tag="dfi")
-    # plot_ggdci(system)
-    # plot_dci(system)
-    # plot_asym(system)
-    # plot_rmsf(system)
-    # plot_rmsd(system)
-    # # # PDBs
-    # rmsf_pdb(system)
-    # dfi_pdb(system)
-    # dci_pdbs(system)
-    # pocket_dci_pdbs(system)
-    # make_enm_pdb(system, label='dfi')
-    # make_hpf_pdb(system)
-    # # Deltas
-    # variant_1 = 'mgh'
-    # variant_2 = 'wt'
-    # label = 'dfi'
-    # system_1 = gmxmd.GmxSystem(sysdir, f'ribosome_{variant_1}')
-    # system_2 = gmxmd.GmxSystem(sysdir, f'ribosome_{variant_2}')
-    # make_delta_pdb(system_1, system_2, label=label, out_name=f'{label}_{variant_1}_{variant_2}', filter=True)
-    # # make_delta_cg_pdb(system_1, system_2, label='rmsf', out_name=f'drmsf_{variant_1}_{variant_2}')
-    # # runs_metric(system, 'rmsf*')
+    pass
 
 
 
