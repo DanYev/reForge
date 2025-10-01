@@ -202,20 +202,21 @@ def format_posres_section(atoms: List[Tuple], posres_fc=500,
                           selection: List[str] = None) -> List[str]:
     """Format position restraints section."""
     if selection is None:
-        selection = ["BB1", "BB2", "BB3"]
+        selection = ["BB1", "BB2", "BB3", "SC1"]
     
-    lines = []
-    restraint_lines = []
+    lines = [
+        "\n#ifdef POSRES\n",
+        f"#define POSRES_FC {posres_fc:.2f}\n",
+        " [ position_restraints ]\n",
+    ]
     
     for atom in atoms:
         atom_name = atom[4]  # atom name is at index 4
         if atom_name in selection:
             atom_id = atom[0]  # atom id is at index 0
-            restraint_lines.append(f"{atom_id:6d} 1 {posres_fc:8.1f} {posres_fc:8.1f} {posres_fc:8.1f}\n")
+            lines.append(f"  {atom_id:5d}    1    POSRES_FC    POSRES_FC    POSRES_FC\n")
     
-    if restraint_lines:
-        lines = ["[ position_restraints ]\n"] + restraint_lines + ["\n"]
-    
+    lines.append("#endif")
     return lines
 
 
