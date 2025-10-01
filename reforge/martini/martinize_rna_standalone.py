@@ -896,8 +896,22 @@ class Topology:
         return [atid + idx for idx in conn]
 
     def _check_connectivity(self, conn):
-        """Check if connectivity is valid."""
-        return all(idx >= 0 for idx in conn)
+        """Check if the connectivity indices are within valid boundaries.
+
+        Parameters
+        ----------
+        conn : list of int
+            Connectivity indices to check.
+
+        Returns
+        -------
+        bool
+            True if all indices are between 1 and natoms, False otherwise.
+        """
+        for idx in conn:
+            if idx < 1 or idx > self.natoms:
+                return False
+        return True
 
     def process_atoms(self, start_atom: int = 0, start_resid: int = 1):
         """Process atoms based on the sequence and force field definitions."""
@@ -929,15 +943,22 @@ class Topology:
         self.natoms = len(self.atoms)
 
     def process_bb_bonds(self, start_atom: int = 0, start_resid: int = 1):
-        """Process backbone bonds using force field definitions."""
+        """Process backbone bonds using force field definitions.
+
+        Parameters
+        ----------
+        start_atom : int, optional
+            Starting atom ID.
+        start_resid : int, optional
+            Starting residue ID.
+        """
+        logger.debug(self.sequence)
         atid = start_atom
         resid = start_resid
         prevreslen = None
-        
         for resname in self.sequence:
             reslen = len(self.ff.bb_atoms) + len(self.ff.sc_atoms(resname))
             ff_blist = self.ff.bb_blist
-            
             for btype, ff_btype in zip(self.blist, ff_blist):
                 for bond in ff_btype:
                     if bond:
@@ -945,45 +966,38 @@ class Topology:
                         parameters = bond[1]
                         comment = bond[2]
                         upd_conn = self._update_bb_connectivity(connectivity, atid, reslen, prevreslen)
-                        
                         if self._check_connectivity(upd_conn):
                             upd_bond = [list(upd_conn), list(parameters), comment]
                             btype.append(upd_bond)
-            
             prevreslen = reslen
             atid += reslen
             resid += 1
 
     def process_sc_bonds(self, start_atom: int = 0, start_resid: int = 1):
-        """Process sidechain bonds using force field definitions."""
+        """Process sidechain bonds using force field definitions.
+
+        Parameters
+        ----------
+        start_atom : int, optional
+            Starting atom ID.
+        start_resid : int, optional
+            Starting residue ID.
+        """
         atid = start_atom
         resid = start_resid
-        
-        for idx, resname in enumerate(self.sequence):
-            is_first_residue = (idx == 0)
-            # For the first residue, exclude BB1 (no 5' phosphate)  
-            bb_atoms = self.ff.bb_atoms[1:] if is_first_residue else self.ff.bb_atoms
-            reslen = len(bb_atoms) + len(self.ff.sc_atoms(resname))
+        for resname in self.sequence:
+            reslen = len(self.ff.bb_atoms) + len(self.ff.sc_atoms(resname))
             ff_blist = self.ff.sc_blist(resname)
-            
             for btype, ff_btype in zip(self.blist, ff_blist):
                 for bond in ff_btype:
                     if bond:
                         connectivity = bond[0]
                         parameters = bond[1]
                         comment = bond[2]
-                        
-                        # Adjust connectivity for first residue (missing BB1)
-                        if is_first_residue:
-                            # Adjust backbone references: BB2 (1->0) and BB3 (2->1)
-                            connectivity = [idx - 1 if idx > 0 and idx < 3 else idx for idx in connectivity]
-                        
                         upd_conn = self._update_sc_connectivity(connectivity, atid)
-                        
                         if self._check_connectivity(upd_conn):
                             upd_bond = [list(upd_conn), list(parameters), comment]
                             btype.append(upd_bond)
-            
             atid += reslen
             resid += 1
 
