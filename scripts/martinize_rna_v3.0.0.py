@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Standalone RNA Martinize Script
+Standalone Martinize RNA Script
 
-Usage: python martinize_rna_standalone.py -f ssRNA.pdb -mol rna -elastic yes -ef 100 -el 0.5 -eu 1.2 
+Usage: python martinize_rna_v3.0.0.py -f ssRNA.pdb -mol rna -elastic yes -ef 100 -el 0.5 -eu 1.2 
 -os molecule.pdb -ot molecule.itp
 
 This script processes an all-atom RNA structure and returns coarse-grained topology in the 
-GROMACS' .itp format and coarse-grained PDB. It is a standalone version that contains all
-necessary functions without importing from reforge.
+GROMACS' .itp format and coarse-grained PDB. 
 
 This script includes implementations of:
 - Martini 3.0 RNA force field
@@ -1015,13 +1014,13 @@ class Topology:
 ## Main Functions ##
 ###################################
 
-def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_structure='molecule.pdb',
+def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='molecule.pdb',
                             force_field='reg', molecule_name='molecule', merge_chains='yes',
                             elastic_network='yes', elastic_force=200, elastic_lower=0.3, 
                             elastic_upper=1.2, position_restraints='backbone', 
                             restraint_force=1000, debug=False):
     """
-    Standalone martinization function that can be imported and used programmatically.
+    Martinize RNA function that can be imported and used programmatically.
     
     Converts an all-atom RNA structure to coarse-grained Martini representation using
     embedded force field definitions and mapping logic without external dependencies.
@@ -1063,7 +1062,7 @@ def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_s
     if debug:
         logger.setLevel(logging.DEBUG)
     
-    logger.info("=== Starting RNA Martinization ===")
+    logger.info("=== Starting RNA AA->CG Conversion ===")
     logger.info(f"Input PDB: {input_pdb}")
     logger.info(f"Output structure: {output_structure}")
     logger.info(f"Output topology: {output_topology}")
@@ -1123,8 +1122,7 @@ def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_s
         logger.info(f"Added {len(merged_topology.elnet)} elastic bonds")
     
     # Generate arguments string for header
-    import datetime
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Format the parsed arguments with their actual values
     args_formatted = (
@@ -1152,7 +1150,7 @@ def process_chain(_chain, _ff, _start_idx, _mol_name, restraint_force=1000):
     """Process an individual RNA chain: map it to coarse-grained representation and generate a topology."""
     residues = list(_chain)
     sequence = [res.resname for res in residues]
-    logger.info(f"Processing chain with {len(residues)} residues: {' '.join(sequence[:10])}{'...' if len(sequence) > 10 else ''}")
+    logger.info(f"Processing chain with {len(residues)} residues: {''.join(sequence[:10])}{'...' if len(sequence) > 10 else ''}")
     
     logger.debug(f"Mapping chain to CG representation starting at atom {_start_idx}")
     _cg_atoms = map_chain(_chain, _ff, atid=_start_idx)
@@ -1195,33 +1193,27 @@ def main():
 WORKFLOW DESCRIPTION:
     This standalone script converts all-atom RNA structures to coarse-grained Martini 
     representation without requiring external reforge dependencies:
-    1. Parse all-atom PDB structure and adjust O3' atom positions
-    2. Map to coarse-grained beads using embedded Martini 3.0 RNA force field
-    3. Generate topology with backbone and sidechain bonded interactions
-    4. Load sidechain parameters from embedded ITP definitions
-    5. Optionally add elastic network for enhanced structural stability
-    6. Write coarse-grained structure and topology files
+    1. Parse all-atom PDB structure and identify chains
+    2. For each chain, map to coarse-grained beads (class NucleicForceField)
+    3. Load sidechain parameters from the additional ITP files
+    4. Generate topology with backbone and sidechain bonded interactions
+    5. Merge chains to one ITP file if specified
+    6. Optionally add elastic network for enhanced structural stability
+    7. Write coarse-grained structure and topology files
 
 USAGE EXAMPLES:
     
     # Basic usage - minimal required arguments
-    python martinize_rna_standalone.py -f input.pdb
-    
+    python martinize_rna_v3.0.0.py -f input.pdb
+
     # Full workflow with custom parameters
-    python martinize_rna_standalone.py -f input.pdb -ot topology.itp -os structure.pdb \\
+    python martinize_rna_v3.0.0.py -f input.pdb -ot topology.itp -os structure.pdb \\
         -mol my_rna -elastic yes -ef 250 -el 0.25 -eu 1.5
     
     # Using as Python module (programmatic usage):
-    >>> from martinize_rna_standalone import martinize_rna_standalone
-    >>> structure, topology = martinize_rna_standalone('input.pdb', debug=True)
+    >>> from martinize_rna_v3.0.0 import martinize_rna
+    >>> structure, topology = martinize_rna('input.pdb', debug=True)
     >>> print(f"Generated files: {structure}, {topology}")
-
-FEATURES:
-    - Self-contained: No external dependencies beyond standard libraries
-    - Embedded force field: All Martini 3.0 RNA parameters included
-    - Sidechain interactions: Complete bonded interactions for all bases
-    - Elastic networks: Optional structural stability enhancement
-    - Comprehensive logging: Detailed progress tracking and debugging
 
 INPUT REQUIREMENTS:
     - Input PDB: All-atom RNA structure with standard nucleotide naming
@@ -1295,7 +1287,7 @@ INPUT REQUIREMENTS:
         "-pf",
         default=1000,
         type=float,
-        help="Position restraints force constant (default: 1000 kJ/mol/nm^2)",
+        help="Position restraints force constant. Defined if 'POSRES' (default: 1000 kJ/mol/nm^2)",
     )
     parser.add_argument(
         "--debug",
@@ -1306,7 +1298,7 @@ INPUT REQUIREMENTS:
     args = parser.parse_args()
     
     # Call the main martinization function
-    martinize_rna_standalone(
+    martinize_rna(
         input_pdb=args.f,
         output_topology=args.ot,
         output_structure=args.os,
