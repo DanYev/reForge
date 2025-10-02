@@ -439,4 +439,46 @@ class MmReporter(object):
         return np.min(np.array([angles, inverted]), axis=0)
 
 
+def _get_platform_info():
+    """Report OpenMM platform and hardware information."""
+    info = {}
+    # Get number of available platforms and their names
+    num_platforms = mm.Platform.getNumPlatforms()
+    info['available_platforms'] = [mm.Platform.getPlatform(i).getName() 
+                                 for i in range(num_platforms)]
+    # Try to get the fastest platform (usually CUDA or OpenCL)
+    platform = None
+    for platform_name in ['CUDA', 'OpenCL', 'CPU']:
+        try:
+            platform = mm.Platform.getPlatformByName(platform_name)
+            info['platform'] = platform_name
+            break
+        except Exception:
+            continue 
+    if platform is None:
+        platform = mm.Platform.getPlatform(0)
+        info['platform'] = platform.getName()
+    # Get platform properties
+    info['properties'] = {}
+    try:
+        if info['platform'] in ['CUDA', 'OpenCL']:
+            info['properties']['device_index'] = platform.getPropertyDefaultValue('DeviceIndex')
+            info['properties']['precision'] = platform.getPropertyDefaultValue('Precision')
+            if info['platform'] == 'CUDA':
+                info['properties']['cuda_version'] = mm.version.cuda
+            info['properties']['gpu_name'] = platform.getPropertyValue(platform.createContext(), 'DeviceName')
+        info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
+    except Exception as e:
+        logger.warning(f"Could not get some platform properties: {str(e)}")
+    # Get OpenMM version
+    info['openmm_version'] = mm.version.full_version
+    # Log the information
+    logger.info("OpenMM Platform Information:")
+    logger.info(f"Available Platforms: {', '.join(info['available_platforms'])}")
+    logger.info(f"Selected Platform: {info['platform']}")
+    logger.info(f"OpenMM Version: {info['openmm_version']}")
+    logger.info("Platform Properties:")
+    for key, value in info['properties'].items():
+        logger.info(f"  {key}: {value}")
+    return info
 

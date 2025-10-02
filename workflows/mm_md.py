@@ -1,28 +1,19 @@
-import inspect
-import logging
-import os
 import shutil
 import sys
-from pathlib import Path
 import warnings
 import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.transformations import fit_rot_trans
-from MDAnalysis.coordinates.memory import MemoryReader
 import openmm as mm
-from openmm import app
-import openmm.unit as unit
+from openmm import app, unit
 from reforge.martini import martini_openmm
-import logging
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
-from reforge.utils import clean_dir
-from bioemu.sample import main as sample
+from reforge.utils import clean_dir, get_logger
 
-logger = logging.getLogger(__name__)
-
-
+logger = get_logger()
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
 # Global settings
 INPDB = '1btl.pdb'
@@ -31,10 +22,15 @@ MARTINI=False  # True for CG systems, False for AA systems
 TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
+# Either steps or time
 TOTAL_TIME = 10 * unit.picoseconds
+TOTAL_STEPS = 100000 
 TSTEP = 2 * unit.femtoseconds
-NOUT = 1000 # save every NOUT steps
-OUT_SELECTION = "name CA" 
+# Reporting
+TRJ_NOUT = 1000 # save every NOUT steps
+LOG_NOUT = 1000 # save every NOUT steps
+OUT_SELECTION = "protein" 
+# Analysis
 SELECTION = "name CA" 
 
 
@@ -70,7 +66,7 @@ def setup_aa(sysdir, sysname):
 def _add_bb_restraints(system, pdb, bb_aname='CA'):
     restraint = mm.CustomExternalForce('bb_fc*periodicdistance(x, y, z, x0, y0, z0)^2')
     restraint.setName('BackboneRestraint')
-    restraint.addGlobalParameter('bb_fc', 1000.0*kilojoules_per_mole/nanometer)
+    restraint.addGlobalParameter('bb_fc', 1000.0*unit.kilojoules_per_mole/unit.nanometer)
     restraint.addPerParticleParameter('x0')
     restraint.addPerParticleParameter('y0')
     restraint.addPerParticleParameter('z0')
@@ -108,35 +104,37 @@ def md_npt(sysdir, sysname, runname):
         nonbondedCutoff=1.0 * unit.nanometer,
         constraints=app.HBonds,
         removeCMMotion=True, 
-        ewaldErrorTolerance=1e-5
+        ewaldErrorTolerance=1e-5,
+        # periodicBoxVectors=pdb.topology.getPeriodicBoxVectors(),
     )
+    _add_bb_restraints(system, pdb, bb_aname='CA')
     integrator = mm.LangevinMiddleIntegrator(0, GAMMA, 0.5*TSTEP)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
     # EM + HU
-    _get_platform_info()
     mdrun.em(simulation, tolerance=1, max_iterations=1000)
-    mdrun.hu(simulation, TEMPERATURE, n_cycles=100, steps_per_cycle=1000)
+    mdrun.hu(simulation, TEMPERATURE, n_cycles=100, steps_per_cycle=100)
     # Adding barostat + EQ
     barostat = mm.MonteCarloBarostat(PRESSURE, TEMPERATURE)
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=1000)
+    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
     # MD
     simulation.integrator.setStepSize(TSTEP)
     mdrun.md(simulation, time=TOTAL_TIME, nout=NOUT, velocities_needed=True)
 
 
 def md_nve(sysdir, sysname, runname):
-    # --- Inputs ---
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
+    mdrun.prepare_files()
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
     ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
     # --- Build a system WITHOUT any motion remover; no barostat/thermostat added ---
+    logger.info("Generating topology...")
     system = ff.createSystem(
         pdb.topology,
         nonbondedMethod=app.PME,
@@ -147,18 +145,17 @@ def md_nve(sysdir, sysname, runname):
     )
     # --- NVT integrator (for short equilibration) ---
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
-
     integrator.setConstraintTolerance(1e-6)
     simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
-
+    log_reporters, traj_reporter = _get_reporters(mdrun)
     simulation.reporters.extend(log_reporters)
     # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
     simulation.context.setPositions(pdb.positions)
     simulation.minimizeEnergy(maxIterations=1000)  
     logger.info("Equilibrating...")
-    simulation.context.setVelocitiesToTemperature(TEMPERATURE)  # set initial kinetic energy
-    simulation.step(10000)  # equilibrate for 10 ps
+    simulation.context.setVelocitiesToTemperature(TEMPERATURE)
+    simulation.step(10000)  # equilibrate 
     # --- Run NVE (need to change the integrator and reset simulation) ---
     logger.info("Running NVE production...")
     integrator = mm.VerletIntegrator(TSTEP)
@@ -167,25 +164,25 @@ def md_nve(sysdir, sysname, runname):
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setState(state)
     mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
-    traj_reporter = MmReporter(str(mdrun.rundir / "md.trr"), reportInterval=NOUT, selection=OUT_SELECTION)
-    simulation.reporters.append(traj_reporter)
     simulation.reporters.extend(log_reporters)
-    simulation.step(100000)  
+    simulation.reporters.append(traj_reporter)
+    simulation.step(TOTAL_STEPS)  
     logger.info("Done!")
 
 
-def _get_reporters(log_nout=10000):
+def _get_reporters(mdrun):
     log_reporters = [
         app.StateDataReporter(
-            str(mdrun.rundir / "md.log"), log_nout, step=True, potentialEnergy=True, kineticEnergy=True,
+            str(mdrun.rundir / "md.log"), LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
             totalEnergy=True, temperature=True, speed=True
         ),
         app.StateDataReporter(
-            sys.stderr, log_nout, step=True, potentialEnergy=True, kineticEnergy=True,
+            sys.stderr, LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
             totalEnergy=True, temperature=True, speed=True
         ),
     ]
-    return log_reporters
+    traj_reporter = MmReporter(str(mdrun.rundir / "md.trr"), reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
+    return log_reporters, traj_reporter
 
 
 def extend(sysdir, sysname, runname, ntomp):    
@@ -277,50 +274,6 @@ def _kabsch_rotation(P, Q):
         Vt[-1, :] *= -1.0
         R = Vt.T @ U.T
     return R
-
-
-def _get_platform_info():
-    """Report OpenMM platform and hardware information."""
-    info = {}
-    # Get number of available platforms and their names
-    num_platforms = mm.Platform.getNumPlatforms()
-    info['available_platforms'] = [mm.Platform.getPlatform(i).getName() 
-                                 for i in range(num_platforms)]
-    # Try to get the fastest platform (usually CUDA or OpenCL)
-    platform = None
-    for platform_name in ['CUDA', 'OpenCL', 'CPU']:
-        try:
-            platform = mm.Platform.getPlatformByName(platform_name)
-            info['platform'] = platform_name
-            break
-        except Exception:
-            continue 
-    if platform is None:
-        platform = mm.Platform.getPlatform(0)
-        info['platform'] = platform.getName()
-    # Get platform properties
-    info['properties'] = {}
-    try:
-        if info['platform'] in ['CUDA', 'OpenCL']:
-            info['properties']['device_index'] = platform.getPropertyDefaultValue('DeviceIndex')
-            info['properties']['precision'] = platform.getPropertyDefaultValue('Precision')
-            if info['platform'] == 'CUDA':
-                info['properties']['cuda_version'] = mm.version.cuda
-            info['properties']['gpu_name'] = platform.getPropertyValue(platform.createContext(), 'DeviceName')
-        info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
-    except Exception as e:
-        logger.warning(f"Could not get some platform properties: {str(e)}")
-    # Get OpenMM version
-    info['openmm_version'] = mm.version.full_version
-    # Log the information
-    logger.info("OpenMM Platform Information:")
-    logger.info(f"Available Platforms: {', '.join(info['available_platforms'])}")
-    logger.info(f"Selected Platform: {info['platform']}")
-    logger.info(f"OpenMM Version: {info['openmm_version']}")
-    logger.info("Platform Properties:")
-    for key, value in info['properties'].items():
-        logger.info(f"  {key}: {value}")
-    return info
 
 
 if __name__ == "__main__":

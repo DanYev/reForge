@@ -31,7 +31,6 @@ def sys_job(function, submit=False, **kwargs):
             job_script = create_job_script(pyscript, function, sysdir, sysname)
             dojob(submit, shscript, job_script, J=f'{function}', **kwargs)
         else:
-            # For local runs, use the current script directly
             dojob(submit, shscript, pyscript, function, sysdir, sysname, 
                   J=f'{function}', **kwargs)
 
@@ -45,10 +44,8 @@ def run_job(function, submit=False, **kwargs):
                 job_script = create_job_script(pyscript, function, sysdir, sysname, runname)
                 dojob(submit, shscript, job_script, J=f'{function}', **kwargs)
             else:
-                # For local runs, use the current script directly
                 dojob(submit, shscript, pyscript, function, sysdir, sysname, runname,
                       J=f'{function}', **kwargs)
-
 
 
 MARTINI = False
@@ -63,13 +60,5 @@ if __name__ == "__main__":
     sysnames = ['sys_test'] 
     runs = ['run_test']
 
-    # Example usage:
-    sys_job('setup', submit=False)
-    
-    # To submit jobs to the queue (preserving script version):
-    # sys_job('setup', submit=True, t='00-01:00:00', mem='4G')
-    
-    # For single jobs:
-    # single_job('setup', 'specific_system', submit=True)
-    # single_job('md_npt', 'sys1', 'run1', submit=True, t='00-04:00:00', mem='8G')
-    
+    # sys_job('setup', submit=False)
+    run_job('md_npt', submit=True, G='1')
