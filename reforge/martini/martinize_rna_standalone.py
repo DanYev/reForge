@@ -38,15 +38,6 @@ logger = logging.getLogger(__name__)
 
 
 ###################################
-## Utility Functions ##
-###################################
-
-def nsplit(*x):
-    """Split each argument into a list of tokens."""
-    return [i.split() for i in x]
-
-
-###################################
 ## ITP I/O Functions ##
 ###################################
 
@@ -221,13 +212,6 @@ def format_posres_section(atoms: List[Tuple], posres_fc=500,
     
     lines.append("#endif")
     return lines
-
-
-def write_itp(filename, lines):
-    """Write lines to an ITP file."""
-    with open(filename, "w", encoding="utf-8") as f:
-        for line in lines:
-            f.write(line)
 
 
 ###################################
