@@ -4,20 +4,15 @@ Documentation and instructions are available here: [reForge Documentation](https
 
 ## Martinize RNA Script
 
-A self-contained script for converting all-atom RNA structures to coarse-grained Martini 3.0 representation.
+A self-contained script for converting all-atom RNA structures to coarse-grained Martini 3 representation. 
 
 ### Usage
-
+1. Download the script and additional `.itp` files from `scripts`. 
+2. Run:
 ```bash
-# Usage
-python martinize_rna_v3.0.0 --help
+python martinize_rna_v3.0.0.py --help
 
 ```
-
-### Requirements
-
-- Python 3.7+
-- NumPy
 
 ### Force Field Files
 
