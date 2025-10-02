@@ -124,7 +124,7 @@ def bond2line(connectivity=None, parameters="", comment=""):
     return line
 
 
-def format_header(molname="molecule", forcefield="", arguments="") -> List[str]:
+def format_header(molname="molecule", forcefield="", arguments="", timestamp="") -> List[str]:
     """Format the header of the topology file.
 
     Parameters
@@ -134,7 +134,9 @@ def format_header(molname="molecule", forcefield="", arguments="") -> List[str]:
     forcefield : str, optional
         Force field identifier.
     arguments : str, optional
-        Command-line arguments used.
+        Parsed arguments with their values including defaults.
+    timestamp : str, optional
+        Timestamp when file was generated.
 
     Returns
     -------
@@ -142,8 +144,11 @@ def format_header(molname="molecule", forcefield="", arguments="") -> List[str]:
         A list of header lines.
     """
     lines = [f'; MARTINI ({forcefield}) Coarse Grained topology file for "{molname}"\n']
+    if timestamp:
+        lines.append(f"; Generated on: {timestamp}\n")
     lines.append("; Created using the following options:\n")
-    lines.append(f"; {arguments}\n")
+    if arguments:
+        lines.append(f"; {arguments}\n")
     lines.append("; " + "#" * 100 + "\n")
     return lines
 
@@ -207,11 +212,20 @@ def format_atoms_section(atoms: List[Tuple]) -> List[str]:
         A list of formatted lines.
     """
     lines = ["\n[ atoms ]\n"]
-    fs8 = "%5d %5s %5d %5s %5s %5d %7.4f ; %s"
-    fs9 = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f ; %s"
     for atom in atoms:
         atom = tuple(atom)
-        line = fs9 % atom if len(atom) == 9 else fs8 % atom
+        if len(atom) == 9:
+            # Format with 8 values + comment
+            if atom[8] and atom[8].strip():  # If there's a non-empty comment
+                line = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f ; %s" % atom
+            else:
+                line = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f" % atom[:8]
+        else:
+            # Format with 7 values + comment
+            if len(atom) > 7 and atom[7] and atom[7].strip():  # If there's a non-empty comment
+                line = "%5d %5s %5d %5s %5s %5d %7.4f ; %s" % atom
+            else:
+                line = "%5d %5s %5d %5s %5s %5d %7.4f" % atom[:7]
         line += "\n"
         lines.append(line)
     return lines

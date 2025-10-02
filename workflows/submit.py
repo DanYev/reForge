@@ -221,26 +221,5 @@ if __name__ == "__main__":
     sysnames = ['emu'] 
     runs = ['mdrun_1', 'mdrun_2', ]
 
-    # sysdir = 'systems' 
-    # sysnames = ['1btl', '1btl_go_2', '1btl_go_3'] 
-    # runs = ['mdrun_1', 'mdrun_2', 'mdrun_3', 'mdrun_4']
-
     # setup(submit=False, md_module=md_module, mem='4G')
-    # md(submit=True, md_module=md_module, ntomp=4, mem='2G', q='public', p='htc', t='00-01:00:00', G=1)
-    # md(submit=True, md_module=md_module, ntomp=8, mem='2G', q='grp_sozkan', p='general', t='01-00:00:00', G=1)
-    # extend(submit=True, md_module=md_module, ntomp=8, mem='2G', q='public', p='htc', t='00-04:00:00', G=1)
-    # extend(submit=True, md_module=md_module, ntomp=8, mem='2G', q='grp_sozkan', p='general', t='01-00:00:00', G=1)
-    run_job('mm_md', 'sample_emu', submit=True, q='public', p='htc', t='00-04:00:00', G=1)
-    # trjconv(submit=True, md_module=md_module, t='00-01:00:00', q='public', p='htc', c='1', mem='2G')
-    # rms_analysis(submit=True, mem='4G')
-    # get_td_averages(submit=True, mem='32G')
-    # plot(submit=False)
-    # cluster(submit=True)
-    # tdlrt_analysis(submit=False)
-    # tdlrt_figs(submit=True)
-    # test(submit=True)
-    # sys_job('analysis', 'pca_trajs', submit=False)
-    # sys_job('analysis', 'clust_cov', submit=False)
-    # cov_analysis(submit=False, mem='4G')
-    # get_averages(submit=False, mem='4G') 
-    # run_job('do_run_pca', submit=True, q='public', p='htc', t='00-01:00:00')
+    

@@ -15,7 +15,21 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, logger
 import plots
 
-from config import MARTINI, INPDB
+from config import MARTINI
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Global settings
+INPDB = '1btl.pdb'
+# Production parameters
+TEMPERATURE = 300 * unit.kelvin  # for equilibraion
+GAMMA = 1 / unit.picosecond
+PRESSURE = 1 * unit.bar
+TOTAL_TIME = 200 * unit.picoseconds
+TSTEP = 2 * unit.femtoseconds
+NOUT = 10 # save every NOUT steps
+OUT_SELECTION = "name CA" 
+SELECTION = "name CA" 
 
 
 def pca_trajs(sysdir, sysname):
@@ -144,11 +158,11 @@ def cov_analysis(sysdir, sysname, runname):
     mdrun.get_covmats(u, ag, sample_rate=1, b=0, e=1e12, n=2, outtag="covmat") 
     mdrun.get_pertmats()
     mdrun.get_dfi(outtag="dfi")
-    # mdrun.get_dci(outtag="dci", asym=False)
-    # mdrun.get_dci(outtag="asym", asym=True)
+    mdrun.get_dci(outtag="dci", asym=False)
+    mdrun.get_dci(outtag="asym", asym=True)
 
 
-def get_averages(sysdir, sysname):
+def get_means_sems(sysdir, sysname):
     system = GmxSystem(sysdir, sysname)   
     system.get_mean_sem(pattern="rmsf*.npy")
     system.get_mean_sem(pattern="dfi*.npy")
@@ -158,69 +172,139 @@ def get_averages(sysdir, sysname):
     plots.plot_pdfi(system, tag='dfi')
 
 
-def rdf_analysis(sysdir, sysname, runname, **kwargs):
-    system = GmxSystem(sysdir, sysname)
-    mdrun = system.initmd(runname)
-    rdfndx = os.path.join(system.wdir, "rdf.ndx")
-    ions = ["MG", "K", "CL"]
-    b = 400000
-    for ion in ions:
-        mdrun.rdf(clinput=f"BB1\n {ion}\n", n=rdfndx, o=f"rms_analysis/rdf_{ion}.xvg", 
-            b=b, rmax=10, bin=0.01, **kwargs)
-
-    
-def rms_analysis(sysdir, sysname, runname, **kwargs):
-    kwargs.setdefault("b",  450000) # in ps
-    kwargs.setdefault("dt", 150) # in ps
-    kwargs.setdefault("e", 7500000) # in ps
-    mdrun = GmxRun(sysdir, sysname, runname)
-    clean_dir(mdrun.rmsdir, "*npy")
-    mdrun.rmsf(clinput=f"2\n 2\n", s=mdrun.str, f=mdrun.trj, n=mdrun.sysndx, fit="yes", res="yes", **kwargs) 
-    mdrun.get_rmsf_by_chain(**kwargs)
-    mdrun.rmsd(clinput=f"2\n 2\n", s=mdrun.str, f=mdrun.trj, n=mdrun.sysndx, fit="rot+trans", **kwargs)
-    mdrun.get_rmsd_by_chain(b=0, **kwargs)
-    # u = mda.Universe(mdrun.str, mdrun.trj, in_memory=True)
-    # ag = u.atoms.select_atoms("name BB or name BB2")
-    # positions = io.read_positions(u, ag, b=500000, e=3500000, sample_rate=1)
-    # mdm.calc_and_save_rmsf(positions, outdir=mdrun.rmsdir, n=20)
-      
-    
-def overlap(sysdir, sysname, **kwargs):
-    system = GmxSystem(sysdir, sysname)
-    run1 = system.initmd("mdrun_2")
-    run2 = system.initmd("mdrun_4")
-    run3 = system.initmd("mdrun_5")
-    v1 = os.path.join(run1.covdir, "eigenvec.trr")
-    v2 = os.path.join(run2.covdir, "eigenvec.trr")
-    v3 = os.path.join(run3.covdir, "eigenvec.trr")
-    run1.anaeig(v=v1, v2=v2, over="overlap_1.xvg", **kwargs)
-    run1.anaeig(v=v2, v2=v3, over="overlap_2.xvg", **kwargs)
-    run1.anaeig(v=v3, v2=v1, over="overlap_3.xvg", **kwargs)
-
-
 def tdlrt_analysis(sysdir, sysname, runname):
-    mdrun = GmxRun(sysdir, sysname, runname)
-    # CCF params FRAMEDT=20 ps
-    b = 0
-    e = 100000
-    sample_rate = 1
-    ntmax = 1000 # how many frames to save
-    fname = "corr_pv.npy"
-    corr_file = os.path.join(mdrun.lrtdir, fname)
-    # CALC CCF
-    u = mda.Universe(mdrun.str, mdrun.trj, in_memory=True)
-    ag = u.atoms
-    positions = io.read_positions(u, ag, sample_rate=sample_rate, b=b, e=e) 
-    velocities = io.read_velocities(u, ag, sample_rate=sample_rate, b=b, e=e)
-    corr = lrt.ccf(positions, velocities, ntmax=ntmax, n=5, mode="gpu", center=True)
-    np.save(corr_file, corr)
+    mdrun = MDRun(sysdir, sysname, runname)
+    ps_path = str(mdrun.rundir / f"positions.npy")
+    vs_path = str(mdrun.rundir / f"velocities.npy")
+    if (Path(ps_path).exists() and Path(vs_path).exists()):
+        logger.info("Loading positions and velocities from %s", mdrun.rundir)
+        ps = np.load(ps_path)
+        vs = np.load(vs_path)
+    else:
+        traj = str(mdrun.rundir / f"samples.trr")
+        top = str(mdrun.rundir / "topology.pdb")
+        u = mda.Universe(top, traj)
+        ps = io.read_positions(u, u.atoms) # (n_atoms*3, nframes)
+        vs = io.read_velocities(u, u.atoms) # (n_atoms*3, nframes)
+    ps = ps - ps[:, 0][..., None]
+    # CCF calculations
+    adict = {'pv': (ps, vs), 'vv': (vs, vs), } #  adict = {'pv': (ps, vs)}
+    for key, item in adict.items(): # DT = TSTEP * NOUT
+        v1, v2 = item
+        corr = mdm.ccf(v1, v2, ntmax=4000, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
+        corr_file = mdrun.lrtdir / f'ccfs_{key}.npy'
+        np.save(corr_file, corr)    
+        logger.info("Saved CCFs to %s", corr_file)
 
 
-def get_td_averages(sysdir, sysname):
-    system = GmxSystem(sysdir, sysname)  
-    system.get_td_averages("pertmat*.npy", loop=True)
+def get_averages(sysdir, pattern, dtype=None, *args):
+    """Calculate average arrays across files matching pattern."""
+    nprocs = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
+    logger.info("Number of available processors: %s", nprocs)
+    files = io.pull_files(sysdir, pattern)[::2]
+    if not files:
+        logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
+        return
+    logger.info("Found %d files, starting processing: %s", len(files), files[0])
+    # Discover minimal common shape (fast, uses mmap to avoid loading full arrays)
+    shapes = []
+    for f in files:
+        try:
+            arr = np.load(f, mmap_mode='r')
+            if dtype is None:
+                dtype = arr.dtype
+            shapes.append(arr.shape)
+        except Exception as e:
+            logger.warning("Could not read shape for %s: %s", f, e)
+    if not shapes:
+        logger.info('No readable files found for pattern: %s', pattern)
+        return
+    min_shape = tuple(min(s[i] for s in shapes) for i in range(len(shapes[0])))
+    logger.info('Running parallel get_averages with %d processes', nprocs)
+    # split files into roughly equal batches
+    batches = [files[i::nprocs] for i in range(nprocs)]
+    work = [(batch, min_shape) for batch in batches if batch]
+    with mp.Pool(processes=len(work)) as pool:
+        results = pool.map(_process_batch, work)
+    total_sum = np.zeros(min_shape, dtype=dtype)
+    total_count = 0
+    for local_sum, local_count in results:
+        total_sum += local_sum
+        total_count += local_count
+    average = total_sum / total_count
+    outdir = Path('data') / Path(sysdir).relative_to('systems')
+    outdir.mkdir(exist_ok=True, parents=True)
+    out_file = outdir / f"{pattern.split('*')[0]}_2_av.npy"
+    np.save(out_file, average)
+    logger.info("Saved averages to %s", out_file)
 
 
-def test(sysdir, sysname, runname, **kwargs):    
-    print('passed', file=sys.stderr)
 
+def _process_batch(args, dtype=np.float32):
+    """Worker: load assigned files, crop to min_shape and return local sum and count."""
+    files, min_shape = args
+    s = tuple(slice(0, s) for s in shape)
+    local_sum = np.zeros(min_shape, dtype=dtype)
+    local_count = 0
+    for f in files:
+        logger.info("Processing %s", f)
+        try:
+            arr = np.load(f)
+        except Exception as e:
+            logger.warning("Could not load %s: %s", f, e)
+            continue
+        local_sum += arr[s]
+        local_count += 1
+        del arr
+    return local_sum, local_count
+
+
+def sample_emu(sysdir, sysname, runname):
+    from bioemu.sample import main as sample
+    mdrun = MDRun(sysdir, sysname, runname)
+    mdrun.prepare_files()
+    sequence = _pdb_to_seq(mdrun.sysdir / INPDB)
+    sample(sequence=sequence, num_samples=1000, batch_size_100=20, output_dir=mdrun.rundir)
+
+
+def initiate_systems_from_emu(*args):
+    logger.info("Preparing directories from EMU samples")
+    emu_dir = Path("systems") / "emu"
+    newsys_dir = Path("systems") / "1btl_nve"
+    samples = emu_dir / "samples.xtc"
+    top = emu_dir / "topology.pdb"
+    u = mda.Universe(top, samples)
+    step = 10  # every 10 frames
+    for i, ts in enumerate(u.trajectory[1::step]):
+        idx = i + 98
+        outdir = newsys_dir / f"sample_{idx:03d}"
+        outdir.mkdir(parents=True, exist_ok=True)
+        outpdb = outdir / "sample.pdb"
+        with mda.Writer(outpdb, u.atoms.n_atoms) as W:
+            W.write(u.atoms)
+        logger.info(f"Saved initial structure {i} to {outpdb}")
+
+
+def _pdb_to_seq(pdb):
+    u = mda.Universe(pdb)
+    protein = u.select_atoms("protein")
+    seq = "".join(res.resname for res in protein.residues)  # three-letter codes
+    seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
+    return seq_oneletter
+
+
+def _run_command():
+    if len(sys.argv) < 2:
+        print("Usage: <current_script> <function_name> [args...]")
+        sys.exit(1)
+    command = sys.argv[1]
+    args = sys.argv[2:]
+    module = sys.modules[__name__] # current module
+    functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) if not name.startswith('_')}
+    if command not in functions:
+        raise ValueError(f"Unknown command: {command}. Available commands for {module_name}: {', '.join(functions.keys())}")
+    functions[command](*args)
+
+
+if __name__ == "__main__":
+    _run_command()
