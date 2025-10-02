@@ -12,10 +12,13 @@ optionally applies an elastic network, and writes the output ITP file.
 
 import argparse
 import logging
+import sys
+from datetime import datetime
 from reforge.forge.forcefields import Martini30RNA
 from reforge.forge import cgmap
 from reforge.forge.topology import Topology
 from reforge.pdbtools import AtomList, pdb2system
+from reforge import itpio
 
 # Set up logging - force configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', 
@@ -148,8 +151,39 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
         elastic_bonds = len(merged_topology.bonds) - initial_bonds
         logger.info(f"Added {elastic_bonds} elastic bonds")
     
+    # Generate arguments string for header
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Format the parsed arguments with their actual values
+    args_formatted = (
+        f"input_pdb='{input_pdb}', output_topology='{output_topology}', "
+        f"output_structure='{output_structure}', force_field='{force_field}', "
+        f"molecule_name='{molecule_name}', merge_chains='{merge_chains}', "
+        f"elastic_network='{elastic_network}', elastic_force={elastic_force}, "
+        f"elastic_lower={elastic_lower}, elastic_upper={elastic_upper}, "
+        f"position_restraints='{position_restraints}', restraint_force={restraint_force}, "
+        f"debug={debug}"
+    )
+    
     logger.info(f"Writing topology file to: {output_topology}")
-    merged_topology.write_to_itp(output_topology)
+    # Pass arguments and timestamp to the topology writer
+    with open(output_topology, "w", encoding="utf-8") as file:
+        lines = itpio.format_header(molname=molecule_name, forcefield=ff.name, arguments=args_formatted, timestamp=timestamp)
+        lines += itpio.format_sequence_section(merged_topology.sequence, merged_topology.secstruct)
+        lines += itpio.format_moleculetype_section(molname=molecule_name, nrexcl=1)
+        lines += itpio.format_atoms_section(merged_topology.atoms)
+        lines += itpio.format_bonded_section("bonds", merged_topology.bonds)
+        lines += itpio.format_bonded_section("angles", merged_topology.angles)
+        lines += itpio.format_bonded_section("dihedrals", merged_topology.dihs)
+        lines += itpio.format_bonded_section("constraints", merged_topology.cons)
+        lines += itpio.format_bonded_section("exclusions", merged_topology.excls)
+        lines += itpio.format_bonded_section("pairs", merged_topology.pairs)
+        lines += itpio.format_bonded_section("virtual_sites3", merged_topology.vs3s)
+        lines += itpio.format_bonded_section("bonds", merged_topology.elnet)
+        lines += itpio.format_posres_section(merged_topology.atoms)
+        for line in lines:
+            file.write(line)
     
     logger.info("=== RNA Martinization completed successfully ===")
     logger.info(f"Coarse-grained structure written to: {output_structure}")
