@@ -12,7 +12,10 @@ import warnings
 from MDAnalysis import Universe
 from MDAnalysis.analysis.dssp import translate, DSSP
 from reforge import cli
-from reforge.utils import cd, logger
+from reforge.utils import cd
+import logging
+
+logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", message="Reader has no dt information, set to 1.0 ps")
 

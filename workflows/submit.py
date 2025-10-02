@@ -64,7 +64,7 @@ if __name__ == "__main__":
     runs = ['run_test']
 
     # Example usage:
-    sys_job('setup', submit=True)
+    sys_job('setup', submit=False)
     
     # To submit jobs to the queue (preserving script version):
     # sys_job('setup', submit=True, t='00-01:00:00', mem='4G')

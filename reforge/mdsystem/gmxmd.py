@@ -30,10 +30,13 @@ from pathlib import Path
 import importlib.resources
 import shutil
 import subprocess as sp
+import logging
 from reforge import cli, pdbtools, io
 from reforge.pdbtools import AtomList
-from reforge.utils import cd, clean_dir, logger
+from reforge.utils import cd, clean_dir
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
+
+logger = logging.getLogger(__name__)
 
 ################################################################################
 # GMX system class

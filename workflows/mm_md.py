@@ -13,10 +13,13 @@ import openmm as mm
 from openmm import app
 import openmm.unit as unit
 from reforge.martini import martini_openmm
+import logging
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
-from reforge.utils import clean_dir, logger
+from reforge.utils import clean_dir
 from bioemu.sample import main as sample
+
+logger = logging.getLogger(__name__)
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

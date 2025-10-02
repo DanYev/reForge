@@ -1,10 +1,13 @@
 import inspect
 import os
 import sys
+import logging
 from pathlib import Path
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
-from reforge.utils import clean_dir, logger
+from reforge.utils import clean_dir
+
+logger = logging.getLogger(__name__)
 
 from config import MARTINI, INPDB
 

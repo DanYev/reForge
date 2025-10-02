@@ -29,11 +29,14 @@ Author: Your Name
 Date: YYYY-MM-DD
 """
 
+import logging
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from reforge.utils import timeit, memprofit, logger
+from reforge.utils import timeit, memprofit
 from reforge.pdbtools import AtomList, System, PDBParser
+
+logger = logging.getLogger(__name__)
 
 ################################################################################
 ## Reading Trajectories with MDAnalysis

@@ -11,10 +11,13 @@ from sklearn.cluster import BisectingKMeans, KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.covariance import EllipticEnvelope
 from sklearn.preprocessing import StandardScaler
+import logging
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.utils import clean_dir, logger
+from reforge.utils import clean_dir
 import plots
+
+logger = logging.getLogger(__name__)
 
 from config import MARTINI
 

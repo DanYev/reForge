@@ -2,10 +2,12 @@ import os
 import numpy as np
 import pandas as pd
 import sys
+import logging
 from reforge import io, mdm
 from reforge.mdsystem import gmxmd
 from reforge.plotting import *
-from reforge.utils import logger
+
+logger = logging.getLogger(__name__)
 
 
 def pull_data(datdir, metric):
