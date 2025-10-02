@@ -87,9 +87,10 @@ sys.path.insert(0, str(script_dir))
 # Import the copied script
 import {script_copy.stem} as target_module
 
-# Add the workflows directory to path to import run_command
-workflows_dir = Path(__file__).parent.parent / "workflows"
-sys.path.insert(0, str(workflows_dir))
+# Add the original script's directory to path to import run_command
+original_script_path = Path("{original_script}")
+original_script_dir = original_script_path.parent
+sys.path.insert(0, str(original_script_dir))
 
 if __name__ == "__main__":
     # Set up sys.argv to mimic command line call
@@ -158,11 +159,11 @@ def sys_job(function, submit=False, **kwargs):
         if submit:
             # Create a job-specific script to freeze the code at submission time
             job_script = create_job_script(pyscript, function, sysdir, sysname)
-            dojob(submit, shscript, job_script, J=f'{function}_{sysname}', **kwargs)
+            dojob(submit, shscript, job_script, J=f'{function}', **kwargs)
         else:
             # For local runs, use the current script directly
             dojob(submit, shscript, pyscript, function, sysdir, sysname, 
-                  J=f'{function}_{sysname}', **kwargs)
+                  J=f'{function}', **kwargs)
 
 
 def run_job(function, submit=False, **kwargs):
@@ -172,30 +173,12 @@ def run_job(function, submit=False, **kwargs):
             if submit:
                 # Create a job-specific script to freeze the code at submission time
                 job_script = create_job_script(pyscript, function, sysdir, sysname, runname)
-                dojob(submit, shscript, job_script, J=f'{function}_{sysname}_{runname}', **kwargs)
+                dojob(submit, shscript, job_script, J=f'{function}', **kwargs)
             else:
                 # For local runs, use the current script directly
                 dojob(submit, shscript, pyscript, function, sysdir, sysname, runname,
-                      J=f'{function}_{sysname}_{runname}', **kwargs)
+                      J=f'{function}', **kwargs)
 
-
-def single_job(function, sysname, runname=None, submit=False, **kwargs):
-    """Submit or run a single job for a specific system (and optionally run)."""
-    args = [sysdir, sysname]
-    if runname:
-        args.append(runname)
-    
-    job_name = f'{function}_{sysname}'
-    if runname:
-        job_name += f'_{runname}'
-    
-    if submit:
-        # Create a job-specific script to freeze the code at submission time
-        job_script = create_job_script(pyscript, function, *args)
-        dojob(submit, shscript, job_script, J=job_name, **kwargs)
-    else:
-        # For local runs, use the current script directly
-        dojob(submit, shscript, pyscript, function, *args, J=job_name, **kwargs)
 
 
 MARTINI = False
