@@ -693,7 +693,7 @@ class Martini30RNA(NucleicForceField):
         "URA": {**bb_mapping, **u_mapping},
     }
 
-    def __init__(self, directory="rna_reg", mol="rna", version="new"):
+    def __init__(self, directory="rna_reg", mol="rna", version="v3.0.0"):
         super().__init__(directory, mol, version)
         self.name = "martini30rna"
 
