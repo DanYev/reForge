@@ -2,7 +2,7 @@
 
 Documentation and instructions are available here: [reForge Documentation](https://danyev.github.io/reForge/)
 
-## Martinize RNA Standalone Script
+## Martinize RNA Script
 
 A self-contained script for converting all-atom RNA structures to coarse-grained Martini 3.0 representation.
 
@@ -10,7 +10,7 @@ A self-contained script for converting all-atom RNA structures to coarse-grained
 
 ```bash
 # Usage
-python martinize_rna_standalone --help
+python martinize_rna_v3.0.0 --help
 
 ```
 
@@ -19,27 +19,13 @@ python martinize_rna_standalone --help
 - Python 3.7+
 - NumPy
 
-### Key Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `-f` | Required | Input PDB file |
-| `-ot` | `molecule.itp` | Output topology file |
-| `-os` | `molecule.pdb` | Output CG structure |
-| `-mol` | `molecule` | Molecule name |
-| `-elastic` | `yes` | Add elastic network |
-| `-ef` | `200` | Elastic force constant |
-| `--debug` | `False` | Enable debug logging |
-
 ### Force Field Files
 
-The script automatically loads Martini 3.0 RNA force field parameters from:
-`reforge/forge/forcefields/rna_reg/`
+The script loads some of the bonded parameters from:
+`/path/to/the/script/martinize_rna_v3.0.0_itps`
 
-- **rna_A_new.itp** - Adenine nucleotide parameters
-- **rna_C_new.itp** - Cytosine nucleotide parameters  
-- **rna_G_new.itp** - Guanine nucleotide parameters
-- **rna_U_new.itp** - Uracil nucleotide parameters
+The non-bonded parameters need to be included in the GROMACS topology file:
+`scripts/martinize_rna_v3.0.0_itps/martini_v3.0.0_rna.itp`
 
 ```
 
