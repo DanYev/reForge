@@ -295,5 +295,5 @@ def _pdb_to_seq(pdb):
 
 
 if __name__ == "__main__":
-    from submit import run_command
+    from reforge.cli import run_command
     run_command()

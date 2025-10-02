@@ -321,5 +321,5 @@ def _get_platform_info():
 
 
 if __name__ == "__main__":
-    from submit import run_command
+    from reforge.cli import run_command
     run_command()

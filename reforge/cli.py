@@ -274,3 +274,158 @@ def kwargs_to_str(hyphen="-", **kwargs):
     """
     return " ".join(
         [f"{hyphen}{key} {value}" for key, value in kwargs.items()])
+
+
+##############################################################
+# Workflow Utilities
+##############################################################
+
+def run_command():
+    """
+    Automatically discover and run functions from command line arguments.
+    This eliminates the need to manually maintain a function mapping.
+    Can be imported and used by any workflow script.
+    
+    Usage:
+        if __name__ == "__main__":
+            from reforge.cli import run_command
+            run_command()
+    """
+    import sys
+    import inspect
+    
+    if len(sys.argv) < 2:
+        module = sys.modules['__main__']  # Get the main module (the script being run)
+        module_name = getattr(module, '__name__', sys.argv[0])
+        # Get all public functions (not starting with _)
+        functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) 
+                    if not name.startswith('_')}
+        print(f"Usage: python {sys.argv[0]} <function_name> [args...]", file=sys.stderr)
+        print(f"Available functions: {', '.join(sorted(functions.keys()))}", file=sys.stderr)
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    args = sys.argv[2:]
+    
+    # Get main module and discover all public functions
+    module = sys.modules['__main__']
+    module_name = getattr(module, '__name__', sys.argv[0])
+    functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) 
+                if not name.startswith('_')}
+    
+    if command not in functions:
+        print(f"Error: Unknown function '{command}'", file=sys.stderr)
+        print(f"Available functions for {module_name}: {', '.join(sorted(functions.keys()))}", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        print(f"Calling {command} with args: {args}", file=sys.stderr)
+        if args:
+            functions[command](*args)
+        else:
+            functions[command]()
+        print(f"Successfully completed {command}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error executing {command}: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+
+
+def create_job_script(original_script, function, *args):
+    """
+    Create a standalone job script that captures the function call at submission time.
+    This prevents issues when the original script is modified after job submission.
+    
+    Parameters
+    ----------
+    original_script : str
+        Path to the original Python script to be executed
+    function : str
+        Name of the function to be called
+    *args : tuple
+        Arguments to pass to the function
+        
+    Returns
+    -------
+    str
+        Path to the generated wrapper script
+    """
+    import datetime
+    import shutil
+    from pathlib import Path
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    job_dir = Path("slurm_jobs") / f"job_{function}_{timestamp}_{hash(str(args)) % 10000}"
+    job_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Copy the original script to preserve the version at submission time
+    script_copy = job_dir / f"script_{timestamp}.py"
+    shutil.copy2(original_script, script_copy)
+    
+    # Create a wrapper script that calls the specific function
+    wrapper_script = job_dir / f"wrapper_{timestamp}.py"
+    
+    with open(wrapper_script, 'w') as f:
+        f.write(f'''#!/usr/bin/env python
+"""
+Auto-generated wrapper script for function: {function}
+Created at: {datetime.datetime.now()}
+Original script: {original_script}
+Arguments: {args}
+"""
+
+import sys
+import os
+from pathlib import Path
+
+# Add the script directory to path
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir))
+
+# Import the copied script
+import {script_copy.stem} as target_module
+
+# Add the original script's directory to path to import run_command
+original_script_path = Path("{original_script}")
+original_script_dir = original_script_path.parent
+sys.path.insert(0, str(original_script_dir))
+
+if __name__ == "__main__":
+    # Set up sys.argv to mimic command line call
+    function_name = "{function}"
+    args = {list(args)}
+    sys.argv = [__file__, function_name] + args
+    
+    # Try to use the centralized run_command function
+    try:
+        from reforge.cli import run_command
+        # Temporarily set the main module to our target module
+        sys.modules['__main__'] = target_module
+        run_command()
+    except ImportError:
+        # Fall back to target module's _run_command if available
+        if hasattr(target_module, '_run_command'):
+            target_module._run_command()
+        else:
+            # Final fallback to direct function calling
+            if hasattr(target_module, function_name):
+                func = getattr(target_module, function_name)
+                print(f"Calling {{function_name}} with args: {{args}}", file=sys.stderr)
+                try:
+                    if args:
+                        func(*args)
+                    else:
+                        func()
+                    print(f"Successfully completed {{function_name}}", file=sys.stderr)
+                except Exception as e:
+                    print(f"Error executing {{function_name}}: {{str(e)}}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    sys.exit(1)
+            else:
+                print(f"Function '{{function_name}}' not found in module", file=sys.stderr)
+                sys.exit(1)
+''')
+    
+    return str(wrapper_script)
