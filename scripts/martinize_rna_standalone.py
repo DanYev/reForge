@@ -34,7 +34,6 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
 
 
 ###################################
@@ -192,7 +191,7 @@ def format_bonded_section(header: str, bonds: List[List]) -> List[str]:
     return lines
 
 
-def format_posres_section(atoms: List[Tuple], posres_fc=500, 
+def format_posres_section(atoms: List[Tuple], posres_fc=1000, 
                           selection: List[str] = None) -> List[str]:
     """Format position restraints section."""
     if selection is None:
@@ -533,22 +532,18 @@ class NucleicForceField:
     @staticmethod
     def read_itp_file(resname, directory, mol, version):
         """Read an ITP file for a given residue."""
-        # Try different possible locations for ITP files
-        possible_paths = [
-            # First try relative to the script location
-            Path(__file__).parent.parent / "forge" / "forcefields" / directory / f"{mol}_{resname}_{version}.itp",
-            # Try relative to current working directory
-            Path.cwd() / "reforge" / "forge" / "forcefields" / directory / f"{mol}_{resname}_{version}.itp",
-            # Try absolute path from repo root
-            Path("/scratch/dyangali/reforge/reforge/forge/forcefields") / directory / f"{mol}_{resname}_{version}.itp",
-        ]
+        # Get the script directory
+        script_dir = Path(__file__).parent
         
-        for file_path in possible_paths:
-            if file_path.exists():
-                logger.debug(f"Reading ITP file: {file_path}")
-                return read_itp(str(file_path))
+        # Look for ITP files in script_dir/martinize_{molecule}_{version}_itps/
+        itp_dir = script_dir / f"martinize_{mol}_{version}_itps"
+        file_path = itp_dir / f"{mol}_{resname}_{version}.itp"
         
-        logger.warning(f"Could not find ITP file for residue {resname} in directory {directory}")
+        if file_path.exists():
+            logger.debug(f"Reading ITP file: {file_path}")
+            return read_itp(str(file_path))
+        
+        logger.warning(f"Could not find ITP file for residue {resname} at {file_path}")
         return {
             "bonds": [],
             "angles": [],
@@ -589,7 +584,12 @@ class NucleicForceField:
         self.directory = directory
         self.mol = mol
         self.version = version
-        logger.info(f"Initializing force field with directory={directory}, mol={mol}, version={version}")
+        
+        # Show the actual ITP directory path
+        script_dir = Path(__file__).parent
+        itp_dir = script_dir / f"martinize_{mol}_{version}_itps"
+        logger.info(f"Loading ITP files from {itp_dir}")
+        
         self.resdict = self.parameters_by_resname(self.resnames, directory, mol, version)
         self.elastic_network = False
         self.el_bond_type = 6
@@ -785,11 +785,13 @@ class Topology:
     def __init__(self, forcefield, sequence: List = None, secstruct: List = None, **kwargs) -> None:
         molname = kwargs.pop("molname", "molecule")
         nrexcl = kwargs.pop("nrexcl", 1)
+        restraint_force = kwargs.pop("restraint_force", 1000)
         
         self.ff = forcefield
         self.sequence = sequence if sequence is not None else []
         self.name = molname
         self.nrexcl = nrexcl
+        self.restraint_force = restraint_force
         self.atoms: List = []
         self.bonds = BondList()
         self.angles = BondList()
@@ -849,7 +851,7 @@ class Topology:
         lines += format_bonded_section("pairs", self.pairs)
         lines += format_bonded_section("virtual_sites3", self.vs3s)
         lines += format_bonded_section("bonds", self.elnet)
-        lines += format_posres_section(self.atoms)
+        lines += format_posres_section(self.atoms, posres_fc=self.restraint_force)
         return lines
 
     def write_to_itp(self, filename: str, arguments="", timestamp=""):
@@ -1065,17 +1067,13 @@ def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_s
     logger.info(f"Input PDB: {input_pdb}")
     logger.info(f"Output structure: {output_structure}")
     logger.info(f"Output topology: {output_topology}")
-    logger.info(f"Force field: {force_field}")
+    logger.info(f"Force field: {force_field} (v3.0.0)")
     logger.info(f"Molecule name: {molecule_name}")
     logger.info(f"Elastic network: {elastic_network}")
     
     if force_field == "reg":
         logger.info("Initializing Martini 3.0 RNA force field")
-        logger.info("Initializing force field with directory=rna_reg, mol=rna, version=new")
         ff = Martini30RNA()
-        # Load sidechain parameters for all nucleotides
-        unique_bases = set(['A', 'C', 'G', 'U'])  # Standard RNA bases
-        logger.info(f"Loading sidechain parameters for residues: {sorted(unique_bases)}")
     else:
         raise ValueError(f"Unsupported force field option: {force_field}")
     
@@ -1098,7 +1096,7 @@ def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_s
     
     for i, chain in enumerate(chains):
         logger.info(f"Processing chain {i+1}/{len(chains)}")
-        cg_atoms, chain_top = process_chain(chain, ff, start_idx, molecule_name)
+        cg_atoms, chain_top = process_chain(chain, ff, start_idx, molecule_name, restraint_force)
         structure.extend(cg_atoms)
         topologies.append(chain_top)
         start_idx += len(cg_atoms)
@@ -1150,7 +1148,7 @@ def martinize_rna_standalone(input_pdb, output_topology='molecule.itp', output_s
     return output_structure, output_topology
 
 
-def process_chain(_chain, _ff, _start_idx, _mol_name):
+def process_chain(_chain, _ff, _start_idx, _mol_name, restraint_force=1000):
     """Process an individual RNA chain: map it to coarse-grained representation and generate a topology."""
     residues = list(_chain)
     sequence = [res.resname for res in residues]
@@ -1161,7 +1159,7 @@ def process_chain(_chain, _ff, _start_idx, _mol_name):
     logger.debug(f"Generated {len(_cg_atoms)} CG atoms")
     
     logger.debug("Creating topology and processing bonded interactions")
-    chain_topology = Topology(forcefield=_ff, sequence=sequence, molname=_mol_name)
+    chain_topology = Topology(forcefield=_ff, sequence=sequence, molname=_mol_name, restraint_force=restraint_force)
     chain_topology.process_atoms()
     chain_topology.process_bb_bonds()
     chain_topology.process_sc_bonds()
