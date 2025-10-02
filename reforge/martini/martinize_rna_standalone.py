@@ -121,19 +121,17 @@ def line2bond(line, tag):
 
 
 def bond2line(connectivity=None, parameters="", comment=""):
-    """Convert bond data to string format."""
-    if connectivity is None:
-        connectivity = []
-    
-    conn_str = " ".join(str(int(c) + 1) for c in connectivity)  # Convert to 1-based
-    param_str = " ".join(str(p) for p in parameters) if parameters else ""
-    
-    line = conn_str
-    if param_str:
-        line += " " + param_str
+    """Format a bond entry into a string for a Gromacs ITP file."""
+    connectivity_str = "   ".join(f"{int(atom):5d}" for atom in connectivity)
+    type_str = ""
+    parameters_str = ""
+    if parameters:
+        type_str = f"{int(parameters[0]):2d}"
+        parameters_str = "   ".join(f"{float(param):7.4f}" for param in parameters[1:])
+    line = connectivity_str + "   " + type_str + "   " + parameters_str
     if comment:
         line += " ; " + comment
-    
+    line += "\n"
     return line
 
 
@@ -454,8 +452,7 @@ def move_o3(system):
     """Move each O3' atom to the next residue."""
     o3_moved = 0
     for chain in system.chains():
-        residues = list(chain)
-        for i, residue in enumerate(residues):
+        for i, residue in enumerate(chain):
             atoms = residue.atoms
             for atom in atoms[:]:  # Create a copy to iterate over
                 if atom.name == "O3'":
