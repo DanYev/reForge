@@ -1,29 +1,42 @@
 import inspect
 import logging
 import os
+import shutil
 import sys
 from pathlib import Path
 import warnings
+import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.transformations import fit_rot_trans
 from MDAnalysis.coordinates.memory import MemoryReader
 import openmm as mm
 from openmm import app
-from openmm.unit import nanometer, molar, kilojoules_per_mole, kelvin, bar, nanoseconds, femtoseconds, picosecond
+import openmm.unit as unit
 from reforge.martini import martini_openmm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.mdsystem.gmxmd import GmxSystem
-from reforge.mdsystem.mmmd import MmSystem, MmRun
+from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
 from reforge.utils import clean_dir, logger
 from bioemu.sample import main as sample
 
-from config import (
-    MARTINI, INPDB, TEMPERATURE, PRESSURE, 
-    TOTAL_TIME, TSTEP, GAMMA, NOUT
-)
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Global settings
+INPDB = '1btl.pdb'
+MARTINI=False  # True for CG systems, False for AA systems
+# Production parameters
+TEMPERATURE = 300 * unit.kelvin  # for equilibraion
+GAMMA = 1 / unit.picosecond
+PRESSURE = 1 * unit.bar
+TOTAL_TIME = 10 * unit.picoseconds
+TSTEP = 2 * unit.femtoseconds
+NOUT = 1000 # save every NOUT steps
+OUT_SELECTION = "name CA" 
+SELECTION = "name CA" 
 
 
 def setup(*args):
+    print(f"Setup called with args: {args}", file=sys.stderr)
     if not MARTINI:
         setup_aa(*args)
     else:
@@ -33,6 +46,7 @@ def setup(*args):
 def setup_aa(sysdir, sysname):
     mdsys = MmSystem(sysdir, sysname)
     inpdb = mdsys.sysdir / INPDB
+    mdsys.prepare_files()
     mdsys.clean_pdb(inpdb, add_missing_atoms=True, add_hydrogens=True)
     pdb = app.PDBFile(str(mdsys.inpdb))
     model = app.Modeller(pdb.topology, pdb.positions)
@@ -64,31 +78,8 @@ def _add_bb_restraints(system, pdb, bb_aname='CA'):
 
 
 def setup_martini(sysdir, sysname):
-    ### FOR CG PROTEIN+/RNA SYSTEMS ###
-    mdsys = GmxSystem(sysdir, sysname)
-
-    # 1.1. Need to copy force field and md-parameter files and prepare directories
-    mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.sort_input_pdb(mdsys.sysdir / INPDB) # sorts chain and atoms in the input file and returns makes mdsys.inpdb file
-
-    # 1.2 Try to clean the input PDB and split the chains based on the type of molecules (protein, RNA/DNA)
-    mdsys.clean_pdb_mm(add_missing_atoms=True, add_hydrogens=True, pH=7.0)
-    mdsys.split_chains()
-    # mdsys.clean_chains_mm(add_missing_atoms=False, add_hydrogens=False, pH=7.0)  # if didn"t work for the whole PDB
-
-    # 1.3. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
-    # mdsys.martinize_proteins_en(ef=500, el=0.5, eu=1.0, p="none", append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=0.8, p="none", append=False) # Martini + Go-network FF
-    # mdsys.martinize_rna(elastic="no", ef=50, el=0.5, eu=1.3, p="none", append=True) # Martini RNA FF 
-    mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
-    mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    
-    # 1.4. Coarse graining is *hopefully* done. Need to add solvent and ions
-    mdsys.make_box(d="1.2", bt="dodecahedron")
-    solvent = os.path.join(mdsys.root, "water.gro")
-    mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
-    mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
-    
+    mdsys = MmSystem(sysdir, sysname)
+    # here we need to run the CG setup from gmx_md first and then convert to OpenMM
     # 1.5. GMX -> OpenMM
     top_file = str(mdsys.systop)
     conf = app.GromacsGroFile(str(mdsys.sysgro))
@@ -101,15 +92,21 @@ def setup_martini(sysdir, sysname):
         file.write(mm.XmlSerializer.serialize(system))
 
 
-def md_npt(sysdir, sysname, runname, ntomp): 
+def md_npt(sysdir, sysname, runname): 
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
-    mdrun.prepare_files()
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
-    with open(str(mdsys.sysxml)) as f:
-        system = mm.XmlSerializer.deserialize(f.read())
+    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
+    system = ff.createSystem(
+        pdb.topology,
+        nonbondedMethod=app.PME,
+        nonbondedCutoff=1.0 * unit.nanometer,
+        constraints=app.HBonds,
+        removeCMMotion=True, 
+        ewaldErrorTolerance=1e-5
+    )
     integrator = mm.LangevinMiddleIntegrator(0, GAMMA, 0.5*TSTEP)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
@@ -133,9 +130,8 @@ def md_nve(sysdir, sysname, runname):
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
-    mdrun.prepare_files()
-    inpdb = mdsys.root / 'system.pdb'
-    pdb = app.PDBFile(str(inpdb))
+    # Prep
+    pdb = app.PDBFile(str(mdsys.syspdb))
     ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
     # --- Build a system WITHOUT any motion remover; no barostat/thermostat added ---
     system = ff.createSystem(
@@ -148,19 +144,10 @@ def md_nve(sysdir, sysname, runname):
     )
     # --- NVT integrator (for short equilibration) ---
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
+
     integrator.setConstraintTolerance(1e-6)
     simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
-    # --- Reporters (energies to monitor drift) ---
-    log_reporters = [
-        app.StateDataReporter(
-            str(mdrun.rundir / "md.log"), 1000, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True
-        ),
-        app.StateDataReporter(
-            sys.stderr, 1000, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True
-        ),
-    ]
+
     simulation.reporters.extend(log_reporters)
     # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
@@ -182,6 +169,20 @@ def md_nve(sysdir, sysname, runname):
     simulation.reporters.extend(log_reporters)
     simulation.step(100000)  
     logger.info("Done!")
+
+
+def _get_reporters(log_nout=10000):
+    log_reporters = [
+        app.StateDataReporter(
+            str(mdrun.rundir / "md.log"), log_nout, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True
+        ),
+        app.StateDataReporter(
+            sys.stderr, log_nout, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True
+        ),
+    ]
+    return log_reporters
 
 
 def extend(sysdir, sysname, runname, ntomp):    
@@ -317,3 +318,45 @@ def _get_platform_info():
     for key, value in info['properties'].items():
         logger.info(f"  {key}: {value}")
     return info
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python mm_md.py <function_name> [args...]", file=sys.stderr)
+        print("Available functions: setup, setup_aa, setup_martini, md_npt, md_nve, extend, trjconv", file=sys.stderr)
+        sys.exit(1)
+    
+    function_name = sys.argv[1]
+    args = sys.argv[2:]
+    
+    # Available functions mapping
+    functions = {
+        'setup': setup,
+        'setup_aa': setup_aa,
+        'setup_martini': setup_martini,
+        'md_npt': md_npt,
+        'md_nve': md_nve,
+        'extend': extend,
+        'trjconv': trjconv,
+        'platform_info': _get_platform_info
+    }
+    
+    if function_name not in functions:
+        print(f"Error: Unknown function '{function_name}'", file=sys.stderr)
+        print(f"Available functions: {', '.join(functions.keys())}", file=sys.stderr)
+        sys.exit(1)
+    
+    func = functions[function_name]
+    
+    try:
+        print(f"Calling {function_name} with args: {args}", file=sys.stderr)
+        if args:
+            func(*args)
+        else:
+            func()
+        print(f"Successfully completed {function_name}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error executing {function_name}: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
