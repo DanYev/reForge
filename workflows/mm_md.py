@@ -321,42 +321,5 @@ def _get_platform_info():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python mm_md.py <function_name> [args...]", file=sys.stderr)
-        print("Available functions: setup, setup_aa, setup_martini, md_npt, md_nve, extend, trjconv", file=sys.stderr)
-        sys.exit(1)
-    
-    function_name = sys.argv[1]
-    args = sys.argv[2:]
-    
-    # Available functions mapping
-    functions = {
-        'setup': setup,
-        'setup_aa': setup_aa,
-        'setup_martini': setup_martini,
-        'md_npt': md_npt,
-        'md_nve': md_nve,
-        'extend': extend,
-        'trjconv': trjconv,
-        'platform_info': _get_platform_info
-    }
-    
-    if function_name not in functions:
-        print(f"Error: Unknown function '{function_name}'", file=sys.stderr)
-        print(f"Available functions: {', '.join(functions.keys())}", file=sys.stderr)
-        sys.exit(1)
-    
-    func = functions[function_name]
-    
-    try:
-        print(f"Calling {function_name} with args: {args}", file=sys.stderr)
-        if args:
-            func(*args)
-        else:
-            func()
-        print(f"Successfully completed {function_name}", file=sys.stderr)
-    except Exception as e:
-        print(f"Error executing {function_name}: {str(e)}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
+    from submit import run_command
+    run_command()

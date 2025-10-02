@@ -1,4 +1,5 @@
 import sys
+import inspect
 import warnings
 import logging
 import matplotlib.pyplot as plt
@@ -293,18 +294,6 @@ def _pdb_to_seq(pdb):
     return seq_oneletter
 
 
-def _run_command():
-    if len(sys.argv) < 2:
-        print("Usage: <current_script> <function_name> [args...]")
-        sys.exit(1)
-    command = sys.argv[1]
-    args = sys.argv[2:]
-    module = sys.modules[__name__] # current module
-    functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) if not name.startswith('_')}
-    if command not in functions:
-        raise ValueError(f"Unknown command: {command}. Available commands for {module_name}: {', '.join(functions.keys())}")
-    functions[command](*args)
-
-
 if __name__ == "__main__":
-    _run_command()
+    from submit import run_command
+    run_command()

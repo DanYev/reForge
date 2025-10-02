@@ -2,7 +2,53 @@ from pathlib import Path
 import shutil
 import tempfile
 import datetime
+import sys
+import inspect
 from reforge.cli import sbatch, run
+
+
+def run_command():
+    """
+    Automatically discover and run functions from command line arguments.
+    This eliminates the need to manually maintain a function mapping.
+    Can be imported and used by any workflow script.
+    """
+    if len(sys.argv) < 2:
+        module = sys.modules['__main__']  # Get the main module (the script being run)
+        module_name = getattr(module, '__name__', sys.argv[0])
+        # Get all public functions (not starting with _)
+        functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) 
+                    if not name.startswith('_')}
+        print(f"Usage: python {sys.argv[0]} <function_name> [args...]", file=sys.stderr)
+        print(f"Available functions: {', '.join(sorted(functions.keys()))}", file=sys.stderr)
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    args = sys.argv[2:]
+    
+    # Get main module and discover all public functions
+    module = sys.modules['__main__']
+    module_name = getattr(module, '__name__', sys.argv[0])
+    functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) 
+                if not name.startswith('_')}
+    
+    if command not in functions:
+        print(f"Error: Unknown function '{command}'", file=sys.stderr)
+        print(f"Available functions for {module_name}: {', '.join(sorted(functions.keys()))}", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        print(f"Calling {command} with args: {args}", file=sys.stderr)
+        if args:
+            functions[command](*args)
+        else:
+            functions[command]()
+        print(f"Successfully completed {command}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error executing {command}: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
 
 
 def create_job_script(original_script, function, *args):
@@ -41,28 +87,45 @@ sys.path.insert(0, str(script_dir))
 # Import the copied script
 import {script_copy.stem} as target_module
 
+# Add the workflows directory to path to import run_command
+workflows_dir = Path(__file__).parent.parent / "workflows"
+sys.path.insert(0, str(workflows_dir))
+
 if __name__ == "__main__":
-    # Call the specific function with provided arguments
+    # Set up sys.argv to mimic command line call
     function_name = "{function}"
     args = {list(args)}
+    sys.argv = [__file__, function_name] + args
     
-    if hasattr(target_module, function_name):
-        func = getattr(target_module, function_name)
-        print(f"Calling {{function_name}} with args: {{args}}", file=sys.stderr)
-        try:
-            if args:
-                func(*args)
+    # Try to use the centralized run_command function
+    try:
+        from submit import run_command
+        # Temporarily set the main module to our target module
+        sys.modules['__main__'] = target_module
+        run_command()
+    except ImportError:
+        # Fall back to target module's _run_command if available
+        if hasattr(target_module, '_run_command'):
+            target_module._run_command()
+        else:
+            # Final fallback to direct function calling
+            if hasattr(target_module, function_name):
+                func = getattr(target_module, function_name)
+                print(f"Calling {{function_name}} with args: {{args}}", file=sys.stderr)
+                try:
+                    if args:
+                        func(*args)
+                    else:
+                        func()
+                    print(f"Successfully completed {{function_name}}", file=sys.stderr)
+                except Exception as e:
+                    print(f"Error executing {{function_name}}: {{str(e)}}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    sys.exit(1)
             else:
-                func()
-            print(f"Successfully completed {{function_name}}", file=sys.stderr)
-        except Exception as e:
-            print(f"Error executing {{function_name}}: {{str(e)}}", file=sys.stderr)
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-            sys.exit(1)
-    else:
-        print(f"Function '{{function_name}}' not found in module", file=sys.stderr)
-        sys.exit(1)
+                print(f"Function '{{function_name}}' not found in module", file=sys.stderr)
+                sys.exit(1)
 ''')
     
     return str(wrapper_script)
