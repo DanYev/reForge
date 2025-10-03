@@ -23,12 +23,13 @@ TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
-TOTAL_TIME = 10 * unit.picoseconds
+TOTAL_TIME = 100 * unit.picoseconds
 TOTAL_STEPS = 100000 
 TSTEP = 2 * unit.femtoseconds
 # Reporting
 TRJ_NOUT = 1000 # save every NOUT steps
-LOG_NOUT = 1000 # save every NOUT steps
+CHK_NOUT = 1000 
+LOG_NOUT = 1000 
 OUT_SELECTION = "protein" 
 # Analysis
 SELECTION = "name CA" 
@@ -94,6 +95,7 @@ def setup_martini(sysdir, sysname):
 def md_npt(sysdir, sysname, runname): 
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
+    mdrun.rundir.mkdir(parents=True, exist_ok=True)
     logger.info(f"WDIR: %s", mdrun.rundir)
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
@@ -102,34 +104,47 @@ def md_npt(sysdir, sysname, runname):
         pdb.topology,
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.0 * unit.nanometer,
-        constraints=app.HBonds,
-        removeCMMotion=True, 
-        ewaldErrorTolerance=1e-5,
-        # periodicBoxVectors=pdb.topology.getPeriodicBoxVectors(),
-    )
+        constraints=app.HBonds,)
     _add_bb_restraints(system, pdb, bb_aname='CA')
     integrator = mm.LangevinMiddleIntegrator(0, GAMMA, 0.5*TSTEP)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
+    reporters = _get_reporters(mdrun, prefix="eq")
+    simulation.reporters.extend(reporters)
     # EM + HU
-    mdrun.em(simulation, tolerance=1, max_iterations=1000)
-    mdrun.hu(simulation, TEMPERATURE, n_cycles=100, steps_per_cycle=100)
+    logger.info("Minimizing energy...")
+    simulation.minimizeEnergy(maxIterations=100)
+    logger.info("Heating up...")
+    n_cycles = 10
+    steps_per_cycle = 100
+    for i in range(n_cycles):
+        simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
+        simulation.step(steps_per_cycle)
+    simulation.saveState(str(mdrun.rundir / "hu.xml"))
     # Adding barostat + EQ
+    logger.info("Equilibrating...")
     barostat = mm.MonteCarloBarostat(PRESSURE, TEMPERATURE)
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
+    mdrun.eq(simulation, n_cycles=10, steps_per_cycle=100)
     # MD
+    logger.info("Production...")
+    simulation.loadState(str(mdrun.rundir / "eq.xml"))
     simulation.integrator.setStepSize(TSTEP)
-    mdrun.md(simulation, time=TOTAL_TIME, nout=NOUT, velocities_needed=True)
+    simulation.reporters = []  # clear existing reporters
+    reporters = _get_reporters(mdrun, append=False, prefix='md')
+    simulation.reporters.extend(reporters)
+    TOTAL_STEPS = 2000
+    simulation.step(TOTAL_STEPS)
+    # mdrun.md(simulation, time=TOTAL_TIME)
 
 
 def md_nve(sysdir, sysname, runname):
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
+    mdrun.rundir.mkdir(parents=True, exist_ok=True)
     logger.info(f"WDIR: %s", mdrun.rundir)
-    mdrun.prepare_files()
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
     ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
@@ -147,8 +162,6 @@ def md_nve(sysdir, sysname, runname):
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
     integrator.setConstraintTolerance(1e-6)
     simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
-    log_reporters, traj_reporter = _get_reporters(mdrun)
-    simulation.reporters.extend(log_reporters)
     # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
     simulation.context.setPositions(pdb.positions)
@@ -164,41 +177,46 @@ def md_nve(sysdir, sysname, runname):
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setState(state)
     mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
-    simulation.reporters.extend(log_reporters)
-    simulation.reporters.append(traj_reporter)
+    reporters = _get_reporters(mdrun, append=False, prefix='md')
+    simulation.reporters.extend(reporters)
     simulation.step(TOTAL_STEPS)  
     logger.info("Done!")
 
 
-def _get_reporters(mdrun):
-    log_reporters = [
-        app.StateDataReporter(
-            str(mdrun.rundir / "md.log"), LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True
-        ),
-        app.StateDataReporter(
-            sys.stderr, LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True
-        ),
-    ]
-    traj_reporter = MmReporter(str(mdrun.rundir / "md.trr"), reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
-    return log_reporters, traj_reporter
+def _get_reporters(mdrun, append=True, prefix="md"):
+    mdrun.rundir.mkdir(parents=True, exist_ok=True)
+    log_reporter = app.StateDataReporter(
+            str(mdrun.rundir / f"{prefix}.log"), 
+            LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True, append=append)
+    err_reporter =  app.StateDataReporter(
+            sys.stderr, 
+            LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
+            totalEnergy=True, temperature=True, speed=True, append=append)
+    traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
+        reportInterval=TRJ_NOUT, selection=OUT_SELECTION, writer_kwargs={'append': append})
+    state_reporter = app.CheckpointReporter(str(mdrun.rundir / f"{prefix}.xml"), CHK_NOUT, writeState=True)
+    return log_reporter, err_reporter, traj_reporter, state_reporter
 
 
-def extend(sysdir, sysname, runname, ntomp):    
+def extend(sysdir, sysname, runname):    
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
     pdb = app.PDBFile(str(mdrun.syspdb))
-    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, TSTEP)
-    with open(str(mdrun.sysxml)) as f:
-        system = mm.XmlSerializer.deserialize(f.read())
-    simulation = app.Simulation(pdb.topology, system, integrator)
+    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
+    system = ff.createSystem(
+        pdb.topology,
+        nonbondedMethod=app.PME,
+        nonbondedCutoff=1.0 * unit.nanometer,
+        constraints=app.HBonds,)
     barostat = mm.MonteCarloBarostat(PRESSURE, TEMPERATURE)
-    simulation.system.addForce(barostat)
-    enum = enumerate(simulation.system.getForces()) 
-    idx, bb_restraint = [(idx, f) for idx, f in enum if f.getName() == 'BackboneRestraint'][0]
-    simulation.system.removeForce(idx)
-    simulation.context.reinitialize(preserveState=True)
+    system.addForce(barostat)
+    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, TSTEP)
+    simulation = app.Simulation(pdb.topology, system, integrator)
+    for force in simulation.system.getForces():
+        print(force.getName())
+    reporters = _get_reporters(mdrun, append=True, prefix='md')
+    simulation.reporters.extend(reporters)
     mdrun.extend(simulation, until_time=TOTAL_TIME)
     
 

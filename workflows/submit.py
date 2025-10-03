@@ -61,4 +61,5 @@ if __name__ == "__main__":
     runs = ['run_test']
 
     # sys_job('setup', submit=False)
-    run_job('md_npt', submit=True, G='1')
+    run_job('md_npt', submit=False, G='1')
+    run_job('extend', submit=False, G='1')

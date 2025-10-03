@@ -248,7 +248,7 @@ class MmRun(MDRun):
         Loads the heated state, runs equilibration, and saves the equilibrated state.
         """
         logger.info("Starting equilibration...")
-        in_xml = os.path.join(self.rundir, "hu.xml")
+        in_xml = str(self.rundir / "hu.xml")
         simulation.loadState(in_xml)
         enum = enumerate(simulation.system.getForces()) 
         idx, bb_restraint = [(idx, f) for idx, f in enum if f.getName() == 'BackboneRestraint'][0]
@@ -258,9 +258,14 @@ class MmRun(MDRun):
             simulation.step(steps_per_cycle)
             new_fc = fc * (1 - (i + 1) / n_cycles)
             simulation.context.setParameter(fcname, new_fc)
+        # Remove the restraints and reinitialize context - we need to get rib of bb_fc
         simulation.system.removeForce(idx)
-        simulation.context.reinitialize(preserveState=True)
-        self.save_state(simulation, "eq")
+        state = simulation.context.getState(getPositions=True, getVelocities=True)
+        simulation.context.reinitialize(preserveState=False)
+        simulation.context.setPositions(state.getPositions())
+        simulation.context.setVelocities(state.getVelocities())
+        simulation.context.setPeriodicBoxVectors(*state.getPeriodicBoxVectors())
+        simulation.saveState(str(self.rundir / "eq.xml"))
         logger.info("Equilibration completed.")
 
     @memprofit(level=logging.INFO)
@@ -282,15 +287,15 @@ class MmRun(MDRun):
         Loads the equilibrated state, runs production, and saves the final simulation state.
         """
         logger.info("Production run...")
-        in_xml = os.path.join(self.rundir, "eq.xml")
-        simulation.loadState(in_xml)
+        in_xml = self.rundir / "eq.xml"
+        simulation.loadState(str(in_xml))
         if not nsteps:
             dt = simulation.integrator.getStepSize()
             logger.info(f"Total MD time: %s", time)
             nsteps = int(time / dt)
         logger.info(f"Number of steps left: %s", nsteps)
-        simulation.step(nsteps)
-        self.save_state(simulation, "md")
+        out_xml = self.rundir / "md.xml"
+        simulation.saveState(str(out_xml))
         logger.info("Production completed.")
 
     @memprofit(level=logging.INFO)
@@ -298,12 +303,12 @@ class MmRun(MDRun):
     def extend(self, simulation, until_time=1000, nsteps=None, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
-        xml_file = os.path.join(self.rundir, "md.xml")
-        simulation.loadState(xml_file)
-        st = simulation.context.getState()
+        in_xml = os.path.join(self.rundir, "md.xml")
+        simulation.loadState(in_xml)
+        state = simulation.context.getState()
+        curr_time = state.getTime()
         if not nsteps:
             dt = simulation.integrator.getStepSize()
-            curr_time = st.getTime()
             logger.info(f"Current time: %s", curr_time)
             logger.info(f"Extend until: %s", until_time)
             nsteps = int((until_time - curr_time) / dt)
