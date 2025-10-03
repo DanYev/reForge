@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=0-01:00:00                                                       
+#SBATCH --time=0-00:10:00                                                       
 #SBATCH --partition=htc
 #SBATCH --qos=public
 #SBATCH --nodes=1

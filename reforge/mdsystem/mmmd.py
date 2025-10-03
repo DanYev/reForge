@@ -27,7 +27,6 @@ from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
 import openmm as mm
 from openmm import app, unit
-import logging
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, io
 from reforge.utils import cd, clean_dir, timeit, memprofit
@@ -109,60 +108,7 @@ class MmRun(MDRun):
         self.str = self.rundir / "mdc.pdb"  # Structure file
         self.trj = self.rundir / "mdc.trr"  # Trajectory file
         self.trj = self.trj if self.trj.exists() else self.rundir / "mdc.xtc"
-        
-    def build_modeller(self):
-        """Generate a modeller object from the system PDB file.
-
-        Returns
-        -------
-        openmm.app.Modeller
-            The modeller object initialized with the system topology and positions.
-        """
-        pdb_file = app.PDBFile(str(self.syspdb))
-        modeller_obj = app.Modeller(pdb_file.topology, pdb_file.positions)
-        return modeller_obj
-
-    def simulation(self, modeller_obj, integrator):
-        """Initialize and return a simulation object for the MD run.
-
-        Parameters
-        ----------
-        modeller_obj : openmm.app.Modeller
-            The modeller object with prepared topology and positions.
-        integrator : openmm.Integrator
-            The integrator for the simulation.
-
-        Returns
-        -------
-        openmm.app.Simulation
-            The initialized simulation object.
-        """
-        simulation_obj = app.Simulation(modeller_obj.topology, str(self.sysxml), integrator)
-        simulation_obj.context.setPositions(modeller_obj.positions)
-        return simulation_obj
-
-    def save_state(self, simulation_obj, file_prefix="sim"):
-        """Save the current simulation state to XML and PDB files.
-
-        Parameters
-        ----------
-        simulation_obj : openmm.app.Simulation
-            The simulation object.
-        file_prefix : str, optional
-            Prefix for the state files (default: 'sim').
-
-        Notes
-        -----
-        Saves the simulation state as an XML file and writes the current positions to a PDB file.
-        """
-        pdb_file = os.path.join(self.rundir, file_prefix + "_state.pdb")
-        xml_file = os.path.join(self.rundir, file_prefix + ".xml")
-        simulation_obj.saveState(xml_file)
-        state = simulation_obj.context.getState(getPositions=True)
-        positions = state.getPositions()
-        with open(pdb_file, "w", encoding="utf-8") as file:
-            app.PDBFile.writeFile(simulation_obj.topology, positions, file, keepIds=True)
-
+    
     def get_std_reporters(self, append, prefix='md', nlog=10000, nchk=10000, **kwargs):
         kwargs.setdefault("step", True)
         kwargs.setdefault("time", True)
