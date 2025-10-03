@@ -23,10 +23,12 @@ Author: DY
 Date: 2025-02-27
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import List
-from reforge.utils import logger
+
+logger = logging.getLogger(__name__)
 
 ###################################
 ## Classes and Functions ##

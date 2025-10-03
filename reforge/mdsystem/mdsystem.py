@@ -24,10 +24,13 @@ import sys
 import shutil
 import subprocess as sp
 import numpy as np
+import logging
 from reforge import cli, mdm, pdbtools, io
 from reforge.pdbtools import AtomList
-from reforge.utils import cd, clean_dir, logger
+from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
+
+logger = logging.getLogger(__name__)
 
 ################################################################################
 # GMX system class

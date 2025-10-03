@@ -37,9 +37,12 @@ import numpy as np
 import cupy as cp
 import scipy.sparse.linalg
 import cupyx.scipy.sparse.linalg
+import logging
 from joblib import Parallel, delayed
 from numpy.fft import fft, ifft
-from reforge.utils import timeit, memprofit, logger
+from reforge.utils import timeit, memprofit
+
+logger = logging.getLogger(__name__)
 
 ##############################################################
 ## For time dependent analysis ##

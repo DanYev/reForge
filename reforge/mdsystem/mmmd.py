@@ -26,12 +26,14 @@ import MDAnalysis as mda
 from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
 import openmm as mm
-from openmm import app
-from openmm.unit import angstrom, nanometer, molar, kilojoules_per_mole, kelvin, bar, nanoseconds, femtoseconds, picosecond
-from reforge import cli, pdbtools, io
-from reforge.pdbtools import AtomList
-from reforge.utils import cd, clean_dir, logger, timeit, memprofit
+from openmm import app, unit
+import logging
+from pdbfixer.pdbfixer import PDBFixer
+from reforge import cli, io
+from reforge.utils import cd, clean_dir, timeit, memprofit
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
+
+logger = logging.getLogger(__name__)
 
 
 class MmSystem(MDSystem):
@@ -45,112 +47,43 @@ class MmSystem(MDSystem):
         """Extension for OpenMM system"""
         super().prepare_files(*args, **kwargs)
 
-    def clean_pdb(self, pdb_file, **kwargs):
+    def clean_pdb(self, pdb_file, add_missing_atoms=False, add_hydrogens=False, pH=7.0, **kwargs):
         """Clean the starting PDB file using PDBfixer by OpenMM.
 
         Parameters
         ----------
         pdb_file : str
             Path to the input PDB file.
+        add_missing_atoms : bool, optional
+            Whether to add missing atoms (default: False).
+        add_hydrogens : bool, optional
+            Whether to add missing hydrogens (default: False).
+        pH : float, optional
+            pH value for adding hydrogens (default: 7.0).
         **kwargs : dict, optional
-            Additional keyword arguments for the cleaning routine.
+            Additional keyword arguments (ignored).
         """
         logger.info("Cleaning the PDB")
-        pdbtools.clean_pdb(pdb_file, self.inpdb, **kwargs)
-
-    @staticmethod
-    def forcefield(force_field="amber14-all.xml", water_model="amber14/tip3p.xml", **kwargs):
-        """Create and return an OpenMM ForceField object.
-
-        Parameters
-        ----------
-        force_field : str, optional
-            Force field file or identifier (default: 'amber14-all.xml').
-        water_model : str, optional
-            Water model file or identifier (default: 'amber14/tip3p.xml').
-        **kwargs : dict, optional
-            Additional keyword arguments for the ForceField constructor.
-
-        Returns
-        -------
-        openmm.app.ForceField
-            The constructed ForceField object.
-        """
-        forcefield = app.ForceField(force_field, water_model, **kwargs)
-        return forcefield
-
-    @staticmethod
-    def modeller(inpdb, forcefield, **kwargs):
-        """Generate a modeller object with added solvent.
-
-        Parameters
-        ----------
-        inpdb : str
-            Path to the input PDB file.
-        forcefield : openmm.app.ForceField
-            The force field object to be used.
-        **kwargs : dict, optional
-            Additional keyword arguments for solvent addition. Default values include:
-                model : 'tip3p'
-                boxShape : 'dodecahedron'
-                padding : 1.0 * nanometer
-                positiveIon : 'Na+'
-                negativeIon : 'Cl-'
-                ionicStrength : 0.1 * molar
-
-        Returns
-        -------
-        openmm.app.Modeller
-            The modeller object with solvent added.
-        """
-        kwargs.setdefault("model", "tip3p")
-        kwargs.setdefault("boxShape", "dodecahedron")
-        kwargs.setdefault("padding", 1.0 * nanometer)
-        kwargs.setdefault("positiveIon", "Na+")
-        kwargs.setdefault("negativeIon", "Cl-")
-        kwargs.setdefault("ionicStrength", 0.1 * molar)
-        pdb_file = app.PDBFile(str(inpdb))
-        modeller_obj = app.Modeller(pdb_file.topology, pdb_file.positions)
-        modeller_obj.addSolvent(forcefield, **kwargs)
-        return modeller_obj
-
-    def model(self, forcefield, modeller_obj, barostat=None, thermostat=None, **kwargs):
-        """Create a simulation model using the specified force field and modeller.
-
-        Parameters
-        ----------
-        forcefield : openmm.app.ForceField
-            The force field object.
-        modeller_obj : openmm.app.Modeller
-            The modeller object with the prepared topology.
-        barostat : openmm.Force, optional
-            Barostat force to add (default: None).
-        thermostat : openmm.Force, optional
-            Thermostat force to add (default: None).
-        **kwargs : dict, optional
-            Additional keyword arguments for creating the system. Defaults include:
-                nonbondedMethod : app.PME
-                nonbondedCutoff : 1.0 * nanometer
-                constraints : app.HBonds
-
-        Returns
-        -------
-        openmm.System
-            The simulation system created by the force field.
-        """
-        kwargs.setdefault("nonbondedMethod", app.PME)
-        kwargs.setdefault("nonbondedCutoff", 1.0 * nanometer)
-        kwargs.setdefault("constraints", app.HBonds)
-        model_obj = forcefield.createSystem(modeller_obj.topology, **kwargs)
-        if barostat:
-            model_obj.addForce(barostat)
-        if thermostat:
-            model_obj.addForce(thermostat)
-        with open(self.syspdb, "w", encoding="utf-8") as file:
-            app.PDBFile.writeFile(modeller_obj.topology, modeller_obj.positions, file, keepIds=True)
-        with open(self.sysxml, "w", encoding="utf-8") as file:
-            file.write(mm.XmlSerializer.serialize(model_obj))
-        return model_obj
+        logger.info(f"Processing {pdb_file}")
+        pdb = PDBFixer(filename=str(pdb_file))
+        logger.info("Removing heterogens and checking for missing residues...")
+        pdb.removeHeterogens(False)
+        pdb.findMissingResidues()
+        logger.info("Replacing non-standard residues...")
+        pdb.findNonstandardResidues()
+        pdb.replaceNonstandardResidues()
+        if add_missing_atoms:
+            logger.info("Adding missing atoms...")
+            pdb.findMissingAtoms()
+            pdb.addMissingAtoms()
+        if add_hydrogens:
+            logger.info("Adding missing hydrogens...")
+            pdb.addMissingHydrogens(pH)  
+        topology = pdb.topology
+        positions = pdb.positions
+        with open(self.inpdb, "w", encoding="utf-8") as outfile:
+            app.PDBFile.writeFile(topology, positions, outfile)
+        logger.info(f"Written cleaned PDB to {self.inpdb}")
 
 
 ################################################################################
@@ -315,7 +248,7 @@ class MmRun(MDRun):
         Loads the heated state, runs equilibration, and saves the equilibrated state.
         """
         logger.info("Starting equilibration...")
-        in_xml = os.path.join(self.rundir, "hu.xml")
+        in_xml = str(self.rundir / "hu.xml")
         simulation.loadState(in_xml)
         enum = enumerate(simulation.system.getForces()) 
         idx, bb_restraint = [(idx, f) for idx, f in enum if f.getName() == 'BackboneRestraint'][0]
@@ -325,9 +258,14 @@ class MmRun(MDRun):
             simulation.step(steps_per_cycle)
             new_fc = fc * (1 - (i + 1) / n_cycles)
             simulation.context.setParameter(fcname, new_fc)
+        # Remove the restraints and reinitialize context - we need to get rib of bb_fc
         simulation.system.removeForce(idx)
-        simulation.context.reinitialize(preserveState=True)
-        self.save_state(simulation, "eq")
+        state = simulation.context.getState(getPositions=True, getVelocities=True)
+        simulation.context.reinitialize(preserveState=False)
+        simulation.context.setPositions(state.getPositions())
+        simulation.context.setVelocities(state.getVelocities())
+        simulation.context.setPeriodicBoxVectors(*state.getPeriodicBoxVectors())
+        simulation.saveState(str(self.rundir / "eq.xml"))
         logger.info("Equilibration completed.")
 
     @memprofit(level=logging.INFO)
@@ -349,15 +287,15 @@ class MmRun(MDRun):
         Loads the equilibrated state, runs production, and saves the final simulation state.
         """
         logger.info("Production run...")
-        in_xml = os.path.join(self.rundir, "eq.xml")
-        simulation.loadState(in_xml)
+        in_xml = self.rundir / "eq.xml"
+        simulation.loadState(str(in_xml))
         if not nsteps:
             dt = simulation.integrator.getStepSize()
             logger.info(f"Total MD time: %s", time)
             nsteps = int(time / dt)
         logger.info(f"Number of steps left: %s", nsteps)
-        simulation.step(nsteps)
-        self.save_state(simulation, "md")
+        out_xml = self.rundir / "md.xml"
+        simulation.saveState(str(out_xml))
         logger.info("Production completed.")
 
     @memprofit(level=logging.INFO)
@@ -365,12 +303,12 @@ class MmRun(MDRun):
     def extend(self, simulation, until_time=1000, nsteps=None, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
-        xml_file = os.path.join(self.rundir, "md.xml")
-        simulation.loadState(xml_file)
-        st = simulation.context.getState()
+        in_xml = os.path.join(self.rundir, "md.xml")
+        simulation.loadState(in_xml)
+        state = simulation.context.getState()
+        curr_time = state.getTime()
         if not nsteps:
             dt = simulation.integrator.getStepSize()
-            curr_time = st.getTime()
             logger.info(f"Current time: %s", curr_time)
             logger.info(f"Extend until: %s", until_time)
             nsteps = int((until_time - curr_time) / dt)
@@ -479,14 +417,14 @@ class MmReporter(object):
             )
             self._nextModel += 1
         # update the positions and velocities if present, convert from OpenMM nm to MDAnalysis angstroms
-        positions = state.getPositions(asNumpy=True).value_in_unit(angstrom)
+        positions = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
         self._mdaUniverse.atoms.positions = positions
         save_velocities = self.describeNextReport(simulation)[2]
         if save_velocities:
-            velocities = state.getVelocities(asNumpy=True).value_in_unit(angstrom/picosecond)
+            velocities = state.getVelocities(asNumpy=True).value_in_unit(unit.angstrom/unit.picosecond)
             self._mdaUniverse.atoms.velocities = velocities
         # update box vectors
-        boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(angstrom)
+        boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.angstrom)
         self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
         self._mdaUniverse.dimensions[:3] = self._sanitize_box_angles(self._mdaUniverse.dimensions[:3])
         # write to the trajectory file
@@ -506,26 +444,46 @@ class MmReporter(object):
         return np.min(np.array([angles, inverted]), axis=0)
 
 
-################################################################################
-# Helper functions
-################################################################################
+def _get_platform_info():
+    """Report OpenMM platform and hardware information."""
+    info = {}
+    # Get number of available platforms and their names
+    num_platforms = mm.Platform.getNumPlatforms()
+    info['available_platforms'] = [mm.Platform.getPlatform(i).getName() 
+                                 for i in range(num_platforms)]
+    # Try to get the fastest platform (usually CUDA or OpenCL)
+    platform = None
+    for platform_name in ['CUDA', 'OpenCL', 'CPU']:
+        try:
+            platform = mm.Platform.getPlatformByName(platform_name)
+            info['platform'] = platform_name
+            break
+        except Exception:
+            continue 
+    if platform is None:
+        platform = mm.Platform.getPlatform(0)
+        info['platform'] = platform.getName()
+    # Get platform properties
+    info['properties'] = {}
+    try:
+        if info['platform'] in ['CUDA', 'OpenCL']:
+            info['properties']['device_index'] = platform.getPropertyDefaultValue('DeviceIndex')
+            info['properties']['precision'] = platform.getPropertyDefaultValue('Precision')
+            if info['platform'] == 'CUDA':
+                info['properties']['cuda_version'] = mm.version.cuda
+            info['properties']['gpu_name'] = platform.getPropertyValue(platform.createContext(), 'DeviceName')
+        info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
+    except Exception as e:
+        logger.warning(f"Could not get some platform properties: {str(e)}")
+    # Get OpenMM version
+    info['openmm_version'] = mm.version.full_version
+    # Log the information
+    logger.info("OpenMM Platform Information:")
+    logger.info(f"Available Platforms: {', '.join(info['available_platforms'])}")
+    logger.info(f"Selected Platform: {info['platform']}")
+    logger.info(f"OpenMM Version: {info['openmm_version']}")
+    logger.info("Platform Properties:")
+    for key, value in info['properties'].items():
+        logger.info(f"  {key}: {value}")
+    return info
 
-def sort_uld(alist):
-    """Sort characters in a list in a specific order.
-
-    Parameters
-    ----------
-    alist : list of str
-        List of characters to sort.
-
-    Returns
-    -------
-    list of str
-        Sorted list with uppercase letters first, then lowercase letters, and digits last.
-
-    Notes
-    -----
-    This function is used to help organize GROMACS multichain files.
-    """
-    slist = sorted(alist, key=lambda x: (x.isdigit(), x.islower(), x.isupper(), x))
-    return slist

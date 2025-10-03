@@ -7,11 +7,13 @@ Author: DY
 """
 
 import sys
+import logging
 import numpy as np
 from reforge.pdbtools import pdb2system
 from reforge.forge import cgmap
 from reforge.forge.topology import BondList
-from reforge.utils import logger
+
+logger = logging.getLogger(__name__)
 
 
 def get_distance(v1, v2):

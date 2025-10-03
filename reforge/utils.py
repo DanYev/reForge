@@ -6,24 +6,8 @@ Description:
     for changing the working directory, and helper functions for cleaning directories and
     detecting CUDA availability.
 
-Usage Example:
-    >>> from utils import timeit, memprofit, cd, clean_dir, cuda_info
-    >>>
-    >>> @timeit
-    ... def my_function():
-    ...     # Function implementation here
-    ...     pass
-    >>>
-    >>> with cd("/tmp"):
-    ...     # Perform operations in /tmp
-    ...     pass
-    >>>
-    >>> cuda_info()
-
 Requirements:
     - Python 3.x
-    - cupy
-    - Standard libraries: logging, os, time, tracemalloc, contextlib, functools, pathlib
 
 Author: DY
 Date: YYYY-MM-DD
@@ -37,19 +21,49 @@ import warnings
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-import cupy as cp
 
-# Use an environment variable (DEBUG=1) to toggle debug logging
-DEBUG = os.environ.get("DEBUG", "0") == "1"
-logging.basicConfig(format="[%(levelname)s] %(message)s")
-logger = logging.getLogger("reforge")
-LOG_LEVEL = logging.DEBUG if DEBUG else logging.INFO
-logger.setLevel(LOG_LEVEL)
-logger.debug("Debug mode is enabled.")
+# Logger instance - will be configured on first access
+_logger = None
 
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", module="Bio")
-warnings.filterwarnings("ignore") 
+
+def get_logger(name="reforge"):
+    """Get or create a logger instance with proper configuration.
+    
+    This function ensures the logger is only configured once and provides
+    a clean interface for accessing the logger throughout the package.
+    
+    Parameters
+    ----------
+    name : str, optional
+        Logger name (default: "reforge")
+        
+    Returns
+    -------
+    logging.Logger
+        Configured logger instance
+    """
+    global _logger
+    if _logger is None:
+        # Use an environment variable (DEBUG=1) to toggle debug logging
+        debug = os.environ.get("DEBUG", "0") == "1"
+        
+        # Configure logging format if not already configured
+        if not logging.getLogger().handlers:
+            logging.basicConfig(format="[%(levelname)s] %(message)s")
+        
+        _logger = logging.getLogger(name)
+        log_level = logging.DEBUG if debug else logging.INFO
+        _logger.setLevel(log_level)
+        
+        if debug:
+            _logger.debug("Debug mode is enabled.")
+    
+    return _logger
+
+
+# Backward compatibility - provide logger at module level
+# For new code, prefer: from reforge.utils import get_logger; logger = get_logger()
+logger = get_logger()
 
 
 def timeit(*args, **kwargs):
@@ -185,32 +199,3 @@ def clean_dir(directory=".", pattern="#*"):
     for file_path in directory.glob(pattern):
         if file_path.is_file():
             file_path.unlink()
-
-
-def cuda_info():
-    """
-    Check CUDA availability and log CUDA device information if available.
-
-    Returns:
-        bool: True if CUDA is available, False otherwise.
-    """
-    if cp.cuda.is_available():
-        logger.info("CUDA is available")
-        device_count = cp.cuda.runtime.getDeviceCount()  # pylint: disable=c-extension-no-member
-        logger.info("Number of CUDA devices: %s", device_count)
-        return True
-    logger.info("CUDA is not available")
-    return False
-
-
-def cuda_detected():
-    """
-    Check if CUDA is detected without logging detailed device information.
-
-    Returns:
-        bool: True if CUDA is available, False otherwise.
-    """
-    if cp.cuda.is_available():
-        return True
-    logger.info("CUDA is not available")
-    return False
