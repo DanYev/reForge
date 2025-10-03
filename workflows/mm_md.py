@@ -23,7 +23,7 @@ TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
-TOTAL_TIME = 100 * unit.picoseconds
+TOTAL_TIME = 40 * unit.picoseconds
 TOTAL_STEPS = 100000 
 TSTEP = 2 * unit.femtoseconds
 # Reporting
@@ -132,10 +132,11 @@ def md_npt(sysdir, sysname, runname):
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
     simulation.integrator.setStepSize(TSTEP)
+    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
-    TOTAL_STEPS = 2000
+    TOTAL_STEPS = 10000
     simulation.step(TOTAL_STEPS)
     # mdrun.md(simulation, time=TOTAL_TIME)
 
@@ -160,7 +161,6 @@ def md_nve(sysdir, sysname, runname):
     )
     # --- NVT integrator (for short equilibration) ---
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
-    integrator.setConstraintTolerance(1e-6)
     simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
     # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
@@ -172,7 +172,6 @@ def md_nve(sysdir, sysname, runname):
     # --- Run NVE (need to change the integrator and reset simulation) ---
     logger.info("Running NVE production...")
     integrator = mm.VerletIntegrator(TSTEP)
-    integrator.setConstraintTolerance(1e-6)
     state = simulation.context.getState(getPositions=True, getVelocities=True)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setState(state)
@@ -183,18 +182,17 @@ def md_nve(sysdir, sysname, runname):
     logger.info("Done!")
 
 
-def _get_reporters(mdrun, append=True, prefix="md"):
+def _get_reporters(mdrun, append=False, prefix="md"):
     mdrun.rundir.mkdir(parents=True, exist_ok=True)
     log_reporter = app.StateDataReporter(
             str(mdrun.rundir / f"{prefix}.log"), 
             LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
             totalEnergy=True, temperature=True, speed=True, append=append)
     err_reporter =  app.StateDataReporter(
-            sys.stderr, 
-            LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
+            sys.stderr, LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
             totalEnergy=True, temperature=True, speed=True, append=append)
     traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
-        reportInterval=TRJ_NOUT, selection=OUT_SELECTION, writer_kwargs={'append': append})
+            reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
     state_reporter = app.CheckpointReporter(str(mdrun.rundir / f"{prefix}.xml"), CHK_NOUT, writeState=True)
     return log_reporter, err_reporter, traj_reporter, state_reporter
 
@@ -213,9 +211,7 @@ def extend(sysdir, sysname, runname):
     system.addForce(barostat)
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, TSTEP)
     simulation = app.Simulation(pdb.topology, system, integrator)
-    for force in simulation.system.getForces():
-        print(force.getName())
-    reporters = _get_reporters(mdrun, append=True, prefix='md')
+    reporters = _get_reporters(mdrun, append=False, prefix='ext')
     simulation.reporters.extend(reporters)
     mdrun.extend(simulation, until_time=TOTAL_TIME)
     
@@ -224,13 +220,17 @@ def trjconv(sysdir, sysname, runname):
     system = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
-    traj = str(mdrun.rundir / "md.trr")
+    traj = mdrun.rundir / "md.trr"
+    ext = mdrun.rundir / "ext.trr"
+    trajs = [traj]  # combine both md and ext
+    if ext.exists():
+        trajs.append(ext)
     top = str(mdrun.rundir / "md.pdb")
     # top = mdrun.syspdb  # use original topology to avoid missing atoms
     conv_top = str(mdrun.rundir / "topology.pdb")
     if SELECTION != OUT_SELECTION:
         conv_traj = str(mdrun.rundir / f"md_selection.trr")
-        _trjconv_selection(traj, top, conv_traj, conv_top, selection=SELECTION, step=1)
+        _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
     else:
         conv_traj = traj
         shutil.copy(top, conv_top)
