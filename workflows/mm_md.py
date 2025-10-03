@@ -220,21 +220,20 @@ def trjconv(sysdir, sysname, runname):
     system = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
+    # INPUT
+    top = mdrun.rundir / "md.pdb"
+    # top = mdrun.syspdb  # use original topology to avoid missing atoms
     traj = mdrun.rundir / "md.trr"
     ext = mdrun.rundir / "ext.trr"
     trajs = [traj]  # combine both md and ext
     if ext.exists():
         trajs.append(ext)
-    top = str(mdrun.rundir / "md.pdb")
-    # top = mdrun.syspdb  # use original topology to avoid missing atoms
-    conv_top = str(mdrun.rundir / "topology.pdb")
-    if SELECTION != OUT_SELECTION:
-        conv_traj = str(mdrun.rundir / f"md_selection.trr")
-        _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
-    else:
-        conv_traj = traj
-        shutil.copy(top, conv_top)
-    out_traj = str(mdrun.rundir / f"samples.trr")
+    # CONVERT
+    conv_top = mdrun.rundir / "topology.pdb"
+    conv_traj = mdrun.rundir / "md_selection.trr"
+    _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
+    # FIT + OUTPUT
+    out_traj = mdrun.rundir / "samples.trr"
     _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=True)
 
 
@@ -243,7 +242,7 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms = u.select_atoms(selection)
     n_atoms = selected_atoms.n_atoms
     selected_atoms.write(output_top)
-    with mda.Writer(output_traj, n_atoms=n_atoms) as writer:
+    with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
             writer.write(selected_atoms)
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
@@ -256,7 +255,7 @@ def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
     ref_ag = ref_u.atoms
     u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
     logger.info("Converting/Writing Trajecory")
-    with mda.Writer(output_traj, ag.n_atoms) as W:
+    with mda.Writer(str(output_traj), ag.n_atoms) as W:
         for ts in u.trajectory:   
             if transform_vels:
                 transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
