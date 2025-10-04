@@ -41,8 +41,7 @@ def setup_martini(sysdir, sysname):
     # 1.3. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
     # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=0.9, p="backbone", pf=1000, append=False) # Martini + Go-network FF
-    mdsys.martinize_rna(elastic="no", ef=100, el=0.5, eu=1.2, merge=False, p="backbone", pf=500, append=True) # Martini RNA FF 
-    exit()
+    mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     

@@ -144,7 +144,6 @@ def martinize_rna(f, ot='molecule.itp', os='molecule.pdb',
     
     if elastic == 'yes':
         logger.info(f"Adding elastic network (el={el}, eu={eu}, ef={ef})")
-        initial_bonds = len(merged_topology.bonds)
         merged_topology.elastic_network(
             structure,
             anames=["BB1", "BB3"],
@@ -152,7 +151,7 @@ def martinize_rna(f, ot='molecule.itp', os='molecule.pdb',
             eu=eu,
             ef=ef,
         )
-        elastic_bonds = len(merged_topology.bonds) - initial_bonds
+        elastic_bonds = len(merged_topology.elnet)
         logger.info(f"Added {elastic_bonds} elastic bonds")
     
     # Generate arguments string for header
