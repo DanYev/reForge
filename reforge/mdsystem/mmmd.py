@@ -90,7 +90,6 @@ class MmSystem(MDSystem):
 ################################################################################
 
 class MmRun(MDRun):
-
     def __init__(self, sysdir, sysname, runname):
         """Initializes the MD run environment with additional directories for analysis.
 

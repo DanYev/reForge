@@ -1,4 +1,3 @@
-import shutil
 import sys
 import warnings
 import numpy as np
@@ -24,7 +23,7 @@ GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
 TOTAL_TIME = 40 * unit.picoseconds
-TOTAL_STEPS = 100000 
+TOTAL_STEPS = 10000 
 TSTEP = 2 * unit.femtoseconds
 # Reporting
 TRJ_NOUT = 1000 # save every NOUT steps
@@ -113,9 +112,9 @@ def md_npt(sysdir, sysname, runname):
     simulation.reporters.extend(reporters)
     # EM + HU
     logger.info("Minimizing energy...")
-    simulation.minimizeEnergy(maxIterations=100)
+    simulation.minimizeEnergy(maxIterations=1000)
     logger.info("Heating up...")
-    n_cycles = 10
+    n_cycles = 100
     steps_per_cycle = 100
     for i in range(n_cycles):
         simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
@@ -127,7 +126,7 @@ def md_npt(sysdir, sysname, runname):
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=10, steps_per_cycle=100)
+    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
     # MD
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
@@ -136,7 +135,6 @@ def md_npt(sysdir, sysname, runname):
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
-    TOTAL_STEPS = 10000
     simulation.step(TOTAL_STEPS)
     # mdrun.md(simulation, time=TOTAL_TIME)
 

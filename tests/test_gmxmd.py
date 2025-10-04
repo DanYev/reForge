@@ -4,8 +4,8 @@ Test Suite for reforge.mdsystem.gmxmd Package and gmx_md Workflow
 """
 
 from pathlib import Path
-import shutil
 import pytest
+import shutil
 import sys
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 
