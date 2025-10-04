@@ -14,7 +14,8 @@ from pathlib import Path
 from MDAnalysis import Universe
 from MDAnalysis.analysis.dssp import translate, DSSP
 from reforge import cli
-import reforge.martini
+from reforge.martini import martinize_rna
+from reforge.martini.martinize_rna import martinize_rna
 from reforge.utils import cd
 
 logger = logging.getLogger(__name__)
@@ -89,21 +90,15 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
     out_map : str or Path, optional
         Output map filename. Default is "go.map".
     """
-    # Convert to Path objects
     wdir_path = Path(wdir)
     in_map_path = wdir_path / in_map
     out_map_path = wdir_path / out_map
-    
     logger.info(f"Fixing Go-map file: {in_map_path} -> {out_map_path}")
-    
-    # Check if input file exists
     if not in_map_path.exists():
         logger.error(f"Input map file does not exist: {in_map_path}")
         raise FileNotFoundError(f"Input map file does not exist: {in_map_path}")
-    
     lines_processed = 0
     lines_modified = 0
-    
     with open(in_map_path, "r", encoding="utf-8") as in_file:
         with open(out_map_path, "w", encoding="utf-8") as out_file:
             for line in in_file:
@@ -114,13 +109,12 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
                     lines_modified += 1
                 else:
                     out_file.write(line)
-    
     logger.info(f"Go-map fix completed: {lines_processed} lines processed, {lines_modified} lines modified")
     logger.info(f"Output written to: {out_map_path}")
 
 
 @cli.from_wdir
-def martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
+def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
                  go_low=0.3, go_up=1.1, go_res_dist=3,**kwargs):
     """Run virtual site-based GoMartini via martinize2.
 
@@ -196,7 +190,7 @@ def martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
 
 
 @cli.from_wdir
-def martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, **kwargs):
+def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, **kwargs):
     """Run protein elastic network generation via martinize2.
 
     Parameters
@@ -233,7 +227,7 @@ def martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, **kwargs):
         cli.run("martinize2", line, **kwargs)
 
 
-def martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
+def run_martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
     """Run nucleotide coarse-graining using martinize_nucleotides.
 
     Parameters
@@ -259,7 +253,7 @@ def martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
         cli.run("python3 -m", script, **kwargs)
 
 
-def martinize_rna(wdir, **kwargs):
+def run_martinize_rna(wdir, **kwargs):
     """Run RNA coarse-graining using martinize_rna.
 
     Parameters
@@ -270,7 +264,7 @@ def martinize_rna(wdir, **kwargs):
         Additional parameters.
     """
     with cd(wdir):
-        reforge.martini.martinize_rna(**kwargs)
+        martinize_rna(**kwargs)
 
 
 def insert_membrane(**kwargs):

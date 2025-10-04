@@ -315,7 +315,7 @@ class MDSystem:
             output_pdb = self.cgdir / pdb_file
             mol_name = pdb_file.split(".")[0]
             go_map = self.mapdir / f"{mol_name}.map"
-            martini_tools.martinize_go(self.root, self.topdir, input_pdb, output_pdb, name=mol_name, **kwargs)
+            martini_tools.run_martinize_go(self.root, self.topdir, input_pdb, output_pdb, name=mol_name, **kwargs)
         clean_dir(self.cgdir)
         clean_dir(self.root)
         clean_dir(self.root, "*.itp")
@@ -354,7 +354,7 @@ class MDSystem:
             temp_itp = self.root / "molecule_0.itp"
             final_itp = self.topdir / pdb_file.replace("pdb", "itp")
             temp_top = self.root / "protein.top"
-            martini_tools.martinize_en(self.root, input_pdb, output_pdb, **kwargs)
+            martini_tools.run_martinize_en(self.root, input_pdb, output_pdb, **kwargs)
             with open(temp_itp, "r", encoding="utf-8") as f:
                 content = f.read()
             mol_name = pdb_file[:-4]
@@ -384,7 +384,7 @@ class MDSystem:
         for pdb_file in pdb_files:
             input_pdb = self.nucdir / pdb_file.name
             output_pdb = self.cgdir / pdb_file.name
-            martini_tools.martinize_nucleotide(self.root, input_pdb, output_pdb, **kwargs)
+            martini_tools.run_martinize_nucleotide(self.root, input_pdb, output_pdb, **kwargs)
         nucleic_files = [p.name for p in self.root.iterdir() if p.name.startswith("Nucleic")]
         for nucleic_file in nucleic_files:
             temp_file_path = self.root / nucleic_file
@@ -421,7 +421,7 @@ class MDSystem:
             input_pdb = self.nucdir / pdb_file
             output_pdb = self.cgdir / pdb_file
             output_itp = self.topdir / f"{mol_name}.itp"
-            martini_tools.martinize_rna(self.root, 
+            martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
 
     def insert_membrane(self, **kwargs):

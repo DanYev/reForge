@@ -30,11 +30,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='molecule.pdb',
-                  force_field='reg', molecule_name='molecule', merge_chains='yes',
-                  elastic_network='yes', elastic_force=200, elastic_lower=0.3, 
-                  elastic_upper=1.2, position_restraints='backbone', 
-                  restraint_force=1000, debug=False):
+def martinize_rna(f, ot='molecule.itp', os='molecule.pdb',
+                  ff='reg', mol='molecule', merge='yes',
+                  elastic='yes', ef=200, el=0.3, 
+                  eu=1.2, p='backbone', 
+                  pf=1000, debug=False):
     """
     Main martinization function that can be imported and used programmatically.
     
@@ -47,29 +47,29 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
     
     Parameters:
     -----------
-    input_pdb : str
+    f : str
         Path to input all-atom RNA structure PDB file
-    output_topology : str, optional
+    ot : str, optional
         Output topology file path (default: 'molecule.itp')
-    output_structure : str, optional
+    os : str, optional
         Output CG structure file path (default: 'molecule.pdb')
-    force_field : str, optional
+    ff : str, optional
         Force field variant: 'reg' for regular (default: 'reg')
-    molecule_name : str, optional
+    mol : str, optional
         Molecule name in topology file (default: 'molecule')
-    merge_chains : str, optional
+    merge : str, optional
         Merge separate chains if detected: 'yes'/'no' (default: 'yes')
-    elastic_network : str, optional
+    elastic : str, optional
         Add elastic network: 'yes'/'no' (default: 'yes')
-    elastic_force : float, optional
+    ef : float, optional
         Elastic network force constant in kJ/mol/nm² (default: 200)
-    elastic_lower : float, optional
+    el : float, optional
         Elastic network lower cutoff in nm (default: 0.3)
-    elastic_upper : float, optional
+    eu : float, optional
         Elastic network upper cutoff in nm (default: 1.2)
-    position_restraints : str, optional
+    p : str, optional
         Position restraints: 'no'/'backbone'/'all' (default: 'backbone')
-    restraint_force : float, optional
+    pf : float, optional
         Position restraint force constant in kJ/mol/nm² (default: 1000)
     debug : bool, optional
         Enable debug logging (default: False)
@@ -83,21 +83,21 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
         logger.setLevel(logging.DEBUG)
     
     logger.info("=== Starting RNA Martinization ===")
-    logger.info(f"Input PDB: {input_pdb}")
-    logger.info(f"Output structure: {output_structure}")
-    logger.info(f"Output topology: {output_topology}")
-    logger.info(f"Force field: {force_field}")
-    logger.info(f"Molecule name: {molecule_name}")
-    logger.info(f"Elastic network: {elastic_network}")
+    logger.info(f"Input PDB: {f}")
+    logger.info(f"Output structure: {os}")
+    logger.info(f"Output topology: {ot}")
+    logger.info(f"Force field: {ff}")
+    logger.info(f"Molecule name: {mol}")
+    logger.info(f"Elastic network: {elastic}")
     
-    if force_field == "reg":
+    if ff == "reg":
         logger.info("Initializing Martini 3.0 RNA force field")
-        ff = Martini30RNA()
+        force_field = Martini30RNA()
     else:
-        raise ValueError(f"Unsupported force field option: {force_field}")
+        raise ValueError(f"Unsupported force field option: {ff}")
     
-    logger.info(f"Parsing PDB file: {input_pdb}")
-    system = pdb2system(input_pdb)
+    logger.info(f"Parsing PDB file: {f}")
+    system = pdb2system(f)
     logger.info(f"Loaded system with {sum(len(list(chain)) for chain in system.chains())} atoms")
     
     logger.info("Moving O3' atoms to next residues")
@@ -117,7 +117,7 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
         logger.info(f"Processing chain {i+1}/{len(chains)}")
         logger.info(f"Processing chain with {len(chain_residues)} residues: {sequence_str}")
         
-        cg_atoms, chain_top = process_chain(chain, ff, start_idx, molecule_name)
+        cg_atoms, chain_top = process_chain(chain, force_field, start_idx, mol)
         
         # Log chain topology statistics
         logger.info(f"Chain topology: {len(cg_atoms)} atoms, "
@@ -130,8 +130,8 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
         start_idx += len(cg_atoms)
     
     logger.info(f"Total CG atoms generated: {len(structure)}")
-    logger.info(f"Writing CG structure to: {output_structure}")
-    structure.write_pdb(output_structure)
+    logger.info(f"Writing CG structure to: {os}")
+    structure.write_pdb(os)
     
     logger.info(f"Merging {len(topologies)} topology objects")
     merged_topology = merge_topologies(topologies)
@@ -142,40 +142,39 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
                f"{len(merged_topology.angles)} angles, "
                f"{len(merged_topology.dihs)} dihedrals")
     
-    if elastic_network == 'yes':
-        logger.info(f"Adding elastic network (el={elastic_lower}, eu={elastic_upper}, ef={elastic_force})")
+    if elastic == 'yes':
+        logger.info(f"Adding elastic network (el={el}, eu={eu}, ef={ef})")
         initial_bonds = len(merged_topology.bonds)
         merged_topology.elastic_network(
             structure,
             anames=["BB1", "BB3"],
-            el=elastic_lower,
-            eu=elastic_upper,
-            ef=elastic_force,
+            el=el,
+            eu=eu,
+            ef=ef,
         )
         elastic_bonds = len(merged_topology.bonds) - initial_bonds
         logger.info(f"Added {elastic_bonds} elastic bonds")
     
     # Generate arguments string for header
-    import datetime
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Format the parsed arguments with their actual values
     args_formatted = (
-        f"input_pdb='{input_pdb}', output_topology='{output_topology}', "
-        f"output_structure='{output_structure}', force_field='{force_field}', "
-        f"molecule_name='{molecule_name}', merge_chains='{merge_chains}', "
-        f"elastic_network='{elastic_network}', elastic_force={elastic_force}, "
-        f"elastic_lower={elastic_lower}, elastic_upper={elastic_upper}, "
-        f"position_restraints='{position_restraints}', restraint_force={restraint_force}, "
+        f"f='{f}', ot='{ot}', "
+        f"os='{os}', ff='{ff}', "
+        f"mol='{mol}', merge='{merge}', "
+        f"elastic='{elastic}', ef={ef}, "
+        f"el={el}, eu={eu}, "
+        f"p='{p}', pf={pf}, "
         f"debug={debug}"
     )
     
-    logger.info(f"Writing topology file to: {output_topology}")
+    logger.info(f"Writing topology file to: {ot}")
     # Pass arguments and timestamp to the topology writer
-    with open(output_topology, "w", encoding="utf-8") as file:
-        lines = itpio.format_header(molname=molecule_name, forcefield=ff.name, arguments=args_formatted, timestamp=timestamp)
+    with open(ot, "w", encoding="utf-8") as file:
+        lines = itpio.format_header(molname=mol, forcefield=force_field.name, arguments=args_formatted, timestamp=timestamp)
         lines += itpio.format_sequence_section(merged_topology.sequence, merged_topology.secstruct)
-        lines += itpio.format_moleculetype_section(molname=molecule_name, nrexcl=1)
+        lines += itpio.format_moleculetype_section(molname=mol, nrexcl=1)
         lines += itpio.format_atoms_section(merged_topology.atoms)
         lines += itpio.format_bonded_section("bonds", merged_topology.bonds)
         lines += itpio.format_bonded_section("angles", merged_topology.angles)
@@ -190,10 +189,10 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
             file.write(line)
     
     logger.info("=== RNA Martinization completed successfully ===")
-    logger.info(f"Coarse-grained structure written to: {output_structure}")
-    logger.info(f"Topology file written to: {output_topology}")
+    logger.info(f"Coarse-grained structure written to: {os}")
+    logger.info(f"Topology file written to: {ot}")
     
-    return output_structure, output_topology
+    return os, ot
 
 
 def process_chain(_chain, _ff, _start_idx, _mol_name):
@@ -359,18 +358,18 @@ Please cite:
     
     # Call the main martinization function
     martinize_rna(
-        input_pdb=args.f,
-        output_topology=args.ot,
-        output_structure=args.os,
-        force_field=args.ff,
-        molecule_name=args.mol,
-        merge_chains=args.merge,
-        elastic_network=args.elastic,
-        elastic_force=args.ef,
-        elastic_lower=args.el,
-        elastic_upper=args.eu,
-        position_restraints=args.p,
-        restraint_force=args.pf,
+        f=args.f,
+        ot=args.ot,
+        os=args.os,
+        ff=args.ff,
+        mol=args.mol,
+        merge=args.merge,
+        elastic=args.elastic,
+        ef=args.ef,
+        el=args.el,
+        eu=args.eu,
+        p=args.p,
+        pf=args.pf,
         debug=args.debug
     )
 

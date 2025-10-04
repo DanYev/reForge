@@ -14,21 +14,10 @@ warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
 # Global settings
 INPDB = 'dsRNA.pdb'
-MARTINI = True  # True for CG systems, False for AA systems
-# Reporting
-TRJ_NOUT = 1000 # save every NOUT steps
-CHK_NOUT = 1000 
-LOG_NOUT = 1000 
-OUT_SELECTION = "protein" 
-# Analysis
-SELECTION = "name CA" 
 
 
 def setup(*args):
-    if not MARTINI:
-        setup_aa(*args)
-    else:
-        setup_martini(*args)
+    setup_martini(*args)
 
 
 def setup_martini(sysdir, sysname):
@@ -96,10 +85,10 @@ def trjconv(sysdir, sysname, runname, **kwargs):
     mdrun = GmxRun(sysdir, sysname, runname)
     k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions
     # mdrun.trjconv(clinput=f"0\n 0\n", s="eq.tpr", f="eq.gro", o="viz.pdb", n=mdrun.sysndx, pbc="atom", ur="compact", e=0)
-    mdrun.convert_tpr(clinput=f"{k}\n", s="md.tpr", n=mdrun.sysndx, o="conv.tpr")
+    mdrun.convert_tpr(clinput=f"{k}\n", s="md.tpr", n=mdrun.sysndx, o="topology.tpr")
     mdrun.trjconv(clinput=f"{k}\n {k}\n", s="md.tpr", f="md.xtc", o="conv.xtc", n=mdrun.sysndx, pbc="cluster", ur="compact", **kwargs)
-    mdrun.trjconv(clinput="0\n 0\n", s="conv.tpr", f="conv.xtc", o="top.pdb", fit="rot+trans", e=0)
-    mdrun.trjconv(clinput="0\n 0\n", s="conv.tpr", f="conv.xtc", o="mdc.xtc", fit="rot+trans")
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="samples.xtc", fit="rot+trans")
     clean_dir(mdrun.rundir)
 
 
