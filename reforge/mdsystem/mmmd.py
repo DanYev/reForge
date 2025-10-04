@@ -262,7 +262,8 @@ class MmRun(MDRun):
                 sys.exit(0) 
         logger.info(f"Number of steps left: %s", nsteps)
         simulation.step(nsteps)
-        self.save_state(simulation, "md")
+        out_xml = self.rundir / "ext.xml"
+        simulation.saveState(str(out_xml))
         logger.info("Production completed.")
 
 
