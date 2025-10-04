@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install basic dependencies for docs
-          pip install sphinx sphinx-rtd-theme
+          # Install Sphinx and documentation dependencies
+          pip install sphinx sphinx-rtd-theme sphinx-gallery
           # Install minimal project dependencies (skip heavy ones like CUDA)
           pip install numpy matplotlib pandas
           # Try to install project in development mode (may fail, that's ok)
