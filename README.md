@@ -21,8 +21,9 @@ The script loads bonded parameters from:
 The non-bonded parameters need to be included in the GROMACS topology file:
 `scripts/martinize_rna_v3.0.0_itps/martini_v3.0.0_rna.itp`
 
-Please cite:
-Yangaliev D, Ozkan SB. Coarse-grained RNA model for the Martini 3 force field. Biophys J. 2025 Aug 5:S0006-3495(25)00483-7. doi: 10.1016/j.bpj.2025.07.034. Epub ahead of print. PMID: 40753455; PMCID: PMC12456326.
+### Citation
+
+> Yangaliev D, Ozkan SB. Coarse-grained RNA model for the Martini 3 force field. Biophys J. 2025 Aug 5:S0006-3495(25)00483-7. doi: 10.1016/j.bpj.2025.07.034. 
 
 ### Copyright
 
