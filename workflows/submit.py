@@ -60,7 +60,8 @@ if __name__ == "__main__":
     sysnames = ['sys_test'] 
     runs = ['run_test']
 
-    sys_job('setup', submit=False)
-    # run_job('md_npt', submit=False, G='1')
-    # run_job('extend', submit=False, G='1')
-    # run_job('trjconv', submit=False)
+    submit = False
+    # sys_job('setup', submit=submit)
+    run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
+    # run_job('extend', submit=submit, G='1', c='4', mem='2G')
+    # run_job('trjconv', submit=submit)
