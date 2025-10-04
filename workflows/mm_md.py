@@ -1,5 +1,4 @@
 import sys
-import warnings
 import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.transformations import fit_rot_trans
