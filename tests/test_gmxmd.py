@@ -1,19 +1,6 @@
 """
-Test Suite for reforge.mdsystem.gmxmd Package
+Test Suite for reforge.mdsystem.gmxmd Package and gmx_md Workflow
 =====================================
-
-This module contains unit tests for the functions provided by the 
-`reforge.gmxmd` package (and related CLI commands). These tests verify
-the correct behavior of file preparation, PDB sorting, Gromacs command 
-execution, PDB cleaning, chain splitting, and other functionality related 
-to setting up molecular dynamics (MD) simulations with Gromacs.
-
-Usage:
-    Run the tests with pytest from the project root:
-
-        pytest -v tests/test_gmxmd.py
-
-Author: DY
 """
 
 from pathlib import Path
@@ -43,31 +30,37 @@ def cleanup_test_files():
     yield mdsys  # This runs the tests
     shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
 
-# def test_prepare_files():
-#     mdsys.prepare_files()
+def test_prepare_files():
+    mdsys.prepare_files()
 
-# def test_sort_input_pdb():
-#     mdsys.sort_input_pdb(in_pdb)
-#     assert (Path(mdsys.root) / "inpdb.pdb").exists()
+def test_sort_input_pdb():
+    mdsys.sort_input_pdb(in_pdb)
+    assert (Path(mdsys.root) / "inpdb.pdb").exists()
 
-# def test_gmx():
-#     mdsys.gmx('')
+def test_gmx():
+    mdsys.gmx('')
 
-# def test_clean_pdb_gmx():
-#     mdsys.clean_pdb_gmx(clinput='6\n7\n', ignh='yes')
+def test_clean_pdb_gmx():
+    mdsys.clean_pdb_gmx(clinput='6\n7\n', ignh='yes')
 
-# def test_split_chains():
-#     mdsys.split_chains()
-#     assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
-#     assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
+def test_split_chains():
+    mdsys.split_chains()
+    assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
+    assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
 
-# def test_clean_chains_gmx():
-#     mdsys.clean_chains_gmx(clinput='6\n7\n', ignh='yes')
-#     assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
-#     assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
+def test_clean_chains_gmx():
+    mdsys.clean_chains_gmx(clinput='6\n7\n', ignh='yes')
+    assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
+    assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
 
-# def test_setup_martini():
-#     gmx_md.setup_martini(sysdir, sysname)
+def test_setup_martini():
+    gmx_md.setup_martini(sysdir, sysname)
 
 def test_md_npt():
     gmx_md.md_npt(sysdir, sysname, runname)
+
+def test_extend():
+    gmx_md.extend(sysdir, sysname, runname)
+
+def test_trjconv():
+    gmx_md.trjconv(sysdir, sysname, runname)
