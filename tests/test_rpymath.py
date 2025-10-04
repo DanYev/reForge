@@ -29,10 +29,20 @@ from reforge.rfgmath import rpymath
 # Skip GPU tests if CUDA is not available
 try:
     import cupy as cp
-    from reforge.utils import cuda_detected
-    cuda_detected()
+    # Check if CUDA is actually available and accessible
+    cuda_available = cp.cuda.is_available()
+    if cuda_available:
+        # Try to access a CUDA device to ensure it's working
+        try:
+            cp.cuda.Device(0).use()
+            cuda_available = True
+        except cp.cuda.runtime.CUDARuntimeError:
+            cuda_available = False
+    else:
+        cuda_available = False
 except ImportError:
     cp = None
+    cuda_available = False
 
 
 def test_covariance_matrix():
@@ -209,7 +219,7 @@ def test_inverse_matrix_cpu():
 ## GPU tests ##
 #############################
 
-@pytest.mark.skipif(cp is None, reason='CUDA not detected')
+@pytest.mark.skipif(not cuda_available, reason='CUDA not available or not accessible')
 def test_gfft_ccf():
     """
     Validate the GPU-based FFT correlation function (gfft_corr).
@@ -233,7 +243,7 @@ def test_gfft_ccf():
     np.testing.assert_allclose(corr, corr_ser, rtol=1e-10, atol=1e-10)
 
 
-@pytest.mark.skipif(cp is None, reason='CUDA not detected')
+@pytest.mark.skipif(not cuda_available, reason='CUDA not available or not accessible')
 def test_gfft_ccf_auto():
     """
     Test that gfft_ccf_auto returns the same result as gfft_ccf
@@ -249,7 +259,7 @@ def test_gfft_ccf_auto():
     np.testing.assert_allclose(test, ref, rtol=1e-10, atol=1e-10)    
 
 
-@pytest.mark.skipif(cp is None, reason='CUDA not detected')
+@pytest.mark.skipif(not cuda_available, reason='CUDA not available or not accessible')
 def test_inverse_sparse_matrix_gpu():
     """
     Test the GPU-based sparse matrix inversion (_inverse_sparse_matrix_gpu).
@@ -271,7 +281,7 @@ def test_inverse_sparse_matrix_gpu():
     np.testing.assert_allclose(inv_matrix, expected_inv, rtol=0, atol=1e-6)
 
 
-@pytest.mark.skipif(cp is None, reason='CUDA not detected')
+@pytest.mark.skipif(not cuda_available, reason='CUDA not available or not accessible')
 def test_inverse_matrix_gpu():
     """
     Verify the GPU matrix inversion function (_inverse_matrix_gpu).

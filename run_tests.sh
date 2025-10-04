@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=0-01:00:00                                                       
+#SBATCH --time=0-00:10:00                                                       
 #SBATCH --partition=htc
 #SBATCH --qos=public
 #SBATCH --nodes=1
@@ -43,6 +43,7 @@ else
     pytest -v tests/test_mdm.py --maxfail=1 --disable-warnings -q
     pytest -v tests/test_pdbtools.py --maxfail=1 --disable-warnings -q
     pytest -v tests/test_gmxmd.py --maxfail=1 --disable-warnings -q
+    pytest -v tests/test_martinize.py --maxfail=1 --disable-warnings -q
 fi
 
 # ghp-import -n -p -f build/html
