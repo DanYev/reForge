@@ -7,8 +7,8 @@ extensions = [
         "reforge.rfgmath.rcmath",           # Full module name
         ["reforge/rfgmath/rcmath.pyx"],     # Path to your .pyx file
         include_dirs=[np.get_include()],     # Include numpy headers if needed
-        extra_compile_args=["-O3", "-fopenmp", "-ffast-math", "-march=native", "-ftree-vectorize"],  
-        # extra_compile_args=["-O3", "-fopenmp"],  
+        extra_compile_args=["-O3", "-fopenmp", "-ffast-math", "-ftree-vectorize"],  
+        # extra_compile_args=["-O3", "-fopenmp"],  # Minimal safe version  
         extra_link_args=["-fopenmp"]
     )
 ]
