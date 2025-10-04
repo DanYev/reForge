@@ -26,8 +26,6 @@ rna_pdb = mdsys.root / ".." / "dsRNA.pdb"
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
     """Setup and cleanup test files"""
-    # Setup
-    mdsys = GmxSystem("tests", "test_sys")
     if mdsys.root.exists():
         shutil.rmtree(mdsys.root)
     yield mdsys  # This runs the tests

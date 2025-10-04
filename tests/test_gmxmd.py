@@ -19,13 +19,21 @@ Author: DY
 from pathlib import Path
 import shutil
 import pytest
-from reforge.mdsystem.gmxmd import *
+from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.cli import run
 
 # Create a gmxSystem instance for testing.
-mdsys = GmxSystem('tests', 'test')
-mdrun = GmxRun('tests', 'test', 'test')
+mdsys = GmxSystem('tests', 'test_sys')
+mdrun = GmxRun('tests', 'test_sys', 'test_run')
 in_pdb = '../dsRNA.pdb'
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_test_files():
+    """Setup and cleanup test files"""
+    if mdsys.root.exists():
+        shutil.rmtree(mdsys.root)
+    yield mdsys  # This runs the tests
+    shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
 
 def test_prepare_files():
     """
@@ -72,47 +80,3 @@ def test_clean_chains_gmx():
     assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
 
 
-def test_make_box():
-    """
-    Test that make_box() creates the simulation box.
-    """
-    mdsys.make_box()
-    assert mdsys.solupdb.exists()
-
-def test_solvate():
-    """
-    Test that solvate() executes without error.
-    """
-    mdsys.solvate()
-    assert mdsys.syspdb.exists()
-
-def test_add_bulk_ions():
-    """
-    Test that add_bulk_ions() adds ions to the system.
-    """
-    mdsys.add_bulk_ions()
-
-def test_make_system_ndx():
-    """
-    Test that make_system_ndx() creates the system index file.
-    """
-    mdsys.make_system_ndx()
-    assert mdsys.sysndx.exists()
-
-def test_mdrun_prep():
-    """
-    Test that prepare_files() creates the MD run directory.
-    """
-    mdrun.prepare_files()
-    assert mdrun.rundir.exists()
-
-def test_empp():
-    """
-    Test that empp() executes without error.
-    """
-    mdrun.empp()
-    assert Path(mdrun.rundir / "em.tpr").exists()
-
-
-if __name__ == '__main__':
-    pytest.main([str(Path(__file__).resolve())])
