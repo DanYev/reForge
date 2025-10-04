@@ -19,7 +19,7 @@ TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
-TOTAL_TIME = 10 * unit.nanoseconds
+TOTAL_TIME = 40 * unit.picoseconds
 TOTAL_STEPS = 10000 
 TSTEP = 2 * unit.femtoseconds
 # Reporting
@@ -132,9 +132,9 @@ def md_npt(sysdir, sysname, runname):
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
-    nsteps = int(TOTAL_TIME / TSTEP)
-    simulation.step(nsteps)
-    # simulation.step(TOTAL_STEPS)
+    # nsteps = int(TOTAL_TIME / TSTEP)
+    # simulation.step(nsteps)
+    simulation.step(TOTAL_STEPS)
     simulation.saveState(str(mdrun.rundir / "md.xml"))
 
 
