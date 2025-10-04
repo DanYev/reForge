@@ -11,8 +11,6 @@ from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
 from reforge.utils import clean_dir, get_logger
 
 logger = get_logger()
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
 # Global settings
 INPDB = '1btl.pdb'
@@ -119,6 +117,7 @@ def md_npt(sysdir, sysname, runname):
     for i in range(n_cycles):
         simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
         simulation.step(steps_per_cycle)
+    exit()
     simulation.saveState(str(mdrun.rundir / "hu.xml"))
     # Adding barostat + EQ
     logger.info("Equilibrating...")

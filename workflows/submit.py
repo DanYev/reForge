@@ -53,7 +53,7 @@ MARTINI = True
 if __name__ == "__main__":
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
-    pyscript = str(pdir / 'gmx_md.py')
+    pyscript = str(pdir / 'mm_md.py')
     print(f"Using script: {pyscript}")
 
     sysdir = 'tests/test' 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     runs = ['run_test']
 
     submit = False
-    # sys_job('setup', submit=submit)
+    sys_job('setup', submit=submit)
     run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     # run_job('trjconv', submit=submit)

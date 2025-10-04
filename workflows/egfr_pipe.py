@@ -22,6 +22,8 @@ from reforge import cli, io, mdm, pdbtools
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import *
 
+# Warning filters are now handled globally in reforge.__init__.py
+
 
 def setup(*args):
     setup_cg_protein_membrane(*args)
