@@ -53,15 +53,24 @@ MARTINI = True
 if __name__ == "__main__":
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
-    pyscript = str(pdir / 'mm_md.py')
-    print(f"Using script: {pyscript}")
 
     sysdir = 'tests/test' 
     sysnames = ['sys_test'] 
     runs = ['run_test']
 
     submit = False
-    sys_job('setup', submit=submit)
-    run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
+
+    ##### For MD #####
+    pyscript = str(pdir / 'mm_md.py')
+    # sys_job('setup', submit=submit)
+    # run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
-    # run_job('trjconv', submit=submit)
+    run_job('trjconv', submit=submit)
+
+    ##### Analysis #####
+    pyscript = str(pdir / 'common.py')
+    # sys_job('pca_trajs', submit=submit) # For PCA
+    # sys_job('clust_cov', submit=submit) # For Clustering
+    # run_job('cov_analysis', submit=submit) # For DFI/DCI
+    # sys_job('get_means_sems', submit=submit) 
+    run_job('tdlrt_analysis', submit=submit) # For TDLRT

@@ -15,7 +15,7 @@ extensions = [
 
 setup(
     name="reforge",
-    version="0.1.0",
+    version="0.1.1",
     packages=find_packages(),
     ext_modules=cythonize(extensions),
 )
