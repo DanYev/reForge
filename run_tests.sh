@@ -43,6 +43,7 @@ else
     pytest -v tests/test_mdm.py --maxfail=1 --disable-warnings -q
     pytest -v tests/test_pdbtools.py --maxfail=1 --disable-warnings -q
     pytest -v tests/test_gmxmd.py --maxfail=1 --disable-warnings -q
+    pytest -v tests/test_martinize.py --maxfail=1 --disable-warnings -q
 fi
 
 # ghp-import -n -p -f build/html

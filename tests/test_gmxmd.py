@@ -71,27 +71,6 @@ def test_clean_chains_gmx():
     assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
     assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
 
-def test_martinize_rna():
-    """
-    Test that martinize_rna() executes without error.
-    """
-    mdsys.martinize_rna()
-    assert (Path(mdsys.topdir) / "chain_A.itp").exists()
-    assert (Path(mdsys.topdir) / "chain_B.itp").exists()
-
-def test_make_cg_structure():
-    """
-    Test that make_cg_structure() creates the solute PDB file.
-    """
-    mdsys.make_cg_structure()
-    assert mdsys.solupdb.exists()
-
-def test_make_cg_topology():
-    """
-    Test that make_cg_topology() creates the system topology file.
-    """
-    mdsys.make_cg_topology()
-    assert mdsys.systop.exists()
 
 def test_make_box():
     """

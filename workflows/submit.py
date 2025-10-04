@@ -48,19 +48,19 @@ def run_job(function, submit=False, **kwargs):
                       J=f'{function}', **kwargs)
 
 
-MARTINI = False
+MARTINI = True
 
 if __name__ == "__main__":
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
-    pyscript = str(pdir / 'mm_md.py')
+    pyscript = str(pdir / 'gmx_md.py')
     print(f"Using script: {pyscript}")
 
     sysdir = 'tests/test' 
     sysnames = ['sys_test'] 
     runs = ['run_test']
 
-    # sys_job('setup', submit=False)
+    sys_job('setup', submit=False)
     # run_job('md_npt', submit=False, G='1')
     # run_job('extend', submit=False, G='1')
-    run_job('trjconv', submit=False)
+    # run_job('trjconv', submit=False)

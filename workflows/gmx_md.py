@@ -2,14 +2,26 @@ import inspect
 import os
 import sys
 import logging
+import warnings
 from pathlib import Path
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
-from reforge.utils import clean_dir
+from reforge.utils import clean_dir, get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger()
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
-from config import MARTINI, INPDB
+# Global settings
+INPDB = '1btl.pdb'
+MARTINI = True  # True for CG systems, False for AA systems
+# Reporting
+TRJ_NOUT = 1000 # save every NOUT steps
+CHK_NOUT = 1000 
+LOG_NOUT = 1000 
+OUT_SELECTION = "protein" 
+# Analysis
+SELECTION = "name CA" 
 
 
 def setup(*args):
@@ -28,7 +40,7 @@ def setup_martini(sysdir, sysname):
     mdsys.sort_input_pdb(mdsys.sysdir / INPDB) # sorts chain and atoms in the input file and returns makes mdsys.inpdb file
 
     # 1.2.1 Try to clean the input PDB and split the chains based on the type of molecules (protein, RNA/DNA)
-    mdsys.clean_pdb_mm(add_missing_atoms=True, add_hydrogens=True, pH=7.0)
+    mdsys.clean_pdb_mm(inpdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
     mdsys.split_chains()
     # mdsys.clean_chains_mm(add_missing_atoms=False, add_hydrogens=False, pH=7.0)  # if didn"t work for the whole PDB
     
@@ -39,7 +51,7 @@ def setup_martini(sysdir, sysname):
     # mdsys.get_go_maps(append=True)
 
     # 1.3. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
-    # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, p="backbone", pf=500, append=True)  # Martini + Elastic network FF 
+    # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=0.9, p="backbone", pf=1000, append=False) # Martini + Go-network FF
     # mdsys.martinize_rna(elastic="no", ef=50, el=0.5, eu=1.3, p="backbone", pf=500, append=True) # Martini RNA FF 
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
@@ -91,5 +103,8 @@ def trjconv(sysdir, sysname, runname, **kwargs):
     clean_dir(mdrun.rundir)
 
 
+if __name__ == "__main__":
+    from reforge.cli import run_command
+    run_command()
 
     

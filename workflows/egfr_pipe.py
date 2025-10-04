@@ -85,10 +85,6 @@ def label_segments(in_pdb, out_pdb):
             return "JM"  # Juxtamembrane segment
         elif 683 <= resid <= 711:
             return "UNK"  # Undefined/Not clearly assigned
-        # elif 712 <= resid <= 797:
-        #     return "KDN"  # Kinase N-lobe domain
-        # elif 798 <= resid <= 978:
-        #     return "KDC"  # Kinase C-lobe domain
         elif 712 <= resid <= 978:
             return "KDN"  # Kinase domain
         elif 979 <= resid <= 995:
@@ -103,7 +99,7 @@ def label_segments(in_pdb, out_pdb):
             atom.segid = label + atom.chid
         else:
             atom.segid = label 
-        atoms.write_pdb(out_pdb)
+    atoms.write_pdb(out_pdb)
 
 
 def md(sysdir, sysname, runname, ntomp): 

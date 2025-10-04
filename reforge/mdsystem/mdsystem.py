@@ -25,8 +25,9 @@ import shutil
 import subprocess as sp
 import numpy as np
 import logging
+from openmm.app import PDBFile
+from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
-from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
 
@@ -136,18 +137,43 @@ class MDSystem:
         with cd(self.root):
             pdbtools.sort_pdb(in_pdb, self.inpdb)
 
-    def clean_pdb_mm(self, in_pdb=None, **kwargs):
-        """Cleans the starting PDB file using PDBfixer (via OpenMM).
+    def clean_pdb_mm(self, pdb_file, add_missing_atoms=False, add_hydrogens=False, pH=7.0, **kwargs):
+        """Clean the starting PDB file using PDBfixer by OpenMM.
 
         Parameters
         ----------
-            in_pdb (str, optional): Input PDB file to clean. If None, uses self.inpdb.
-            kwargs: Additional keyword arguments for pdbtools.clean_pdb.
+        pdb_file : str
+            Path to the input PDB file.
+        add_missing_atoms : bool, optional
+            Whether to add missing atoms (default: False).
+        add_hydrogens : bool, optional
+            Whether to add missing hydrogens (default: False).
+        pH : float, optional
+            pH value for adding hydrogens (default: 7.0).
+        **kwargs : dict, optional
+            Additional keyword arguments (ignored).
         """
-        logger.info("Cleaning the PDB with OpenMM's PDBfixer...")
-        if not in_pdb:
-            in_pdb = self.inpdb
-        pdbtools.clean_pdb(in_pdb, in_pdb, **kwargs)
+        logger.info("Cleaning the PDB")
+        logger.info(f"Processing {pdb_file}")
+        pdb = PDBFixer(filename=str(pdb_file))
+        logger.info("Removing heterogens and checking for missing residues...")
+        pdb.removeHeterogens(False)
+        pdb.findMissingResidues()
+        logger.info("Replacing non-standard residues...")
+        pdb.findNonstandardResidues()
+        pdb.replaceNonstandardResidues()
+        if add_missing_atoms:
+            logger.info("Adding missing atoms...")
+            pdb.findMissingAtoms()
+            pdb.addMissingAtoms()
+        if add_hydrogens:
+            logger.info("Adding missing hydrogens...")
+            pdb.addMissingHydrogens(pH)  
+        topology = pdb.topology
+        positions = pdb.positions
+        with open(self.inpdb, "w", encoding="utf-8") as outfile:
+            PDBFile.writeFile(topology, positions, outfile)
+        logger.info(f"Written cleaned PDB to {self.inpdb}")
 
     def clean_pdb_gmx(self, in_pdb=None, **kwargs):
         """Cleans the PDB file using GROMACS pdb2gmx tool.
