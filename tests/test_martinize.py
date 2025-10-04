@@ -57,3 +57,4 @@ def test_make_cg_structure():
 def test_make_cg_topology():
     mdsys.make_cg_topology()
     assert mdsys.systop.exists()
+
