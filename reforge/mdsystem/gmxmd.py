@@ -26,11 +26,12 @@ Author: DY
 Date: 2025-02-27
 """
 
-from pathlib import Path
 import importlib.resources
+import logging
+import os
+from pathlib import Path
 import shutil
 import subprocess as sp
-import logging
 from reforge import cli, pdbtools, io
 from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
@@ -342,7 +343,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("em.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "em.mdp")
+        kwargs.setdefault("f", self.mdpdir / "em_cg.mdp")
         kwargs.setdefault("c", self.sysgro)
         kwargs.setdefault("r", self.sysgro)
         kwargs.setdefault("p", self.systop)
@@ -363,7 +364,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("hu.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "hu.mdp")
+        kwargs.setdefault("f", self.mdpdir / "hu_cg.mdp")
         kwargs.setdefault("c", "em.gro")
         kwargs.setdefault("r", "em.gro")
         kwargs.setdefault("p", self.systop)
@@ -384,7 +385,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("eq.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "eq.mdp")
+        kwargs.setdefault("f", self.mdpdir / "eq_cg.mdp")
         kwargs.setdefault("c", "hu.gro")
         kwargs.setdefault("r", "hu.gro")
         kwargs.setdefault("p", self.systop)
@@ -405,7 +406,7 @@ class GmxRun(MDRun):
                 - n: Index file.
                 - o: Output TPR file ("md.tpr").
         """
-        kwargs.setdefault("f", self.mdpdir / "md.mdp")
+        kwargs.setdefault("f", self.mdpdir / "md_cg.mdp")
         kwargs.setdefault("c", "eq.gro")
         kwargs.setdefault("r", "eq.gro")
         kwargs.setdefault("p", self.systop)
@@ -625,6 +626,92 @@ class GmxRun(MDRun):
 
 
 #######################
+# Detect available CPU cores and set ntomp
+def get_ntomp():
+    """Detect number of available CPU cores for OpenMP threads"""
+    # Check if ntomp is set via environment variable
+    env_ntomp = os.environ.get('OMP_NUM_THREADS')
+    if env_ntomp:
+        try:
+            ntomp_val = int(env_ntomp)
+            logger.info(f"Using OMP_NUM_THREADS={ntomp_val} from environment")
+            return ntomp_val
+        except ValueError:
+            logger.warning(f"Invalid OMP_NUM_THREADS value: {env_ntomp}")
+    
+    # Check SLURM environment variables first (most reliable for HPC)
+    # Calculate total allocated cores: ntasks × cpus-per-task
+    slurm_ntasks = os.environ.get('SLURM_NTASKS')
+    slurm_cpus_per_task = os.environ.get('SLURM_CPUS_PER_TASK')
+    
+    if slurm_ntasks and slurm_cpus_per_task:
+        try:
+            ntasks = int(slurm_ntasks)
+            cpus_per_task = int(slurm_cpus_per_task)
+            total_cores = ntasks * cpus_per_task
+            logger.info(f"SLURM allocation: {ntasks} tasks × {cpus_per_task} cpus/task = {total_cores} total cores")
+            return total_cores
+        except ValueError as e:
+            logger.warning(f"Invalid SLURM values - ntasks: {slurm_ntasks}, cpus_per_task: {slurm_cpus_per_task}")
+    
+    # Fallback to individual SLURM variables
+    if slurm_cpus_per_task:
+        try:
+            ntomp_val = int(slurm_cpus_per_task)
+            logger.info(f"Using SLURM_CPUS_PER_TASK={ntomp_val} (no ntasks found)")
+            return ntomp_val
+        except ValueError:
+            logger.warning(f"Invalid SLURM_CPUS_PER_TASK value: {slurm_cpus_per_task}")
+    
+    # Check other SLURM variables
+    slurm_nprocs = os.environ.get('SLURM_NPROCS')
+    if slurm_nprocs:
+        try:
+            ntomp_val = int(slurm_nprocs)
+            logger.info(f"Using SLURM_NPROCS={ntomp_val} from SLURM allocation")
+            return ntomp_val
+        except ValueError:
+            logger.warning(f"Invalid SLURM_NPROCS value: {slurm_nprocs}")
+    
+    # Check PBS/Torque environment variables
+    pbs_ncpus = os.environ.get('PBS_NCPUS') or os.environ.get('NCPUS')
+    if pbs_ncpus:
+        try:
+            ntomp_val = int(pbs_ncpus)
+            logger.info(f"Using PBS_NCPUS/NCPUS={ntomp_val} from PBS allocation")
+            return ntomp_val
+        except ValueError:
+            logger.warning(f"Invalid PBS_NCPUS/NCPUS value: {pbs_ncpus}")
+    
+    # Try to get available cores from cgroup limits (Docker/container environments)
+    try:
+        with open('/sys/fs/cgroup/cpu/cpu.cfs_quota_us', 'r') as f:
+            quota = int(f.read().strip())
+        with open('/sys/fs/cgroup/cpu/cpu.cfs_period_us', 'r') as f:
+            period = int(f.read().strip())
+        if quota > 0 and period > 0:
+            ntomp_val = max(1, quota // period)
+            logger.info(f"Using cgroup CPU quota: {ntomp_val} cores available")
+            return ntomp_val
+    except (FileNotFoundError, ValueError, PermissionError):
+        pass  # cgroup not available or not accessible
+    
+    # Fallback: use total system cores but warn about potential oversubscription
+    try:
+        import multiprocessing
+        total_cores = multiprocessing.cpu_count()
+        logger.warning(f"No job scheduler detected. Found {total_cores} total system cores.")
+        logger.warning("This may cause oversubscription on shared systems!")
+        logger.warning("Consider setting OMP_NUM_THREADS explicitly for your allocation.")
+        # Default to 1 core to be safe on shared systems
+        ntomp_val = 1 
+        logger.info(f"Defaulting to ntomp={ntomp_val} for safety on shared systems")
+        return ntomp_val
+    except Exception as e:
+        logger.warning(f"Could not detect CPU cores: {e}, defaulting to ntomp=1")
+        return 1
+        
+
 def sort_for_gmx(data):
     return sorted(data, key=lambda x: (
     0 if x.split('_')[1][0].isupper() else 1 if x.split('_')[1][0].islower() else 2,

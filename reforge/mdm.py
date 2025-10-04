@@ -351,7 +351,6 @@ def hessian(vecs, cutoff, spring_constant=1e3, dd=0):
     np.ndarray
         The computed Hessian matrix.
     """
-    # pylint: disable=c-extension-no-member
     return rcmath.hessian(vecs, cutoff, spring_constant, dd)
 
 

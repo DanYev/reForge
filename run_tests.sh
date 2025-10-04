@@ -34,16 +34,63 @@
 # SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # cd "$SCRIPT_DIR"
 
+# Initialize test result tracking
+TEST_EXIT_CODE=0
+FAILED_TESTS=""
+
 if [ "$1" == "--all" ]; then
     echo "Running all tests..."
     pytest --maxfail=1 --disable-warnings -q
+    TEST_EXIT_CODE=$?
 else
-    pytest -v tests/test_rpymath.py --maxfail=1 --disable-warnings -q
-    pytest -v tests/test_rcmath.py --maxfail=1 --disable-warnings -q
-    pytest -v tests/test_mdm.py --maxfail=1 --disable-warnings -q
-    pytest -v tests/test_pdbtools.py --maxfail=1 --disable-warnings -q
-    pytest -v tests/test_gmxmd.py --maxfail=1 --disable-warnings -q
-    pytest -v tests/test_martinize.py --maxfail=1 --disable-warnings -q
+    echo "Running individual tests..."
+    
+    # Array of test files to run
+    TEST_FILES=(
+        "tests/test_rpymath.py"
+        "tests/test_rcmath.py" 
+        "tests/test_mdm.py"
+        "tests/test_pdbtools.py"
+        "tests/test_martinize.py"
+        "tests/test_gmxmd.py"
+    )
+    
+    # Run each test and track results
+    for test_file in "${TEST_FILES[@]}"; do
+        echo "Running $test_file..."
+        pytest -v "$test_file" --maxfail=1 --disable-warnings -q
+        EXIT_CODE=$?
+        
+        if [ $EXIT_CODE -ne 0 ]; then
+            TEST_EXIT_CODE=$EXIT_CODE
+            FAILED_TESTS="$FAILED_TESTS $test_file"
+            echo "❌ FAILED: $test_file"
+        else
+            echo "✅ PASSED: $test_file"
+        fi
+    done
 fi
 
-# ghp-import -n -p -f build/html
+# Report final results
+echo ""
+echo "=================================="
+if [ $TEST_EXIT_CODE -eq 0 ]; then
+    echo "🎉 ALL TESTS PASSED! 🎉"
+    echo "Test run completed successfully."
+else
+    echo "❌ SOME TESTS FAILED!"
+    echo "Failed tests:$FAILED_TESTS"
+    echo "Exit code: $TEST_EXIT_CODE"
+fi
+echo "=================================="
+
+# Uncomment if you want to build docs only on successful tests
+# if [ $TEST_EXIT_CODE -eq 0 ]; then
+#     echo "Tests passed, building documentation..."
+#     ghp-import -n -p -f build/html
+# else
+#     echo "Skipping documentation build due to test failures."
+# fi
+
+# Exit with the test result code so SLURM/CI can detect failures
+exit $TEST_EXIT_CODE

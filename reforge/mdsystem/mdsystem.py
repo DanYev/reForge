@@ -68,7 +68,7 @@ class MDSystem:
         self.iondir = self.root / "ions"
         self.ionpdb = self.iondir / "ions.pdb"
         self.topdir = self.root / "topol"
-        self.mapdir = self.root / "map"
+        self.mapdir = self.root / "maps"
         self.cgdir = self.root / "cgpdb"
         self.mddir = self.root / "mdruns"
         self.datdir = self.root / "data"
@@ -289,26 +289,33 @@ class MDSystem:
         Generates .itp files and cleans temporary directories after processing.
         """
         logger.info("Working on proteins (GoMartini)...")
-        pdbs = sorted([p.name for p in self.prodir.iterdir()])
-        itps = [f.replace("pdb", "itp") for f in pdbs]
+        pdb_files = sorted([p.name for p in self.prodir.iterdir() if p.is_file() and p.suffix == '.pdb'])
+        if not pdb_files:
+            logger.warning(f"No PDB files found in protein directory: {self.prodir}")
+            return
+        logger.info(f"Found {len(pdb_files)} protein PDB files to process")
+        itp_files = [f.replace("pdb", "itp") for f in pdb_files]
         if append:
-            pdbs = [pdb for pdb, itp in zip(pdbs, itps) if not (self.topdir / itp).exists()]
+            pdb_files = [pdb for pdb, itp in zip(pdb_files, itp_files) if not (self.topdir / itp).exists()]
+            if not pdb_files:
+                logger.info("All protein topology files already exist, skipping processing")
+                return
         else:
             clean_dir(self.topdir, "go_*.itp")
-        file_path = self.topdir / "go_atomtypes.itp"
-        if not file_path.is_file():
-            with open(file_path, "w", encoding='utf-8') as f:
+        atomtypes_file = self.topdir / "go_atomtypes.itp"
+        if not atomtypes_file.is_file():
+            with open(atomtypes_file, "w", encoding='utf-8') as f:
                 f.write("[ atomtypes ]\n")
-        file_path = self.topdir / "go_nbparams.itp"
-        if not file_path.is_file():
-            with open(file_path, "w", encoding='utf-8') as f:
+        nbparams_file = self.topdir / "go_nbparams.itp"
+        if not nbparams_file.is_file():
+            with open(nbparams_file, "w", encoding='utf-8') as f:
                 f.write("[ nonbond_params ]\n")
-        for file in pdbs:
-            in_pdb = self.prodir / file
-            cg_pdb = self.cgdir / file
-            name = file.split(".")[0]
-            go_map = self.mapdir / f"{name}.map"
-            martini_tools.martinize_go(self.root, self.topdir, in_pdb, cg_pdb, name=name, **kwargs)
+        for pdb_file in pdb_files:
+            input_pdb = self.prodir / pdb_file
+            output_pdb = self.cgdir / pdb_file
+            mol_name = pdb_file.split(".")[0]
+            go_map = self.mapdir / f"{mol_name}.map"
+            martini_tools.run_martinize_go(self.root, self.topdir, input_pdb, output_pdb, name=mol_name, **kwargs)
         clean_dir(self.cgdir)
         clean_dir(self.root)
         clean_dir(self.root, "*.itp")
@@ -330,23 +337,31 @@ class MDSystem:
         with the actual protein name and cleans temporary files.
         """
         logger.info("Working on proteins (Elastic Network)...")
-        pdbs = sorted([p.name for p in self.prodir.iterdir()])
-        itps = [f.replace("pdb", "itp") for f in pdbs]
+        pdb_files = sorted([p.name for p in self.prodir.iterdir() if p.is_file() and p.suffix == '.pdb'])
+        if not pdb_files:
+            logger.warning(f"No PDB files found in protein directory: {self.prodir}")
+            return
+        logger.info(f"Found {len(pdb_files)} protein PDB files to process")
+        itp_files = [f.replace("pdb", "itp") for f in pdb_files]
         if append:
-            pdbs = [pdb for pdb, itp in zip(pdbs, itps) if not (self.topdir / itp).exists()]
-        for file in pdbs:
-            in_pdb = self.prodir / file
-            cg_pdb = self.cgdir / file
-            new_itp = self.root / "molecule_0.itp"
-            updated_itp = self.topdir / file.replace("pdb", "itp")
-            new_top = self.root / "protein.top"
-            martini_tools.martinize_en(self.root, in_pdb, cg_pdb, **kwargs)
-            with open(new_itp, "r", encoding="utf-8") as f:
+            pdb_files = [pdb for pdb, itp in zip(pdb_files, itp_files) if not (self.topdir / itp).exists()]
+            if not pdb_files:
+                logger.info("All protein topology files already exist, skipping processing")
+                return
+        for pdb_file in pdb_files:
+            input_pdb = self.prodir / pdb_file
+            output_pdb = self.cgdir / pdb_file
+            temp_itp = self.root / "molecule_0.itp"
+            final_itp = self.topdir / pdb_file.replace("pdb", "itp")
+            temp_top = self.root / "protein.top"
+            martini_tools.run_martinize_en(self.root, input_pdb, output_pdb, **kwargs)
+            with open(temp_itp, "r", encoding="utf-8") as f:
                 content = f.read()
-            updated_content = content.replace("molecule_0", file[:-4], 1)
-            with open(updated_itp, "w", encoding="utf-8") as f:
+            mol_name = pdb_file[:-4]
+            updated_content = content.replace("molecule_0", mol_name, 1)
+            with open(final_itp, "w", encoding="utf-8") as f:
                 f.write(updated_content)
-            new_top.unlink()
+            temp_top.unlink()
         clean_dir(self.cgdir)
         clean_dir(self.root)
 
@@ -361,17 +376,22 @@ class MDSystem:
         After processing, renames files and moves the resulting ITP files to the topology directory.
         """
         logger.info("Working on nucleotides...")
-        for file in self.nucdir.iterdir():
-            in_pdb = self.nucdir / file.name
-            cg_pdb = self.cgdir / file.name
-            martini_tools.martinize_nucleotide(self.root, in_pdb, cg_pdb, **kwargs)
-        nfiles = [p.name for p in self.root.iterdir() if p.name.startswith("Nucleic")]
-        for f in nfiles:
-            file_path = self.root / f
-            command = f"sed -i s/Nucleic_/chain_/g {file_path}"
+        pdb_files = [f for f in self.nucdir.iterdir() if f.is_file() and f.suffix == '.pdb']
+        if not pdb_files:
+            logger.warning(f"No PDB files found in nucleotide directory: {self.nucdir}")
+            return
+        logger.info(f"Found {len(pdb_files)} nucleotide PDB files to process")
+        for pdb_file in pdb_files:
+            input_pdb = self.nucdir / pdb_file.name
+            output_pdb = self.cgdir / pdb_file.name
+            martini_tools.run_martinize_nucleotide(self.root, input_pdb, output_pdb, **kwargs)
+        nucleic_files = [p.name for p in self.root.iterdir() if p.name.startswith("Nucleic")]
+        for nucleic_file in nucleic_files:
+            temp_file_path = self.root / nucleic_file
+            command = f"sed -i s/Nucleic_/chain_/g {temp_file_path}"
             sp.run(command.split(), check=True)
-            outfile = f.replace("Nucleic", "chain")
-            shutil.move(file_path, self.topdir / outfile)
+            final_filename = nucleic_file.replace("Nucleic", "chain")
+            shutil.move(temp_file_path, self.topdir / final_filename)
         clean_dir(self.cgdir)
         clean_dir(self.root)
 
@@ -386,19 +406,23 @@ class MDSystem:
         Exits the process with an error message if coarse-graining fails.
         """
         logger.info("Working on RNA molecules...")
-        files = [p.name for p in self.nucdir.iterdir()]
+        pdb_files = [p.name for p in self.nucdir.iterdir() if p.is_file() and p.suffix == '.pdb']
+        if not pdb_files:
+            logger.warning(f"No PDB files found in nucleotide directory: {self.nucdir}")
+            return
+        logger.info(f"Found {len(pdb_files)} RNA PDB files to process")
         if append:
-            files = [f for f in files if not (self.topdir / f.replace("pdb", "itp")).exists()]
-        for file in files:
-            molname = file.split(".")[0]
-            in_pdb = self.nucdir / file
-            cg_pdb = self.cgdir / file
-            cg_itp = self.topdir / f"{molname}.itp"
-            try:
-                martini_tools.martinize_rna(self.root, 
-                    f=in_pdb, os=cg_pdb, ot=cg_itp, mol=molname, **kwargs)
-            except Exception as e:
-                sys.exit(f"Could not coarse-grain {in_pdb}: {e}")
+            pdb_files = [f for f in pdb_files if not (self.topdir / f.replace("pdb", "itp")).exists()]
+            if not pdb_files:
+                logger.info("All RNA topology files already exist, skipping processing")
+                return
+        for pdb_file in pdb_files:
+            mol_name = pdb_file.split(".")[0]
+            input_pdb = self.nucdir / pdb_file
+            output_pdb = self.cgdir / pdb_file
+            output_itp = self.topdir / f"{mol_name}.itp"
+            martini_tools.run_martinize_rna(self.root, 
+                f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
 
     def insert_membrane(self, **kwargs):
         """Insert CG lipid membrane using INSANE."""

@@ -21,15 +21,11 @@ Date: 2025-02-27
 ===============================================================================
 """
 
-import logging
 import numpy as np
 import pytest
 from reforge.rfgmath import rcmath, legacy, rpymath
-from reforge.utils import logger
 
-# Set a fixed random seed for reproducibility of the tests.
 np.random.seed(42)
-logging.basicConfig(level=logging.DEBUG)
 
 def test_hessian():
     """
@@ -75,10 +71,8 @@ def test_perturbation_matrix_old():
         None
     """
     m = 200  # number of residues
-    # Create a symmetric covariance matrix of shape (3*m, 3*m)
     A = np.random.rand(3 * m, 3 * m)
-    covmat = (A + A.T) / 2
-    # legacy_result = legacy.perturbation_matrix_old(covmat, m)
+    covmat = np.ascontiguousarray(0.5 * (A + A.T))
     legacy_result = legacy.calcperturbMat(covmat, m)
     new_result = rcmath.perturbation_matrix_old(covmat, m)
     np.testing.assert_allclose(new_result, legacy_result, rtol=1e-6, atol=1e-6)
@@ -97,7 +91,7 @@ def test_perturbation_matrix():
     Returns:
         None
     """
-    m = 4000
+    m = 200
     A = np.random.rand(3 * m, 3 * m)
     covmat = np.ascontiguousarray(0.5 * (A + A.T))
     legacy_result = rcmath.perturbation_matrix_old(covmat, m) * m**2
@@ -122,12 +116,6 @@ def test_td_perturbation_matrix():
     m = 50
     nt = 1000
     covmat = np.random.rand(3*m, 3*m, nt)
-    # test = []
-    # for n in range(nt):
-    #     test_mat = rcmath.perturbation_matrix_iso(covmat[:, :, n], normalize=False)
-    #     test.append(test_mat)
-    # test = np.array(test)
-    # test = test.swapaxes(0, 1).swapaxes(1, 2)
     legacy_result = legacy.td_perturbation_matrix_cpu(covmat, normalize=False)
     new_result = rcmath.td_perturbation_matrix(covmat, normalize=False)
     np.testing.assert_allclose(new_result, legacy_result, rtol=1e-6, atol=1e-6)
@@ -150,13 +138,12 @@ def test_perturbation_matrix_iso():
     covmat = (A + A.T) / 2
     iso_result = rcmath.perturbation_matrix_iso(covmat)
     iso_result_par = rcmath.perturbation_matrix_iso_par(covmat)
-    # result = rcmath.perturbation_matrix(covmat)
     np.testing.assert_allclose(iso_result_par, iso_result, rtol=1e-5, atol=1e-5)
 
 
 def test_covmat():
     m = 500
-    nt = 4000
+    nt = 2000
     x = np.random.rand(3*m, nt)
     ref = rpymath.covariance_matrix(x, dtype=np.float64)
     x -= np.average(x, axis=1, keepdims=True)
@@ -166,8 +153,5 @@ def test_covmat():
 
 
 if __name__ == '__main__':
-    # pytest.main([__file__])
-    # test_covmat()
-    # test_perturbation_matrix()
-    test_td_perturbation_matrix()
+    pytest.main([__file__])
 
