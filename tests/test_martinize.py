@@ -30,8 +30,8 @@ def test_prepare():
     mdsys.split_chains()
 
 
-# def test_martini_en():
-#     mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)
+def test_martini_en():
+    mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)
 
 
 # def test_martini_go():

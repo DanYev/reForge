@@ -34,10 +34,9 @@ def setup(*args):
 def setup_martini(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
-
+    inpdb = mdsys.sysdir / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare directories
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.sort_input_pdb(mdsys.sysdir / INPDB) # sorts chain and atoms in the input file and returns makes mdsys.inpdb file
 
     # 1.2.1 Try to clean the input PDB and split the chains based on the type of molecules (protein, RNA/DNA)
     mdsys.clean_pdb_mm(inpdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)

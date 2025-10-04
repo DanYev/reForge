@@ -8,6 +8,10 @@ GROMACS' .itp format and coarse-grained PDB.
 It parses command-line arguments, processes each chain of the input PDB,
 maps them to coarse-grained representations, merges the resulting topologies,
 optionally applies an elastic network, and writes the output ITP file.
+
+Please cite:
+Yangaliev D, Ozkan SB. Coarse-grained RNA model for the Martini 3 force field. 
+Biophys J. 2025 Aug 5:S0006-3495(25)00483-7. doi: 10.1016/j.bpj.2025.07.034. 
 """
 
 import argparse
@@ -271,6 +275,10 @@ INPUT REQUIREMENTS:
     - Input PDB: All-atom RNA structure with standard nucleotide naming
     - Structure should have proper chain organization and residue numbering
     - Supported bases: A, U, G, C (standard RNA nucleotides)
+
+Please cite:
+    Yangaliev D, Ozkan SB. Coarse-grained RNA model for the Martini 3 force field. 
+    Biophys J. 2025 Aug 5:S0006-3495(25)00483-7. doi: 10.1016/j.bpj.2025.07.034. 
         """
     )
     
