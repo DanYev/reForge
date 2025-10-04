@@ -16,8 +16,8 @@ from workflows import gmx_md
 
 # Create a gmxSystem instance for testing.
 sysdir = 'tests'
-sysname = 'test_sys'
-runname = 'test_run'
+sysname = 'gmx_sys'
+runname = 'gmx_run'
 mdsys = GmxSystem(sysdir, sysname)
 mdrun = GmxRun(sysdir, sysname, runname)
 in_pdb = '../dsRNA.pdb'
