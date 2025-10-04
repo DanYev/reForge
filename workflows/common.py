@@ -1,11 +1,12 @@
 import inspect
+import multiprocessing as mp
+import os
 from pathlib import Path
 import sys
-import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import numpy as np
 import MDAnalysis as mda
+import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import BisectingKMeans, KMeans
 from sklearn.mixture import GaussianMixture
@@ -22,6 +23,9 @@ logger = get_logger(__name__)
 SELECTION = "name CA" 
 TRJEXT = 'trr' # 'xtc' or 'trr'
 
+################################################################################
+### PCA/Clustering ###
+################################################################################
 def pca_trajs(sysdir, sysname):
     selection = "name CA" # CA for AA or Go-Martini; BB for Martini
     step = 1 # in frames
@@ -136,6 +140,9 @@ def clust_cov(sysdir, sysname):
         np.save(mdsys.datdir / f"cdfi_{idx}_av.npy", dfi_res)
     plots.plot_cluster_dfi(mdsys, tag='cdfi')
 
+################################################################################
+### DFI/DCI ###
+################################################################################
 
 def cov_analysis(sysdir, sysname, runname):
     mdrun = MDRun(sysdir, sysname, runname)
@@ -162,9 +169,13 @@ def get_means_sems(sysdir, sysname):
     plots.plot_dfi(system, tag='dfi')
     plots.plot_pdfi(system, tag='dfi')
 
+################################################################################
+### TDLRT ###
+################################################################################
 
 def tdlrt_analysis(sysdir, sysname, runname):
     mdrun = MDRun(sysdir, sysname, runname)
+    mdrun.lrtdir.mkdir(exist_ok=True, parents=True)
     ps_path = mdrun.rundir / "positions.npy"
     vs_path = mdrun.rundir / "velocities.npy"
     if (ps_path.exists() and vs_path.exists()):
@@ -182,17 +193,18 @@ def tdlrt_analysis(sysdir, sysname, runname):
     adict = {'pp': (ps, ps), } 
     for key, item in adict.items(): # DT = TSTEP * NOUT
         v1, v2 = item
-        corr = mdm.ccf(v1, v2, ntmax=400, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
+        corr = mdm.ccf(v1, v2, ntmax=100, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
         corr_file = mdrun.lrtdir / f'ccfs_{key}.npy'
         np.save(corr_file, corr)    
         logger.info("Saved CCFs to %s", corr_file)
 
 
-def get_averages(sysdir, pattern, dtype=None, *args):
+def get_averages(sysdir, sysname, pattern="ccfs_pp*.npy", dtype=None):
     """Calculate average arrays across files matching pattern."""
+    mdsys = MDSystem(sysdir, sysname)
     nprocs = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
     logger.info("Number of available processors: %s", nprocs)
-    files = io.pull_files(sysdir, pattern)[::2]
+    files = io.pull_files(sysdir, pattern)[::1]
     if not files:
         logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
         return
@@ -223,9 +235,9 @@ def get_averages(sysdir, pattern, dtype=None, *args):
         total_sum += local_sum
         total_count += local_count
     average = total_sum / total_count
-    outdir = Path('data') / Path(sysdir).relative_to('systems')
+    outdir = mdsys.datdir
     outdir.mkdir(exist_ok=True, parents=True)
-    out_file = outdir / f"{pattern.split('*')[0]}_2_av.npy"
+    out_file = outdir / f"{pattern.split('*')[0]}_av.npy"
     np.save(out_file, average)
     logger.info("Saved averages to %s", out_file)
 
@@ -233,7 +245,7 @@ def get_averages(sysdir, pattern, dtype=None, *args):
 def _process_batch(args, dtype=np.float32):
     """Worker: load assigned files, crop to min_shape and return local sum and count."""
     files, min_shape = args
-    s = tuple(slice(0, s) for s in shape)
+    s = tuple(slice(0, s) for s in min_shape)
     local_sum = np.zeros(min_shape, dtype=dtype)
     local_count = 0
     for f in files:
@@ -248,6 +260,9 @@ def _process_batch(args, dtype=np.float32):
         del arr
     return local_sum, local_count
 
+################################################################################
+### Bioemu ###
+################################################################################
 
 def sample_emu(sysdir, sysname, runname):
     from bioemu.sample import main as sample

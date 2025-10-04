@@ -73,4 +73,5 @@ if __name__ == "__main__":
     # sys_job('clust_cov', submit=submit) # Clustering
     # run_job('cov_analysis', submit=submit) # DFI/DCI
     # sys_job('get_means_sems', submit=submit) 
-    run_job('tdlrt_analysis', submit=submit) # TDLRT
+    # run_job('tdlrt_analysis', submit=submit) # TDLRT
+    sys_job('get_averages', submit=submit, c='1', mem='4G') # Averages from big arrays
