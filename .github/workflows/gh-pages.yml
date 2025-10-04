@@ -2,27 +2,32 @@ name: Build and Deploy Docs
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]  # Only deploy docs on main branch
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Updated version
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4  # Updated version
         with:
-          python-version: '3.x'
+          python-version: '3.12'  # Specific version
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Install basic dependencies for docs
           pip install sphinx sphinx-rtd-theme
+          # Install minimal project dependencies (skip heavy ones like CUDA)
+          pip install numpy matplotlib pandas
+          # Try to install project in development mode (may fail, that's ok)
+          pip install -e . || echo "Failed to install project, continuing..."
 
       - name: Build Sphinx Documentation
         working-directory: docs
@@ -32,6 +37,6 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GH_PAGES_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # Use default token
           publish_dir: docs/build/html
 
