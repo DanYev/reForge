@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
 # Global settings
-INPDB = '1btl.pdb'
+INPDB = 'dsRNA.pdb'
 MARTINI = True  # True for CG systems, False for AA systems
 # Reporting
 TRJ_NOUT = 1000 # save every NOUT steps
@@ -34,7 +34,7 @@ def setup(*args):
 def setup_martini(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
-    inpdb = mdsys.sysdir / INPDB
+    inpdb = Path('tests') / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare directories
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
 
@@ -51,8 +51,9 @@ def setup_martini(sysdir, sysname):
 
     # 1.3. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=0.9, p="backbone", pf=1000, append=False) # Martini + Go-network FF
-    # mdsys.martinize_rna(elastic="no", ef=50, el=0.5, eu=1.3, p="backbone", pf=500, append=True) # Martini RNA FF 
+    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=0.9, p="backbone", pf=1000, append=False) # Martini + Go-network FF
+    mdsys.martinize_rna(elastic="no", ef=100, el=0.5, eu=1.2, merge=False, p="backbone", pf=500, append=True) # Martini RNA FF 
+    exit()
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     

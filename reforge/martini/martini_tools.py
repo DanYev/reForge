@@ -14,8 +14,8 @@ from pathlib import Path
 from MDAnalysis import Universe
 from MDAnalysis.analysis.dssp import translate, DSSP
 from reforge import cli
+import reforge.martini
 from reforge.utils import cd
-from reforge.martini.martinize_rna import martinize_rna
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", message="Reader has no dt information, set to 1.0 ps")
@@ -270,7 +270,7 @@ def martinize_rna(wdir, **kwargs):
         Additional parameters.
     """
     with cd(wdir):
-        martinize_rna(**kwargs)
+        reforge.martini.martinize_rna(**kwargs)
 
 
 def insert_membrane(**kwargs):
