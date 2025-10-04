@@ -68,7 +68,7 @@ class MDSystem:
         self.iondir = self.root / "ions"
         self.ionpdb = self.iondir / "ions.pdb"
         self.topdir = self.root / "topol"
-        self.mapdir = self.root / "map"
+        self.mapdir = self.root / "maps"
         self.cgdir = self.root / "cgpdb"
         self.mddir = self.root / "mdruns"
         self.datdir = self.root / "data"
