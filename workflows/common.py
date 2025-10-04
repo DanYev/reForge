@@ -1,48 +1,38 @@
-import sys
 import inspect
-import warnings
-import logging
+import multiprocessing as mp
+import os
+from pathlib import Path
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import numpy as np
 import MDAnalysis as mda
+import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import BisectingKMeans, KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.covariance import EllipticEnvelope
 from sklearn.preprocessing import StandardScaler
-import logging
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.utils import clean_dir
+from reforge.utils import clean_dir, get_logger
 import plots
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-from config import MARTINI
 
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-# Global settings
-INPDB = '1btl.pdb'
-# Production parameters
-TEMPERATURE = 300 * unit.kelvin  # for equilibraion
-GAMMA = 1 / unit.picosecond
-PRESSURE = 1 * unit.bar
-TOTAL_TIME = 200 * unit.picoseconds
-TSTEP = 2 * unit.femtoseconds
-NOUT = 10 # save every NOUT steps
-OUT_SELECTION = "name CA" 
 SELECTION = "name CA" 
+TRJEXT = 'trr' # 'xtc' or 'trr'
 
-
+################################################################################
+### PCA/Clustering ###
+################################################################################
 def pca_trajs(sysdir, sysname):
     selection = "name CA" # CA for AA or Go-Martini; BB for Martini
     step = 1 # in frames
     mdsys = MDSystem(sysdir, sysname)
     clean_dir(mdsys.datdir, "*")
-    tops = io.pull_files(mdsys.mddir, "top.pdb")
-    trajs = io.pull_files(mdsys.mddir, "mdc.xtc")
+    tops = io.pull_files(mdsys.mddir, "topology.pdb")
+    trajs = io.pull_files(mdsys.mddir, f"samples.{TRJEXT}")
     run_ids = [top.split("/")[-2] for top in tops]
     # Reading 
     logger.info("Reading trajectories")
@@ -56,15 +46,15 @@ def pca_trajs(sysdir, sysname):
     traj_ids = np.digitize(frames, edges, right=False)
     pca = PCA(n_components=3)
     x_r = pca.fit_transform(positions) # (n_samples, n_features)
-    plot_traj_pca(x_r, 0, 1, traj_ids, run_ids, mdsys, out_tag="runs_pca")
-    plot_traj_pca(x_r, 1, 2, traj_ids, run_ids, mdsys, out_tag="runs_pca")
+    _plot_traj_pca(x_r, 0, 1, traj_ids, run_ids, mdsys, out_tag="runs_pca")
+    _plot_traj_pca(x_r, 1, 2, traj_ids, run_ids, mdsys, out_tag="runs_pca")
     # Clustering
-    cluster(x_r, u, ag, mdsys, n_clusters=2)
-    filter_outliers(x_r, u, ag, mdsys)
+    _cluster(x_r, u, ag, mdsys, n_clusters=2)
+    _filter_outliers(x_r, u, ag, mdsys)
     logger.info("Done!")
 
 
-def cluster(data, u, ag, mdsys, n_clusters=2):
+def _cluster(data, u, ag, mdsys, n_clusters=2):
     logger.info("Clustering")
     algo = GaussianMixture(n_components=n_clusters, random_state=0, n_init=10)
     # algo = KMeans(n_clusters=n_clusters, random_state=150, n_init=10)
@@ -74,7 +64,7 @@ def cluster(data, u, ag, mdsys, n_clusters=2):
         n_samples = np.sum(pred == x)
         label = f"cluster_{idx} with {n_samples} samples"
         labels.append(label)
-    plot_traj_pca(data, 0, 1, pred, labels, mdsys, out_tag="clust_pca")
+    _plot_traj_pca(data, 0, 1, pred, labels, mdsys, out_tag="clust_pca")
     # plt.scatter(centers[:, 0], centers[:, 1], c="r", s=20)
     for idx, x in enumerate(np.unique(pred)):
         ag.atoms.write(str(mdsys.datdir / f"topology_{idx}.pdb"))
@@ -87,7 +77,7 @@ def cluster(data, u, ag, mdsys, n_clusters=2):
                 W.write(ag) 
 
 
-def filter_outliers(data, u, ag, mdsys):
+def _filter_outliers(data, u, ag, mdsys):
     logger.info("Filtering outliers")
     pipe = StandardScaler(with_mean=True, with_std=True)
     Xz = pipe.fit_transform(data)
@@ -100,7 +90,7 @@ def filter_outliers(data, u, ag, mdsys):
         n_samples = np.sum(pred == x)
         label = f"cluster_{idx} with {n_samples} samples"
         labels.append(label)
-    plot_traj_pca(data, 0, 1, pred, labels, mdsys, out_tag="filtered_pca")
+    _plot_traj_pca(data, 0, 1, pred, labels, mdsys, out_tag="filtered_pca")
     ag.atoms.write(str(mdsys.datdir / f"filtered.pdb"))
     mask = pred == +1
     subset = u.trajectory[mask]
@@ -111,7 +101,7 @@ def filter_outliers(data, u, ag, mdsys):
             W.write(ag) 
 
 
-def plot_traj_pca(data, i, j, ids, labels, mdsys, skip=1, alpha=0.3, out_tag="pca",):
+def _plot_traj_pca(data, i, j, ids, labels, mdsys, skip=1, alpha=0.3, out_tag="pca",):
     unique_ids = np.unique(ids)
     norm = mcolors.Normalize(vmin=min(ids), vmax=max(ids))
     cmap = plt.get_cmap("viridis")
@@ -150,11 +140,15 @@ def clust_cov(sysdir, sysname):
         np.save(mdsys.datdir / f"cdfi_{idx}_av.npy", dfi_res)
     plots.plot_cluster_dfi(mdsys, tag='cdfi')
 
+################################################################################
+### DFI/DCI ###
+################################################################################
 
 def cov_analysis(sysdir, sysname, runname):
     mdrun = MDRun(sysdir, sysname, runname)
-    top = mdrun.rundir / "top.pdb"
-    traj = mdrun.rundir / "mdc.xtc"
+    mdrun.covdir.mkdir(exist_ok=True, parents=True)
+    top = mdrun.rundir / "topology.pdb"
+    traj = mdrun.rundir / f"samples.{TRJEXT}"
     u = mda.Universe(top, traj, in_memory=False)
     selection = "name CA"
     ag = u.atoms.select_atoms(selection)
@@ -167,7 +161,7 @@ def cov_analysis(sysdir, sysname, runname):
 
 
 def get_means_sems(sysdir, sysname):
-    system = GmxSystem(sysdir, sysname)   
+    system = MDSystem(sysdir, sysname)   
     system.get_mean_sem(pattern="rmsf*.npy")
     system.get_mean_sem(pattern="dfi*.npy")
     system.get_mean_sem(pattern="dci*.npy")
@@ -175,37 +169,42 @@ def get_means_sems(sysdir, sysname):
     plots.plot_dfi(system, tag='dfi')
     plots.plot_pdfi(system, tag='dfi')
 
+################################################################################
+### TDLRT ###
+################################################################################
 
 def tdlrt_analysis(sysdir, sysname, runname):
     mdrun = MDRun(sysdir, sysname, runname)
-    ps_path = str(mdrun.rundir / f"positions.npy")
-    vs_path = str(mdrun.rundir / f"velocities.npy")
-    if (Path(ps_path).exists() and Path(vs_path).exists()):
+    mdrun.lrtdir.mkdir(exist_ok=True, parents=True)
+    ps_path = mdrun.rundir / "positions.npy"
+    vs_path = mdrun.rundir / "velocities.npy"
+    if (ps_path.exists() and vs_path.exists()):
         logger.info("Loading positions and velocities from %s", mdrun.rundir)
         ps = np.load(ps_path)
         vs = np.load(vs_path)
     else:
-        traj = str(mdrun.rundir / f"samples.trr")
-        top = str(mdrun.rundir / "topology.pdb")
+        traj = mdrun.rundir / f"samples.{TRJEXT}"
+        top = mdrun.rundir / "topology.pdb"
         u = mda.Universe(top, traj)
         ps = io.read_positions(u, u.atoms) # (n_atoms*3, nframes)
         vs = io.read_velocities(u, u.atoms) # (n_atoms*3, nframes)
     ps = ps - ps[:, 0][..., None]
     # CCF calculations
-    adict = {'pv': (ps, vs), 'vv': (vs, vs), } #  adict = {'pv': (ps, vs)}
+    adict = {'pp': (ps, ps), } 
     for key, item in adict.items(): # DT = TSTEP * NOUT
         v1, v2 = item
-        corr = mdm.ccf(v1, v2, ntmax=4000, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
+        corr = mdm.ccf(v1, v2, ntmax=100, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
         corr_file = mdrun.lrtdir / f'ccfs_{key}.npy'
         np.save(corr_file, corr)    
         logger.info("Saved CCFs to %s", corr_file)
 
 
-def get_averages(sysdir, pattern, dtype=None, *args):
+def get_averages(sysdir, sysname, pattern="ccfs_pp*.npy", dtype=None):
     """Calculate average arrays across files matching pattern."""
+    mdsys = MDSystem(sysdir, sysname)
     nprocs = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
     logger.info("Number of available processors: %s", nprocs)
-    files = io.pull_files(sysdir, pattern)[::2]
+    files = io.pull_files(sysdir, pattern)[::1]
     if not files:
         logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
         return
@@ -236,18 +235,17 @@ def get_averages(sysdir, pattern, dtype=None, *args):
         total_sum += local_sum
         total_count += local_count
     average = total_sum / total_count
-    outdir = Path('data') / Path(sysdir).relative_to('systems')
+    outdir = mdsys.datdir
     outdir.mkdir(exist_ok=True, parents=True)
-    out_file = outdir / f"{pattern.split('*')[0]}_2_av.npy"
+    out_file = outdir / f"{pattern.split('*')[0]}_av.npy"
     np.save(out_file, average)
     logger.info("Saved averages to %s", out_file)
-
 
 
 def _process_batch(args, dtype=np.float32):
     """Worker: load assigned files, crop to min_shape and return local sum and count."""
     files, min_shape = args
-    s = tuple(slice(0, s) for s in shape)
+    s = tuple(slice(0, s) for s in min_shape)
     local_sum = np.zeros(min_shape, dtype=dtype)
     local_count = 0
     for f in files:
@@ -262,6 +260,9 @@ def _process_batch(args, dtype=np.float32):
         del arr
     return local_sum, local_count
 
+################################################################################
+### Bioemu ###
+################################################################################
 
 def sample_emu(sysdir, sysname, runname):
     from bioemu.sample import main as sample

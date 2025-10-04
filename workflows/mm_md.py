@@ -1,5 +1,4 @@
 import sys
-import warnings
 import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.transformations import fit_rot_trans
@@ -11,8 +10,6 @@ from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
 from reforge.utils import clean_dir, get_logger
 
 logger = get_logger()
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
 
 # Global settings
 INPDB = '1btl.pdb'
@@ -135,8 +132,10 @@ def md_npt(sysdir, sysname, runname):
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
+    # nsteps = int(TOTAL_TIME / TSTEP)
+    # simulation.step(nsteps)
     simulation.step(TOTAL_STEPS)
-    # mdrun.md(simulation, time=TOTAL_TIME)
+    simulation.saveState(str(mdrun.rundir / "md.xml"))
 
 
 def md_nve(sysdir, sysname, runname):

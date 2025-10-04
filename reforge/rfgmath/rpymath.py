@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 @memprofit
 @timeit
-def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None):
+def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None, **kwargs):
     """Compute the correlation function between two signals using a serial FFT-based method.
     
     Parameters:
@@ -98,7 +98,7 @@ def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None):
 
 @memprofit
 @timeit
-def pfft_ccf(x, y, ntmax=None, center=False, dtype=None):
+def pfft_ccf(x, y, ntmax=None, center=False, dtype=None, **kwargs):
     """Compute the correlation function using a parallel FFT-based method.
     
     Parameters:
@@ -144,7 +144,7 @@ def pfft_ccf(x, y, ntmax=None, center=False, dtype=None):
 
 @memprofit
 @timeit
-def gfft_ccf(x, y, ntmax=None, center=True, dtype=None):
+def gfft_ccf(x, y, ntmax=None, center=True, dtype=None, **kwargs):
     """Compute the correlation function on the GPU using FFT.
     
     Parameters:
@@ -183,7 +183,7 @@ def gfft_ccf(x, y, ntmax=None, center=True, dtype=None):
 
 @memprofit
 @timeit
-def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None):
+def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None, **kwargs):
     """Same as "gfft_ccf" but regulates GPU to CPU I/O based on the available GPU memory"""
     logger.info("Computing CCFs on GPU.")
     if dtype is None:

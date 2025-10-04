@@ -212,37 +212,7 @@ class MmRun(MDRun):
         simulation.context.setPeriodicBoxVectors(*state.getPeriodicBoxVectors())
         simulation.saveState(str(self.rundir / "eq.xml"))
         logger.info("Equilibration completed.")
-
-    @memprofit(level=logging.INFO)
-    @timeit(level=logging.INFO, unit='auto')
-    def md(self, simulation, time=1000, nsteps=None, **kwargs):
-        """Run production MD simulation.
-
-        Parameters
-        ----------
-        simulation : openmm.app.Simulation
-            The simulation object.
-        nsteps : int, optional
-            Number of production steps (default: 100000).
-        **kwargs : dict, optional
-            Additional keyword arguments.
-
-        Notes
-        -----
-        Loads the equilibrated state, runs production, and saves the final simulation state.
-        """
-        logger.info("Production run...")
-        in_xml = self.rundir / "eq.xml"
-        simulation.loadState(str(in_xml))
-        if not nsteps:
-            dt = simulation.integrator.getStepSize()
-            logger.info(f"Total MD time: %s", time)
-            nsteps = int(time / dt)
-        logger.info(f"Number of steps left: %s", nsteps)
-        out_xml = self.rundir / "md.xml"
-        simulation.saveState(str(out_xml))
-        logger.info("Production completed.")
-
+ 
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
     def extend(self, simulation, until_time=1000, nsteps=None, **kwargs):

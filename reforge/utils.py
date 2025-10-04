@@ -22,15 +22,11 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 
-# Logger instance - will be configured on first access
-_logger = None
-
-
 def get_logger(name="reforge"):
-    """Get or create a logger instance with proper configuration.
+    """Get the configured logger instance.
     
-    This function ensures the logger is only configured once and provides
-    a clean interface for accessing the logger throughout the package.
+    Since logging is now configured in reforge.__init__.py, this function
+    simply returns the already-configured logger instance.
     
     Parameters
     ----------
@@ -40,25 +36,9 @@ def get_logger(name="reforge"):
     Returns
     -------
     logging.Logger
-        Configured logger instance
+        The configured logger instance
     """
-    global _logger
-    if _logger is None:
-        # Use an environment variable (DEBUG=1) to toggle debug logging
-        debug = os.environ.get("DEBUG", "0") == "1"
-        
-        # Configure logging format if not already configured
-        if not logging.getLogger().handlers:
-            logging.basicConfig(format="[%(levelname)s] %(message)s")
-        
-        _logger = logging.getLogger(name)
-        log_level = logging.DEBUG if debug else logging.INFO
-        _logger.setLevel(log_level)
-        
-        if debug:
-            _logger.debug("Debug mode is enabled.")
-    
-    return _logger
+    return logging.getLogger(name)
 
 
 # Backward compatibility - provide logger at module level

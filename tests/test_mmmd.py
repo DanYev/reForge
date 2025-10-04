@@ -16,8 +16,8 @@ from workflows import mm_md
 
 # Create a mm_md instance for testing.
 sysdir = 'tests'
-sysname = 'test_sys'
-runname = 'test_run'
+sysname = 'mm_sys'
+runname = 'mm_run'
 mdsys = MmSystem(sysdir, sysname)
 mdrun = MmRun(sysdir, sysname, runname)
 in_pdb = '../1btl.pdb'

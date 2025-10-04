@@ -2,8 +2,40 @@
 
 import os
 import importlib
+import warnings
+import logging
 
-__all__ = []
+# Configure logging first
+debug = os.environ.get("DEBUG", "0") == "1"
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        # format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S"
+    )
+
+# Set up main package logger
+logger = logging.getLogger("reforge")
+log_level = logging.DEBUG if debug else logging.INFO
+logger.setLevel(log_level)
+
+if debug:
+    logger.debug("reforge package initialized in debug mode")
+# else:
+#     logger.info("reforge package initialized")
+
+# Global warning suppression for MDAnalysis
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="MDAnalysis")
+# Suppress specific MDAnalysis guesser messages
+warnings.filterwarnings("ignore", message=".*types have already been read from the topology file.*")
+warnings.filterwarnings("ignore", message=".*guesser will only guess empty values.*")
+# Also suppress the logger-based INFO messages from MDAnalysis
+logging.getLogger('MDAnalysis.topology.guessers').setLevel(logging.WARNING)
+logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
+
+# Make logger available at package level
+__all__ = ["logger"]
 do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py"]
 
 package_dir = os.path.dirname(__file__)
