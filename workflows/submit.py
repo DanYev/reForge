@@ -56,15 +56,15 @@ if __name__ == "__main__":
 
     sysdir = 'tests/test' 
     sysnames = ['sys_test'] 
-    runs = ['run_test_2']
+    runs = ['run_test_1', 'run_test_2']
 
     submit = False
 
     ##### For MD #####
     pyscript = str(pdir / 'mm_md.py')
     # sys_job('setup', submit=submit)
-    run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
-    run_job('extend', submit=submit, G='1', c='4', mem='2G')
+    # run_job('md_npt', submit=submit, G='1', c='4', mem='2G')
+    # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     run_job('trjconv', submit=submit)
 
     ##### Analysis #####

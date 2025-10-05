@@ -241,6 +241,8 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms.write(output_top)
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
+            selected_atoms.ts.time = ts.time
+            selected_atoms.ts.frame = ts.frame
             writer.write(selected_atoms)
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
 
@@ -257,6 +259,9 @@ def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
             if transform_vels:
                 transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
                 ag.velocities = transformed_vels
+            # Preserve the original timestamp
+            ag.ts.time = ts.time
+            ag.ts.frame = ts.frame
             W.write(ag)
             if ts.frame % 1000 == 0:
                 frame = ts.frame

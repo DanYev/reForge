@@ -343,6 +343,12 @@ class MmReporter(object):
         boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.angstrom)
         self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
         self._mdaUniverse.dimensions[:3] = self._sanitize_box_angles(self._mdaUniverse.dimensions[:3])
+        
+        # Set the simulation time (convert from OpenMM to MDAnalysis units)
+        sim_time = state.getTime().value_in_unit(unit.picosecond)
+        self._atomGroup.ts.time = sim_time
+        self._atomGroup.ts.frame = self._nextModel - 1
+        
         # write to the trajectory file
         self._mdaWriter.write(self._atomGroup)
         self._nextModel += 1
