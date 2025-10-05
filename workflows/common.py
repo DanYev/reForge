@@ -197,7 +197,7 @@ def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
     np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 0])   # Time values (in ps)
     np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in nm)
     np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
-    # plots
+    # Plots
     plots.plot_rmsd(mdsys)
     plots.plot_rmsf(mdsys)
     
@@ -313,7 +313,7 @@ def initiate_systems_from_emu(*args):
     u = mda.Universe(top, samples)
     step = 10  # every 10 frames
     for i, ts in enumerate(u.trajectory[1::step]):
-        idx = i + 98
+        idx = i 
         outdir = newsys_dir / f"sample_{idx:03d}"
         outdir.mkdir(parents=True, exist_ok=True)
         outpdb = outdir / "sample.pdb"

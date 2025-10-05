@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     sysdir = 'tests/test' 
     sysnames = ['sys_test'] 
-    runs = ['run_test_1', 'run_test_2']
+    runs = ["run_test_1"]
 
     submit = False
 

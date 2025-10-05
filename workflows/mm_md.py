@@ -23,10 +23,11 @@ TOTAL_TIME = 1000 * unit.nanoseconds
 TSTEP = 2 * unit.femtoseconds
 TOTAL_STEPS = 100000 
 # Reporting
-TRJ_NOUT = 10000 # save every NOUT steps
+TRJ_NOUT = 1000 # save every NOUT steps
 CHK_NOUT = 100000 
-LOG_NOUT = 10000 
-OUT_SELECTION = "protein" 
+LOG_NOUT = 1000 
+OUT_SELECTION = "all" 
+TRJEXT = 'xtc' # 'xtc' or 'trr'
 # Analysis
 SELECTION = "name CA" 
 
@@ -106,13 +107,14 @@ def md_npt(sysdir, sysname, runname):
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
     reporters = _get_reporters(mdrun, prefix="eq")
+    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "eq.pdb")
     simulation.reporters.extend(reporters)
     # EM + HU
     logger.info("Minimizing energy...")
-    simulation.minimizeEnergy(maxIterations=1000)
+    simulation.minimizeEnergy(maxIterations=100)
     logger.info("Heating up...")
     n_cycles = 100
-    steps_per_cycle = 1000
+    steps_per_cycle = 100
     for i in range(n_cycles):
         simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
         simulation.step(steps_per_cycle)
@@ -123,7 +125,7 @@ def md_npt(sysdir, sysname, runname):
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=1000)
+    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
     # MD
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
@@ -183,12 +185,18 @@ def _get_reporters(mdrun, append=False, prefix="md"):
     mdrun.rundir.mkdir(parents=True, exist_ok=True)
     log_reporter = app.StateDataReporter(
             str(mdrun.rundir / f"{prefix}.log"), 
-            LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True, append=append)
+            LOG_NOUT, step=True, time=True, potentialEnergy=True, kineticEnergy=True,
+            temperature=True, speed=True, append=append)
     err_reporter =  app.StateDataReporter(
-            sys.stderr, LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True, append=append)
-    traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
+            sys.stderr, LOG_NOUT, time=True, step=True, potentialEnergy=True, kineticEnergy=True,
+            temperature=True, speed=True, append=append)
+    if TRJEXT == 'trr':
+        traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
+            reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
+    if TRJEXT == 'xtc':
+        # traj_reporter = app.XTCReporter(str(mdrun.rundir / f"{prefix}.xtc"), 
+        #     reportInterval=TRJ_NOUT)
+        traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.xtc"), 
             reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
     state_reporter = app.CheckpointReporter(str(mdrun.rundir / f"{prefix}.xml"), CHK_NOUT, writeState=True)
     return log_reporter, err_reporter, traj_reporter, state_reporter
@@ -220,18 +228,18 @@ def trjconv(sysdir, sysname, runname):
     # INPUT
     top = mdrun.rundir / "md.pdb"
     # top = mdrun.syspdb  # use original topology to avoid missing atoms
-    traj = mdrun.rundir / "md.trr"
-    ext = mdrun.rundir / "ext.trr"
+    traj = mdrun.rundir / f"md.{TRJEXT}"
+    ext = mdrun.rundir / f"ext.{TRJEXT}"
     trajs = [traj]  # combine both md and ext
     if ext.exists():
         trajs.append(ext)
     # CONVERT
     conv_top = mdrun.rundir / "topology.pdb"
-    conv_traj = mdrun.rundir / "md_selection.trr"
+    conv_traj = mdrun.rundir / f"md_selection.{TRJEXT}"
     _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
     # FIT + OUTPUT
-    out_traj = mdrun.rundir / "samples.trr"
-    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=True)
+    out_traj = mdrun.rundir / f"samples.{TRJEXT}"
+    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=TRJEXT=='trr')
 
 
 def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
@@ -241,8 +249,9 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms.write(output_top)
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
-            selected_atoms.ts.time = ts.time
-            selected_atoms.ts.frame = ts.frame
+            print(ts.dt, ts.time, ts.frame)
+            # selected_atoms.ts.time = ts.time
+            # selected_atoms.ts.frame = ts.frame
             writer.write(selected_atoms)
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
 
@@ -260,12 +269,12 @@ def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
                 transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
                 ag.velocities = transformed_vels
             # Preserve the original timestamp
-            ag.ts.time = ts.time
-            ag.ts.frame = ts.frame
+            # ag.ts.time = ts.time
+            # ag.ts.frame = ts.frame
             W.write(ag)
-            if ts.frame % 1000 == 0:
+            if ts.frame % 1 == 0:
                 frame = ts.frame
-                time_ns = ts.time // 1000
+                time_ns = ts.time / 1000
                 logger.info(f"Current frame: %s at %s ns", frame, time_ns)
     logger.info("Done!")
 
