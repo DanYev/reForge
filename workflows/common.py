@@ -16,11 +16,11 @@ from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
-import plots
+from . import plots
 
 logger = get_logger(__name__)
 
-
+INPDB = 'input.pdb'
 SELECTION = "name CA" 
 TRJEXT = 'trr' # 'xtc' or 'trr'
 
