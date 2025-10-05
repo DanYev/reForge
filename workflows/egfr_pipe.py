@@ -22,8 +22,6 @@ from reforge import cli, io, mdm, pdbtools
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import *
 
-# Warning filters are now handled globally in reforge.__init__.py
-
 
 def setup(*args):
     setup_cg_protein_membrane(*args)
@@ -38,7 +36,7 @@ def setup_cg_protein_membrane(sysdir, sysname):
     mdsys.sort_input_pdb("egfr.pdb") # sorts chains in the input file and returns mdsys.inpdb file
     label_segments(in_pdb=mdsys.inpdb, out_pdb=mdsys.inpdb) # label the segments in the input PDB file 
     # # We may need to run mdsys.inpdb through OpenMM's or GROMACS' pdb tools but not always needed.
-    # mdsys.clean_pdb_mm(add_missing_atoms=False, add_hydrogens=True, pH=7.0)
+    mdsys.clean_pdb_mm(add_missing_atoms=False, add_hydrogens=True, pH=7.0)
     # mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, 6 for AMBER FF
     
     # 1.2. Splitting chains before the coarse-graining and cleaning if needed.
@@ -125,11 +123,6 @@ def extend(sysdir, sysname, runname, ntomp):
     mdrun.mdrun(deffnm='md', cpi='md.cpt', ntomp=ntomp, nsteps=-2) 
 
 
-def make_ndx(sysdir, sysname, **kwargs):
-    mdsys = GmxSystem(sysdir, sysname)
-    mdsys.make_sys_ndx(backbone_atoms=["BB", "BB1", "BB3"])
-
-
 def trjconv(sysdir, sysname, runname, **kwargs):
     kwargs.setdefault('b', 0) # in ps
     kwargs.setdefault('dt', 200) # in ps
@@ -191,28 +184,6 @@ def cov_analysis(sysdir, sysname, runname):
     # clean_dir(mdrun.covdir, 'covmat*')
 
 
-def tdlrt_analysis(sysdir, sysname, runname):
-    # WARNING! The computation can potentially be VERY VERY memory extensive.
-    # Estimate the size of the output before running this function.
-    # Dumping the whole trajectory can in theory output terabytes of data and will crash in practice.
-    # In such cases, request more memory, bigger GPU, or do it segment by segment.
-    logger.setLevel(logging.DEBUG)
-    mdrun = GmxRun(sysdir, sysname, runname) 
-    b = 500000
-    e = 3000000
-    sample_rate = 1
-    ntmax = 100 # how many frames to save
-    # Reading trajectory
-    u = mda.Universe(mdrun.str, mdrun.trj, in_memory=True)
-    ag = u.atoms.select_atoms("name BB")
-    positions = io.read_positions(u, ag, b=b, e=e, sample_rate=sample_rate)
-    # velocities = io.read_velocities(u, ag, b=b, e=e, sample_rate=sample_rate,)
-    # CALC CCF # CCF params FRAME_DT=20 ps
-    corr = mdm.ccf(positions, positions, ntmax=ntmax, n=10, mode='gpu', center=True, dtype=np.float32)
-    corr_file = mdrun.lrtdir / 'corr_pp.npy'
-    np.save(corr_file, corr)
-
-
 def nm_analysis(sysdir, sysname):
     # DOES NOT WORK PROPERLY YET! BUT STILL KINDA USEFUL.
     logger.setLevel(logging.DEBUG)
@@ -252,46 +223,7 @@ def get_averages(sysdir, sysname):
         mdsys.get_mean_sem(pattern=f'gasym_{segment}*.npy')
     logger.info("Done!")
 
-
-def get_td_averages(sysdir, sysname):
-    # May need lots of memory as well
-    mdsys = GmxSystem(sysdir, sysname)  
-    mdsys.get_td_averages(fname='corr_pp.npy')
-
-
-def sysjob(sysdir, sysname):    
-    pass
-
-
-def runjob(sysdir, sysname, runname):    
-    trjconv(sysdir, sysname, runname)
-    rms_analysis(sysdir, sysname, runname)
-    cov_analysis(sysdir, sysname, runname)
-    tdlrt_analysis(sysdir, sysname, runname)
-    get_averages(sysdir, sysname, runname)
-
         
 if __name__ == '__main__':
-    command = sys.argv[1]
-    args = sys.argv[2:]
-    commands = {
-        "setup": setup,
-        "md": md,
-        "extend": extend,
-        "make_ndx": make_ndx,
-        "trjconv": trjconv,
-        "rms_analysis": rms_analysis,
-        "cluster": cluster,
-        "cov_analysis": cov_analysis,
-        "tdlrt_analysis": tdlrt_analysis,
-        "nm_analysis": nm_analysis,
-        "get_averages": get_averages,
-        "get_td_averages": get_td_averages,
-        "sysjob": sysjob,
-        "runjob": runjob, 
-    }
-    if command in commands:   # Then, assuming `command` is the command name (a string)
-        commands[command](*args) # `args` is a list/tuple of arguments
-    else:
-        raise ValueError(f"Unknown command: {command}")
-   
+    from reforge.cli import run_command
+    run_command()

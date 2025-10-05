@@ -199,7 +199,7 @@ def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
     np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
     # plots
     plots.plot_rmsd(mdsys)
-    # plots.plot_rmsf(mdsys)
+    plots.plot_rmsf(mdsys)
     
 ################################################################################
 ### TDLRT ###
