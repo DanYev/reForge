@@ -22,7 +22,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
-    "sphinx_gallery.gen_gallery",
+    "sphinx_gallery.gen_gallery",  # Generates example gallery
     # "nbsphinx",
 ]
 
