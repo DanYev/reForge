@@ -21,15 +21,13 @@ import plots
 logger = get_logger(__name__)
 
 
-SELECTION = "protein" 
+SELECTION = "name CA" 
 TRJEXT = 'trr' # 'xtc' or 'trr'
 
 ################################################################################
 ### PCA/Clustering ###
 ################################################################################
-def pca_trajs(sysdir, sysname):
-    selection = SELECTION # CA for AA or Go-Martini; BB for Martini
-    step = 1 # in frames
+def pca_trajs(sysdir, sysname, selection=SELECTION, step=1):
     mdsys = MDSystem(sysdir, sysname)
     clean_dir(mdsys.datdir, "*")
     tops = io.pull_files(mdsys.mddir, "topology.pdb")
@@ -38,6 +36,7 @@ def pca_trajs(sysdir, sysname):
     # Reading 
     logger.info("Reading trajectories")
     u = mda.Universe(tops[0], trajs, in_memory_step=step, ) # in_memory=True)
+    logger.info(f'Selecting atoms for PCA analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9).T
     # PCA
@@ -120,16 +119,16 @@ def _plot_traj_pca(data, i, j, ids, labels, mdsys, skip=1, alpha=0.3, out_tag="p
     plt.close()
 
 
-def clust_cov(sysdir, sysname):
+def clust_cov(sysdir, sysname, selection = SELECTION):
     logger.info("Doing cluster covariance analysis")
     mdsys = MDSystem(sysdir, sysname)
-    selection = SELECTION
     clusters = io.pull_files(mdsys.datdir, "cluster*.xtc")
     tops = io.pull_files(mdsys.datdir, "topology*.pdb")
     clusters.append(mdsys.datdir / "filtered.xtc")
     tops.append(mdsys.datdir / "filtered.pdb")
     for idx, (cluster, top) in enumerate(zip(clusters, tops)):
         u = mda.Universe(top, cluster)
+        logger.info(f'Selecting atoms for cluster DFI analysis: {selection}')
         ag = u.atoms.select_atoms(selection)
         dtype = np.float32
         positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9, dtype=dtype)
@@ -145,13 +144,13 @@ def clust_cov(sysdir, sysname):
 ### DFI/DCI ###
 ################################################################################
 
-def cov_analysis(sysdir, sysname, runname):
+def cov_analysis(sysdir, sysname, runname, selection=SELECTION):
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.covdir.mkdir(exist_ok=True, parents=True)
     top = mdrun.rundir / "topology.pdb"
     traj = mdrun.rundir / f"samples.{TRJEXT}"
     u = mda.Universe(top, traj, in_memory=False)
-    selection = "name CA"
+    logger.info(f'Selecting atoms for covariance analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     clean_dir(mdrun.covdir, "*npy")
     mdrun.get_covmats(u, ag, sample_rate=1, b=0, e=1e12, n=2, outtag="covmat") 
@@ -208,7 +207,7 @@ def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
 ### TDLRT ###
 ################################################################################
 
-def tdlrt_analysis(sysdir, sysname, runname):
+def tdlrt_analysis(sysdir, sysname, runname, selection=SELECTION):
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.lrtdir.mkdir(exist_ok=True, parents=True)
     ps_path = mdrun.rundir / "positions.npy"
@@ -221,8 +220,10 @@ def tdlrt_analysis(sysdir, sysname, runname):
         traj = mdrun.rundir / f"samples.{TRJEXT}"
         top = mdrun.rundir / "topology.pdb"
         u = mda.Universe(top, traj)
-        ps = io.read_positions(u, u.atoms) # (n_atoms*3, nframes)
-        vs = io.read_velocities(u, u.atoms) # (n_atoms*3, nframes)
+        ag = u.atoms.select_atoms(selection)
+        logger.info(f"Reading positions and velocities for selection: {selection}")
+        ps = io.read_positions(u, ag) # (n_atoms*3, nframes)
+        vs = io.read_velocities(u, ag) # (n_atoms*3, nframes)
     ps = ps - ps[:, 0][..., None]
     # CCF calculations
     adict = {'pp': (ps, ps), } 
@@ -327,6 +328,7 @@ def initiate_systems_from_emu(*args):
 
 def _pdb_to_seq(pdb):
     u = mda.Universe(pdb)
+    logger.info('Selecting protein atoms for sequence extraction')
     protein = u.select_atoms("protein")
     seq = "".join(res.resname for res in protein.residues)  # three-letter codes
     seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)

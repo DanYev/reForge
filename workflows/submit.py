@@ -69,10 +69,10 @@ if __name__ == "__main__":
 
     ##### Analysis #####
     pyscript = str(pdir / 'common.py')
-    # sys_job('pca_trajs', submit=submit) # PCA
-    # sys_job('clust_cov', submit=submit) # Clustering
-    # run_job('rms_analysis', submit=submit) # RMSF/RMSD
+    sys_job('pca_trajs', submit=submit) # PCA
+    sys_job('clust_cov', submit=submit) # Clustering
+    run_job('rms_analysis', submit=submit) # RMSF/RMSD
     run_job('cov_analysis', submit=submit) # DFI/DCI
     sys_job('get_means_sems', submit=submit) 
     # run_job('tdlrt_analysis', submit=submit) # TDLRT
-    # sys_job('get_averages', submit=submit, c='1', mem='4G') # Averages from big arrays
+    # sys_job('get_averages', submit=submit, c='1', mem='4G') # Big arrays: mem > 2 * c * array size

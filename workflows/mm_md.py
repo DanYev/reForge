@@ -129,6 +129,7 @@ def md_npt(sysdir, sysname, runname):
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
     simulation.integrator.setStepSize(TSTEP)
+    logger.info(f'Saving reference PDB with selection: {OUT_SELECTION}')
     mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb")
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
@@ -173,6 +174,7 @@ def md_nve(sysdir, sysname, runname):
     state = simulation.context.getState(getPositions=True, getVelocities=True)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setState(state)
+    logger.info(f'Saving reference PDB with selection: {OUT_SELECTION}')
     mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
@@ -189,6 +191,7 @@ def _get_reporters(mdrun, append=False, prefix="md"):
     err_reporter =  app.StateDataReporter(
             sys.stderr, LOG_NOUT, time=True, step=True, potentialEnergy=True, kineticEnergy=True,
             temperature=True, speed=True, append=append)
+    logger.info(f'Setting up trajectory reporter with selection: {OUT_SELECTION}')
     if TRJEXT == 'trr':
         traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
             reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
@@ -235,6 +238,7 @@ def trjconv(sysdir, sysname, runname):
     # CONVERT
     conv_top = mdrun.rundir / "topology.pdb"
     conv_traj = mdrun.rundir / f"md_selection.{TRJEXT}"
+    logger.info(f'Converting trajectory with selection: {SELECTION}')
     _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
     # FIT + OUTPUT
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
