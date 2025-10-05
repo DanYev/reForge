@@ -21,14 +21,14 @@ import plots
 logger = get_logger(__name__)
 
 
-SELECTION = "name CA" 
+SELECTION = "protein" 
 TRJEXT = 'trr' # 'xtc' or 'trr'
 
 ################################################################################
 ### PCA/Clustering ###
 ################################################################################
 def pca_trajs(sysdir, sysname):
-    selection = "name CA" # CA for AA or Go-Martini; BB for Martini
+    selection = SELECTION # CA for AA or Go-Martini; BB for Martini
     step = 1 # in frames
     mdsys = MDSystem(sysdir, sysname)
     clean_dir(mdsys.datdir, "*")
@@ -123,7 +123,7 @@ def _plot_traj_pca(data, i, j, ids, labels, mdsys, skip=1, alpha=0.3, out_tag="p
 def clust_cov(sysdir, sysname):
     logger.info("Doing cluster covariance analysis")
     mdsys = MDSystem(sysdir, sysname)
-    selection = "name CA"
+    selection = SELECTION
     clusters = io.pull_files(mdsys.datdir, "cluster*.xtc")
     tops = io.pull_files(mdsys.datdir, "topology*.pdb")
     clusters.append(mdsys.datdir / "filtered.xtc")
@@ -174,7 +174,7 @@ def get_means_sems(sysdir, sysname):
 ### RMSD/RMSF Analysis ###
 ################################################################################
 
-def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
+def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
     mdsys = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     rmsdir = mdrun.rmsdir
@@ -185,6 +185,7 @@ def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
     u = mda.Universe(str(top), str(traj))
     atoms = u.select_atoms(selection)  
     # Calculate RMSD
+    logger.info(f'Calculating RMSD and RMSF for selection: {selection}')
     rmsd_analysis = rms.RMSD(atoms, reference=atoms, select=selection)
     rmsd_analysis.run(step=step)
     # Calculate RMSF
@@ -193,11 +194,13 @@ def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
     # Get residue IDs
     residue_ids = np.array([atom.resid for atom in atoms])
     # Save arrays
-    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.rmsd[:, 2])  # RMSD values (in nm)
-    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 0])   # Time values (in ps)
-    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in nm)
+    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.rmsd[:, 2])  # RMSD values (in angstroms)
+    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 1])   # Time values (in ps)
+    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in angstroms)
     np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
+    logger.info(f"Saved RMSD and RMSF data to {rmsdir}")
     # Plots
+    logger.info("Generating RMSD and RMSF plots")
     plots.plot_rmsd(mdsys)
     plots.plot_rmsf(mdsys)
     

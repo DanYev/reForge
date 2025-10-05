@@ -108,7 +108,7 @@ def plot_rmsf(system):
     files = io.pull_files(system.mddir, 'rmsf_values*.npy')
     datas = [np.load(file) for file in files]
     labels = [file.split('/')[-3] for file in files]
-    ys = [data*10 for data in datas] # convert nm to Angstroms
+    ys = [data for data in datas] 
     xs = [np.arange(len(data)) for data in datas]
     params = [{'lw':2, 'label':label} for label in labels]
     # Plotting
@@ -125,7 +125,7 @@ def plot_rmsd(system):
     datas = [np.load(file) for file in dfiles]
     times = [np.load(file) for file in tfiles]
     labels = [file.split('/')[-3] for file in dfiles]
-    ys = [data*10 for data in datas] # convert nm to Angstroms
+    ys = [data for data in datas] 
     xs = [time*1e-3 for time in times] # convert ps to ns
     params = [{'lw':2, 'label':label} for label in labels]
     # Plotting

@@ -26,10 +26,10 @@ TOTAL_STEPS = 100000
 TRJ_NOUT = 1000 # save every NOUT steps
 CHK_NOUT = 100000 
 LOG_NOUT = 1000 
-OUT_SELECTION = "all" 
-TRJEXT = 'xtc' # 'xtc' or 'trr'
+OUT_SELECTION = "protein" 
+TRJEXT = 'trr' # 'xtc' or 'trr'
 # Analysis
-SELECTION = "name CA" 
+SELECTION = "protein" 
 
 
 def setup(*args):
@@ -107,14 +107,13 @@ def md_npt(sysdir, sysname, runname):
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
     reporters = _get_reporters(mdrun, prefix="eq")
-    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "eq.pdb")
     simulation.reporters.extend(reporters)
     # EM + HU
     logger.info("Minimizing energy...")
-    simulation.minimizeEnergy(maxIterations=100)
+    simulation.minimizeEnergy(maxIterations=1000)
     logger.info("Heating up...")
     n_cycles = 100
-    steps_per_cycle = 100
+    steps_per_cycle = 1000
     for i in range(n_cycles):
         simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
         simulation.step(steps_per_cycle)
@@ -125,7 +124,7 @@ def md_npt(sysdir, sysname, runname):
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
+    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=1000)
     # MD
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
@@ -249,9 +248,6 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms.write(output_top)
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
-            print(ts.dt, ts.time, ts.frame)
-            # selected_atoms.ts.time = ts.time
-            # selected_atoms.ts.frame = ts.frame
             writer.write(selected_atoms)
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
 
@@ -268,11 +264,8 @@ def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
             if transform_vels:
                 transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
                 ag.velocities = transformed_vels
-            # Preserve the original timestamp
-            # ag.ts.time = ts.time
-            # ag.ts.frame = ts.frame
             W.write(ag)
-            if ts.frame % 1 == 0:
+            if ts.frame % 1000 == 0:
                 frame = ts.frame
                 time_ns = ts.time / 1000
                 logger.info(f"Current frame: %s at %s ns", frame, time_ns)
