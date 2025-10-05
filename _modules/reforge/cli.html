@@ -110,10 +110,16 @@
 <span class="sd">Date: YYYY-MM-DD</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">wraps</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 
 <span class="c1">##############################################################</span>
@@ -331,374 +337,6 @@
     <span class="k">return</span> <span class="n">wrapper</span></div>
 
 
-
-<span class="c1">##############################################################</span>
-<span class="c1"># GROMACS Functions</span>
-<span class="c1">##############################################################</span>
-
-
-<div class="viewcode-block" id="gmx_editconf">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_editconf">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_editconf</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;editconf&#39; command to modify system configuration.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
-<span class="sd">        The working directory where the command is executed.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;editconf&#39;. Defaults are:</span>
-<span class="sd">          - f: &#39;solute.pdb&#39; (input file)</span>
-<span class="sd">          - o: &#39;solute.pdb&#39; (output file)</span>
-<span class="sd">          - bt: &#39;triclinic&#39; (box type)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;solute.pdb&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;solute.pdb&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;bt&quot;</span><span class="p">,</span> <span class="s2">&quot;triclinic&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;editconf&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_solvate">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_solvate">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_solvate</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;solvate&#39; command to add solvent to the system.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
-<span class="sd">        The working directory where the command is executed.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;solvate&#39;. Defaults are:</span>
-<span class="sd">          - cp: &#39;solute.pdb&#39; (input configuration file)</span>
-<span class="sd">          - cs: &#39;water.gro&#39; (solvent structure file)</span>
-<span class="sd">          - p: &#39;system.top&#39; (topology file)</span>
-<span class="sd">          - o: &#39;system.pdb&#39; (output configuration file)</span>
-<span class="sd">          - radius: &#39;0.23&#39; (minimal solute-solvent distance)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;cp&quot;</span><span class="p">,</span> <span class="s2">&quot;solute.pdb&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;cs&quot;</span><span class="p">,</span> <span class="s2">&quot;water.gro&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="s2">&quot;system.top&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;system.pdb&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;radius&quot;</span><span class="p">,</span> <span class="s2">&quot;0.23&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;solvate&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_make_ndx">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_make_ndx">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_make_ndx</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;make_ndx&#39; command to create an index file.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for defining index groups.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;make_ndx&#39;. Defaults are:</span>
-<span class="sd">          - f: &#39;system.pdb&#39; (input configuration file)</span>
-<span class="sd">          - o: &#39;index.ndx&#39; (output index file)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;system.pdb&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;index.ndx&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;make_ndx&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_grompp">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_grompp">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_grompp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;grompp&#39; command to preprocess input files and</span>
-<span class="sd">    generate a .tpr file.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;grompp&#39;. Defaults are:</span>
-<span class="sd">          - maxwarn: &#39;1&#39;</span>
-<span class="sd">          - f: &#39;../mdp/em.mdp&#39; (input parameter file)</span>
-<span class="sd">          - c: &#39;../system.pdb&#39; (input configuration file)</span>
-<span class="sd">          - r: &#39;../system.pdb&#39; (input structure for position restraints)</span>
-<span class="sd">          - p: &#39;../system.top&#39; (input topology file)</span>
-<span class="sd">          - o: &#39;em.tpr&#39; (output run file)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;maxwarn&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;grompp&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_mdrun">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_mdrun">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_mdrun</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;mdrun&#39; command to perform molecular dynamics</span>
-<span class="sd">    simulations or energy minimization.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;mdrun&#39;. Defaults are:</span>
-<span class="sd">          - ntomp: &#39;8&#39;</span>
-<span class="sd">          - pin: &#39;on&#39;</span>
-<span class="sd">          - pinstride: &#39;1&#39;</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;ntomp&quot;</span><span class="p">,</span> <span class="s2">&quot;8&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;pin&quot;</span><span class="p">,</span> <span class="s2">&quot;on&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;pinstride&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;mdrun&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_trjconv">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_trjconv">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_trjconv</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="s2">&quot;1</span><span class="se">\n</span><span class="s2">1</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;trjconv&#39; command to convert trajectory files.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for trajectory frame selection (default &#39;1\n1\n&#39;).</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;trjconv&#39;.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;trjconv&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_rmsf">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_rmsf">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_rmsf</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;rmsf&#39; command to compute root mean square</span>
-<span class="sd">    fluctuations (RMSF).</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
-<span class="sd">        The working directory where the command is executed.</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;rmsf&#39;. Defaults are:</span>
-<span class="sd">          - s: &#39;md.tpr&#39; (input run file)</span>
-<span class="sd">          - f: &#39;mdc.xtc&#39; (trajectory file)</span>
-<span class="sd">          - o: &#39;rms_analysis/rmsf.xvg&#39; (output file)</span>
-<span class="sd">          - b: &#39;0&#39; (start time)</span>
-<span class="sd">          - xvg: &#39;none&#39; (output format)</span>
-<span class="sd">          - res: &#39;yes&#39; (calculate per-residue RMSF)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;md.tpr&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;mdc.xtc&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;rms_analysis/rmsf.xvg&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;xvg&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;res&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;rmsf&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_rms">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_rms">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_rms</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;rms&#39; command to compute root mean square deviation</span>
-<span class="sd">    (RMSD).</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
-<span class="sd">        The working directory where the command is executed.</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;rms&#39;. Defaults are:</span>
-<span class="sd">          - s: &#39;md.tpr&#39; (input run file)</span>
-<span class="sd">          - f: &#39;mdc.xtc&#39; (trajectory file)</span>
-<span class="sd">          - o: &#39;rms_analysis/rmsd.xvg&#39; (output file)</span>
-<span class="sd">          - b: &#39;0&#39; (start time)</span>
-<span class="sd">          - xvg: &#39;none&#39; (output format)</span>
-<span class="sd">          - fit: &#39;rot+trans&#39; (fitting method)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;md.tpr&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;mdc.xtc&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;rms_analysis/rmsd.xvg&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;xvg&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="s2">&quot;rot+trans&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;rms&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_rdf">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_rdf">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_rdf</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;rdf&#39; command to compute radial distribution</span>
-<span class="sd">    functions (RDF).</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
-<span class="sd">        The working directory where the command is executed.</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;rdf&#39;. Defaults are:</span>
-<span class="sd">          - s: &#39;md.tpr&#39; (input run file)</span>
-<span class="sd">          - f: &#39;mdc.xtc&#39; (trajectory file)</span>
-<span class="sd">          - o: &#39;rms_analysis/rdf.xvg&#39; (output file)</span>
-<span class="sd">          - b: &#39;0&#39; (start time)</span>
-<span class="sd">          - xvg: &#39;none&#39; (output format)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;md.tpr&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;mdc.xtc&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="s2">&quot;rms_analysis/rdf.xvg&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;xvg&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;rdf&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_cluster">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_cluster">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_cluster</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;cluster&#39; command to perform clustering analysis.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;cluster&#39;.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_extract_cluster">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_extract_cluster">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_extract_cluster</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;extract-cluster&#39; command to extract clustered</span>
-<span class="sd">    structures.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;extract-cluster&#39;.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;extract-cluster&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_covar">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_covar">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_covar</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;covar&#39; command to compute the covariance matrix and</span>
-<span class="sd">    normal modes.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;covar&#39;.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;covar&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_anaeig">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_anaeig">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_anaeig</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;anaeig&#39; command to analyze eigenvalues and</span>
-<span class="sd">    eigenvectors.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for defining groups.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;anaeig&#39;. Defaults include:</span>
-<span class="sd">          - v: &#39;eigenvec.trr&#39; (eigenvector file)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;eigenvec.trr&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;anaeig&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="gmx_make_edi">
-<a class="viewcode-back" href="../../reforge.html#reforge.cli.gmx_make_edi">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gmx_make_edi</span><span class="p">(</span><span class="n">clinput</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the GROMACS &#39;make_edi&#39; command to generate essential dynamics</span>
-<span class="sd">    (ED) information.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    clinput : str, optional</span>
-<span class="sd">        Input string for atom selection.</span>
-<span class="sd">    **kwargs : dict</span>
-<span class="sd">        Additional options for &#39;make_edi&#39;. Defaults are:</span>
-<span class="sd">          - f: &#39;eigenvec.trr&#39; (input eigenvector file)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    None</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="s2">&quot;eigenvec.trr&quot;</span><span class="p">)</span>
-    <span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;make_edi&quot;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="n">cltext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
-
 <span class="c1">##############################################################</span>
 <span class="c1"># Helper Functions</span>
 <span class="c1">##############################################################</span>
@@ -743,6 +381,159 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
         <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">hyphen</span><span class="si">}{</span><span class="n">key</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span></div>
+
+
+
+<span class="c1">##############################################################</span>
+<span class="c1"># Workflow Utilities</span>
+<span class="c1">##############################################################</span>
+
+<div class="viewcode-block" id="run_command">
+<a class="viewcode-back" href="../../reforge.html#reforge.cli.run_command">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_command</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Automatically discover and run functions from command line arguments.</span>
+<span class="sd">    This eliminates the need to manually maintain a function mapping.</span>
+<span class="sd">    Can be imported and used by any workflow script.</span>
+<span class="sd">    </span>
+<span class="sd">    Usage:</span>
+<span class="sd">        if __name__ == &quot;__main__&quot;:</span>
+<span class="sd">            from reforge.cli import run_command</span>
+<span class="sd">            run_command()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;__main__&#39;</span><span class="p">]</span>  <span class="c1"># Get the main module (the script being run)</span>
+        <span class="n">module_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s1">&#39;__name__&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># Get all public functions (not starting with _)</span>
+        <span class="n">functions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">obj</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">)</span> 
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)}</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Usage: python </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> &lt;function_name&gt; [args...]&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available functions: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">functions</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">command</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+    
+    <span class="c1"># Get main module and discover all public functions</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;__main__&#39;</span><span class="p">]</span>
+    <span class="n">module_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s1">&#39;__name__&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">functions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">obj</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">)</span> 
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)}</span>
+    
+    <span class="k">if</span> <span class="n">command</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">functions</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: Unknown function &#39;</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available functions for </span><span class="si">{</span><span class="n">module_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">functions</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Calling </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2"> with args: </span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+            <span class="n">functions</span><span class="p">[</span><span class="n">command</span><span class="p">](</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">functions</span><span class="p">[</span><span class="n">command</span><span class="p">]()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully completed </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error executing </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_job_script">
+<a class="viewcode-back" href="../../reforge.html#reforge.cli.create_job_script">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_job_script</span><span class="p">(</span><span class="n">original_script</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a standalone job script that captures the function call at submission time.</span>
+<span class="sd">    This prevents issues when the original script is modified after job submission.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    original_script : str</span>
+<span class="sd">        Path to the original Python script to be executed</span>
+<span class="sd">    function : str</span>
+<span class="sd">        Name of the function to be called</span>
+<span class="sd">    *args : tuple</span>
+<span class="sd">        Arguments to pass to the function</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Path to the generated wrapper script</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+    <span class="n">job_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;slurm_jobs&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;job_</span><span class="si">{</span><span class="n">function</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">10000</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">job_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="c1"># Copy the original script to preserve the version at submission time</span>
+    <span class="n">script_copy</span> <span class="o">=</span> <span class="n">job_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;script_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.py&quot;</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">original_script</span><span class="p">,</span> <span class="n">script_copy</span><span class="p">)</span>
+    
+    <span class="c1"># Create a wrapper script that calls the specific function</span>
+    <span class="n">wrapper_script</span> <span class="o">=</span> <span class="n">job_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;wrapper_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.py&quot;</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">wrapper_script</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&#39;&#39;#!/usr/bin/env python</span>
+<span class="s1">&quot;&quot;&quot;</span>
+<span class="s1">Auto-generated wrapper script for function: </span><span class="si">{</span><span class="n">function</span><span class="si">}</span>
+<span class="s1">Created at: </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="si">}</span>
+<span class="s1">Original script: </span><span class="si">{</span><span class="n">original_script</span><span class="si">}</span>
+<span class="s1">Arguments: </span><span class="si">{</span><span class="n">args</span><span class="si">}</span>
+<span class="s1">&quot;&quot;&quot;</span>
+
+<span class="s1">import sys</span>
+<span class="s1">import os</span>
+<span class="s1">from pathlib import Path</span>
+
+<span class="s1"># Add the script directory to path</span>
+<span class="s1">script_dir = Path(__file__).parent</span>
+<span class="s1">sys.path.insert(0, str(script_dir))</span>
+
+<span class="s1"># Import the copied script</span>
+<span class="s1">import </span><span class="si">{</span><span class="n">script_copy</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s1"> as target_module</span>
+
+<span class="s1"># Add the original script&#39;s directory to path to import run_command</span>
+<span class="s1">original_script_path = Path(&quot;</span><span class="si">{</span><span class="n">original_script</span><span class="si">}</span><span class="s1">&quot;)</span>
+<span class="s1">original_script_dir = original_script_path.parent</span>
+<span class="s1">sys.path.insert(0, str(original_script_dir))</span>
+
+<span class="s1">if __name__ == &quot;__main__&quot;:</span>
+<span class="s1">    # Set up sys.argv to mimic command line call</span>
+<span class="s1">    function_name = &quot;</span><span class="si">{</span><span class="n">function</span><span class="si">}</span><span class="s1">&quot;</span>
+<span class="s1">    args = </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="si">}</span>
+<span class="s1">    sys.argv = [__file__, function_name] + args</span>
+<span class="s1">    </span>
+<span class="s1">    # Try to use the centralized run_command function</span>
+<span class="s1">    try:</span>
+<span class="s1">        from reforge.cli import run_command</span>
+<span class="s1">        # Temporarily set the main module to our target module</span>
+<span class="s1">        sys.modules[&#39;__main__&#39;] = target_module</span>
+<span class="s1">        run_command()</span>
+<span class="s1">    except ImportError:</span>
+<span class="s1">        # Fall back to target module&#39;s _run_command if available</span>
+<span class="s1">        if hasattr(target_module, &#39;_run_command&#39;):</span>
+<span class="s1">            target_module._run_command()</span>
+<span class="s1">        else:</span>
+<span class="s1">            # Final fallback to direct function calling</span>
+<span class="s1">            if hasattr(target_module, function_name):</span>
+<span class="s1">                func = getattr(target_module, function_name)</span>
+<span class="s1">                print(f&quot;Calling </span><span class="se">{{</span><span class="s1">function_name</span><span class="se">}}</span><span class="s1"> with args: </span><span class="se">{{</span><span class="s1">args</span><span class="se">}}</span><span class="s1">&quot;, file=sys.stderr)</span>
+<span class="s1">                try:</span>
+<span class="s1">                    if args:</span>
+<span class="s1">                        func(*args)</span>
+<span class="s1">                    else:</span>
+<span class="s1">                        func()</span>
+<span class="s1">                    print(f&quot;Successfully completed </span><span class="se">{{</span><span class="s1">function_name</span><span class="se">}}</span><span class="s1">&quot;, file=sys.stderr)</span>
+<span class="s1">                except Exception as e:</span>
+<span class="s1">                    print(f&quot;Error executing </span><span class="se">{{</span><span class="s1">function_name</span><span class="se">}}</span><span class="s1">: </span><span class="se">{{</span><span class="s1">str(e)</span><span class="se">}}</span><span class="s1">&quot;, file=sys.stderr)</span>
+<span class="s1">                    import traceback</span>
+<span class="s1">                    traceback.print_exc(file=sys.stderr)</span>
+<span class="s1">                    sys.exit(1)</span>
+<span class="s1">            else:</span>
+<span class="s1">                print(f&quot;Function &#39;</span><span class="se">{{</span><span class="s1">function_name</span><span class="se">}}</span><span class="s1">&#39; not found in module&quot;, file=sys.stderr)</span>
+<span class="s1">                sys.exit(1)</span>
+<span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">wrapper_script</span><span class="p">)</span></div>
 
 </pre></div>
 

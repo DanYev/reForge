@@ -213,7 +213,7 @@
 
 <div class="viewcode-block" id="format_header">
 <a class="viewcode-back" href="../../reforge.html#reforge.itpio.format_header">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">format_header</span><span class="p">(</span><span class="n">molname</span><span class="o">=</span><span class="s2">&quot;molecule&quot;</span><span class="p">,</span> <span class="n">forcefield</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">arguments</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">format_header</span><span class="p">(</span><span class="n">molname</span><span class="o">=</span><span class="s2">&quot;molecule&quot;</span><span class="p">,</span> <span class="n">forcefield</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">arguments</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Format the header of the topology file.</span>
 
 <span class="sd">    Parameters</span>
@@ -223,7 +223,9 @@
 <span class="sd">    forcefield : str, optional</span>
 <span class="sd">        Force field identifier.</span>
 <span class="sd">    arguments : str, optional</span>
-<span class="sd">        Command-line arguments used.</span>
+<span class="sd">        Parsed arguments with their values including defaults.</span>
+<span class="sd">    timestamp : str, optional</span>
+<span class="sd">        Timestamp when file was generated.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -231,8 +233,11 @@
 <span class="sd">        A list of header lines.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;; MARTINI (</span><span class="si">{</span><span class="n">forcefield</span><span class="si">}</span><span class="s1">) Coarse Grained topology file for &quot;</span><span class="si">{</span><span class="n">molname</span><span class="si">}</span><span class="s1">&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">timestamp</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;; Generated on: </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;; Created using the following options:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;; </span><span class="si">{</span><span class="n">arguments</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arguments</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;; </span><span class="si">{</span><span class="n">arguments</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;; &quot;</span> <span class="o">+</span> <span class="s2">&quot;#&quot;</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">lines</span></div>
 
@@ -305,11 +310,20 @@
 <span class="sd">        A list of formatted lines.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[ atoms ]</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">]</span>
-    <span class="n">fs8</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> ; </span><span class="si">%s</span><span class="s2">&quot;</span>
-    <span class="n">fs9</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> ; </span><span class="si">%s</span><span class="s2">&quot;</span>
     <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">atoms</span><span class="p">:</span>
         <span class="n">atom</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span>
-        <span class="n">line</span> <span class="o">=</span> <span class="n">fs9</span> <span class="o">%</span> <span class="n">atom</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span> <span class="o">==</span> <span class="mi">9</span> <span class="k">else</span> <span class="n">fs8</span> <span class="o">%</span> <span class="n">atom</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span> <span class="o">==</span> <span class="mi">9</span><span class="p">:</span>
+            <span class="c1"># Format with 8 values + comment</span>
+            <span class="k">if</span> <span class="n">atom</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="ow">and</span> <span class="n">atom</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>  <span class="c1"># If there&#39;s a non-empty comment</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> ; </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">atom</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">atom</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Format with 7 values + comment</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">7</span> <span class="ow">and</span> <span class="n">atom</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="ow">and</span> <span class="n">atom</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>  <span class="c1"># If there&#39;s a non-empty comment</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2"> ; </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">atom</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5s</span><span class="s2"> </span><span class="si">%5d</span><span class="s2"> </span><span class="si">%7.4f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">atom</span><span class="p">[:</span><span class="mi">7</span><span class="p">]</span>
         <span class="n">line</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
         <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">lines</span></div>

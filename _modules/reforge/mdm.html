@@ -112,11 +112,13 @@
 <span class="sd">Date: YYYY-MM-DD</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>  <span class="c1"># removed unused imports: sys, MDAnalysis, pandas, timeit, memprofit, cuda_detected</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge.rfgmath</span><span class="w"> </span><span class="kn">import</span> <span class="n">rcmath</span><span class="p">,</span> <span class="n">rpymath</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="fft_ccf">
@@ -465,7 +467,6 @@
 <span class="sd">    np.ndarray</span>
 <span class="sd">        The computed Hessian matrix.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># pylint: disable=c-extension-no-member</span>
     <span class="k">return</span> <span class="n">rcmath</span><span class="o">.</span><span class="n">hessian</span><span class="p">(</span><span class="n">vecs</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">,</span> <span class="n">spring_constant</span><span class="p">,</span> <span class="n">dd</span><span class="p">)</span></div>
 
 

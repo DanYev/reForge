@@ -107,11 +107,14 @@
 <span class="sd">Date: YYYY-MM-DD</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeit</span><span class="p">,</span> <span class="n">memprofit</span><span class="p">,</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeit</span><span class="p">,</span> <span class="n">memprofit</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge.pdbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AtomList</span><span class="p">,</span> <span class="n">System</span><span class="p">,</span> <span class="n">PDBParser</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="c1">################################################################################</span>
 <span class="c1">## Reading Trajectories with MDAnalysis</span>
@@ -153,12 +156,23 @@
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reading positions...&quot;</span><span class="p">)</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">ag</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">u</span><span class="o">.</span><span class="n">trajectory</span><span class="p">[::</span><span class="n">sample_rate</span><span class="p">]</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">ts</span><span class="o">.</span><span class="n">time</span> <span class="o">&lt;</span> <span class="n">e</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">ag</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">u</span><span class="o">.</span><span class="n">trajectory</span><span class="p">[::</span><span class="n">sample_rate</span><span class="p">]</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;=</span> <span class="n">ts</span><span class="o">.</span><span class="n">time</span> <span class="o">&lt;=</span> <span class="n">e</span><span class="p">],</span>
         <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Done!&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">arr</span></div>
+
+
+
+<div class="viewcode-block" id="read_positions_tmp">
+<a class="viewcode-back" href="../../reforge.html#reforge.io.read_positions_tmp">[docs]</a>
+<span class="nd">@timeit</span>
+<span class="nd">@memprofit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_positions_tmp</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">ag</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mi">10000000</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reading positions...&quot;</span><span class="p">)</span> 
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">timeseries</span><span class="p">(</span><span class="n">ag</span><span class="p">)</span>
+    <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">positions</span></div>
 
 
 
@@ -167,10 +181,10 @@
 <span class="nd">@timeit</span>
 <span class="nd">@memprofit</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">read_velocities</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">ag</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mi">10000000</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Saimilar to the previous. Read and return velocities from an MDAnalysis trajectory.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Similar to the previous. Read and return velocities from an MDAnalysis trajectory.&quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reading velocities...&quot;</span><span class="p">)</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">ag</span><span class="o">.</span><span class="n">velocities</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">u</span><span class="o">.</span><span class="n">trajectory</span><span class="p">[::</span><span class="n">sample_rate</span><span class="p">]</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">ts</span><span class="o">.</span><span class="n">time</span> <span class="o">&lt;</span> <span class="n">e</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">ag</span><span class="o">.</span><span class="n">velocities</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">u</span><span class="o">.</span><span class="n">trajectory</span><span class="p">[::</span><span class="n">sample_rate</span><span class="p">]</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;=</span> <span class="n">ts</span><span class="o">.</span><span class="n">time</span> <span class="o">&lt;=</span> <span class="n">e</span><span class="p">],</span>
         <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
@@ -286,7 +300,8 @@
         <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Directory &#39;</span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s2">&#39; does not exist or is not a directory.&quot;</span>
         <span class="p">)</span>
-    <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">base_path</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)]</span></div>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">base_path</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
 
 
 

@@ -104,14 +104,18 @@
 <span class="sd">Date: 2025-02-27</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">importlib.resources</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge</span><span class="w"> </span><span class="kn">import</span> <span class="n">cli</span><span class="p">,</span> <span class="n">pdbtools</span><span class="p">,</span> <span class="n">io</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge.pdbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AtomList</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">cd</span><span class="p">,</span> <span class="n">clean_dir</span><span class="p">,</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">cd</span><span class="p">,</span> <span class="n">clean_dir</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge.mdsystem.mdsystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">MDSystem</span><span class="p">,</span> <span class="n">MDRun</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="c1">################################################################################</span>
 <span class="c1"># GMX system class</span>
@@ -126,10 +130,7 @@
 <span class="sd">    Most attributes are paths to files and directories needed to set up</span>
 <span class="sd">    and run the MD simulation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">MDATDIR</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="s2">&quot;reforge&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;martini&quot;</span> <span class="o">/</span> <span class="s2">&quot;datdir&quot;</span>
     <span class="n">MMDPDIR</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="s2">&quot;reforge&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;martini&quot;</span> <span class="o">/</span> <span class="s2">&quot;datdir&quot;</span> <span class="o">/</span> <span class="s2">&quot;mdp&quot;</span>
-    <span class="n">MITPDIR</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="s2">&quot;reforge&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;martini&quot;</span> <span class="o">/</span> <span class="s2">&quot;itp&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sysdir</span><span class="p">,</span> <span class="n">sysname</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the MD system with required directories and file paths.</span>
@@ -142,11 +143,8 @@
 <span class="sd">        Sets up paths for various files required for coarse-grained MD simulation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">sysdir</span><span class="p">,</span> <span class="n">sysname</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sysgro</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;system.gro&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">systop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;system.top&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sysndx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;system.ndx&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mdpdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;mdp&quot;</span>
-        <span class="c1"># Define gro directory (used in make_gro_file)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grodir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">&quot;gro&quot;</span>
 
 <div class="viewcode-block" id="GmxSystem.gmx">
@@ -169,37 +167,15 @@
 
 <div class="viewcode-block" id="GmxSystem.prepare_files">
 <a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.prepare_files">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepares the simulation by creating necessary directories and copying input files.</span>
-
-<span class="sd">        The method:</span>
-<span class="sd">          - Creates directories for proteins, nucleotides, topologies, maps, mdp files,</span>
-<span class="sd">            coarse-grained PDBs, GRO files, MD runs, data, and PNG outputs.</span>
-<span class="sd">          - Copies .mdp files from the master MDP directory.</span>
-<span class="sd">          - Copies &#39;water.gro&#39; and &#39;atommass.dat&#39; from the master data directory.</span>
-<span class="sd">          - Copies .itp files from the master ITP directory to the system topology directory.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Preparing files and directories&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prodir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nucdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extension for GROMACS system&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">prepare_files</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">topdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mapdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mdpdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cgdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">datdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pngdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="c1"># Copy .mdp files from master MDP directory</span>
+        <span class="c1"># .mdp files</span>
         <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">MMDPDIR</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.mdp&quot;</span><span class="p">):</span>
                 <span class="n">outpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mdpdir</span> <span class="o">/</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span>
-                <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">outpath</span><span class="p">)</span>
-        <span class="c1"># Copy water.gro and atommass.dat from master data directory</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MDATDIR</span> <span class="o">/</span> <span class="s2">&quot;water.gro&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MDATDIR</span> <span class="o">/</span> <span class="s2">&quot;atommass.dat&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
-        <span class="c1"># Copy .itp files from master ITP directory</span>
-        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">MITPDIR</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.itp&quot;</span><span class="p">):</span>
-                <span class="n">outpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topdir</span> <span class="o">/</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span>
                 <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">outpath</span><span class="p">)</span></div>
 
 
@@ -404,6 +380,10 @@
         <span class="k">for</span> <span class="n">chid</span> <span class="ow">in</span> <span class="n">chids</span><span class="p">:</span>
             <span class="n">chain</span> <span class="o">=</span> <span class="n">solute</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">chid</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;chid&quot;</span><span class="p">)</span>
             <span class="n">chain</span><span class="o">.</span><span class="n">write_ndx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sysndx</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[ chain_</span><span class="si">{</span><span class="n">chid</span><span class="si">}</span><span class="s2"> ]&quot;</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">wrap</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="n">segids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">solute</span><span class="o">.</span><span class="n">segids</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">segid</span> <span class="ow">in</span> <span class="n">segids</span><span class="p">:</span>
+            <span class="n">segment</span> <span class="o">=</span> <span class="n">solute</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">segid</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;segid&quot;</span><span class="p">)</span>
+            <span class="n">segment</span><span class="o">.</span><span class="n">write_ndx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sysndx</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[ seg_</span><span class="si">{</span><span class="n">segid</span><span class="si">}</span><span class="s2"> ]&quot;</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">wrap</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Written index to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sysndx</span><span class="p">)</span></div>
 
 
@@ -428,9 +408,7 @@
 <div class="viewcode-block" id="GmxRun">
 <a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxRun">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GmxRun</span><span class="p">(</span><span class="n">MDRun</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subclass of GmxSystem for executing molecular dynamics (MD) simulations</span>
-<span class="sd">    and performing post-processing analyses.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subclass of MDRun for running MD simulations with GROMACS.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sysdir</span><span class="p">,</span> <span class="n">sysname</span><span class="p">,</span> <span class="n">runname</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the MD run environment with additional directories for analysis.</span>
@@ -700,7 +678,7 @@
         <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trj</span><span class="p">)</span>
         <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;clusters&quot;</span><span class="p">,</span> <span class="s2">&quot;cluster.ndx&quot;</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cludir</span><span class="p">):</span>
-            <span class="n">cli</span><span class="o">.</span><span class="n">gmx</span><span class="p">(</span><span class="s1">&#39;extract_cluster&#39;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">cli</span><span class="o">.</span><span class="n">gmx</span><span class="p">(</span><span class="s1">&#39;extract-cluster&#39;</span><span class="p">,</span> <span class="n">clinput</span><span class="o">=</span><span class="n">clinput</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="GmxRun.covar">
@@ -816,6 +794,95 @@
 
 
 <span class="c1">#######################</span>
+<span class="c1"># Detect available CPU cores and set ntomp</span>
+<div class="viewcode-block" id="get_ntomp">
+<a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.gmxmd.get_ntomp">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ntomp</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect number of available CPU cores for OpenMP threads&quot;&quot;&quot;</span>
+    <span class="c1"># Check if ntomp is set via environment variable</span>
+    <span class="n">env_ntomp</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;OMP_NUM_THREADS&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">env_ntomp</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ntomp_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">env_ntomp</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using OMP_NUM_THREADS=</span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> from environment&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ntomp_val</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid OMP_NUM_THREADS value: </span><span class="si">{</span><span class="n">env_ntomp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check SLURM environment variables first (most reliable for HPC)</span>
+    <span class="c1"># Calculate total allocated cores: ntasks × cpus-per-task</span>
+    <span class="n">slurm_ntasks</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_NTASKS&#39;</span><span class="p">)</span>
+    <span class="n">slurm_cpus_per_task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_CPUS_PER_TASK&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">slurm_ntasks</span> <span class="ow">and</span> <span class="n">slurm_cpus_per_task</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ntasks</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">slurm_ntasks</span><span class="p">)</span>
+            <span class="n">cpus_per_task</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">slurm_cpus_per_task</span><span class="p">)</span>
+            <span class="n">total_cores</span> <span class="o">=</span> <span class="n">ntasks</span> <span class="o">*</span> <span class="n">cpus_per_task</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SLURM allocation: </span><span class="si">{</span><span class="n">ntasks</span><span class="si">}</span><span class="s2"> tasks × </span><span class="si">{</span><span class="n">cpus_per_task</span><span class="si">}</span><span class="s2"> cpus/task = </span><span class="si">{</span><span class="n">total_cores</span><span class="si">}</span><span class="s2"> total cores&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">total_cores</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid SLURM values - ntasks: </span><span class="si">{</span><span class="n">slurm_ntasks</span><span class="si">}</span><span class="s2">, cpus_per_task: </span><span class="si">{</span><span class="n">slurm_cpus_per_task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Fallback to individual SLURM variables</span>
+    <span class="k">if</span> <span class="n">slurm_cpus_per_task</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ntomp_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">slurm_cpus_per_task</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using SLURM_CPUS_PER_TASK=</span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> (no ntasks found)&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ntomp_val</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid SLURM_CPUS_PER_TASK value: </span><span class="si">{</span><span class="n">slurm_cpus_per_task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check other SLURM variables</span>
+    <span class="n">slurm_nprocs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_NPROCS&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">slurm_nprocs</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ntomp_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">slurm_nprocs</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using SLURM_NPROCS=</span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> from SLURM allocation&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ntomp_val</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid SLURM_NPROCS value: </span><span class="si">{</span><span class="n">slurm_nprocs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check PBS/Torque environment variables</span>
+    <span class="n">pbs_ncpus</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;PBS_NCPUS&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;NCPUS&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pbs_ncpus</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ntomp_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">pbs_ncpus</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using PBS_NCPUS/NCPUS=</span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> from PBS allocation&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ntomp_val</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid PBS_NCPUS/NCPUS value: </span><span class="si">{</span><span class="n">pbs_ncpus</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Try to get available cores from cgroup limits (Docker/container environments)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/sys/fs/cgroup/cpu/cpu.cfs_quota_us&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">quota</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/sys/fs/cgroup/cpu/cpu.cfs_period_us&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">quota</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">period</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ntomp_val</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">quota</span> <span class="o">//</span> <span class="n">period</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using cgroup CPU quota: </span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> cores available&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ntomp_val</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">PermissionError</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># cgroup not available or not accessible</span>
+    
+    <span class="c1"># Fallback: use total system cores but warn about potential oversubscription</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+        <span class="n">total_cores</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No job scheduler detected. Found </span><span class="si">{</span><span class="n">total_cores</span><span class="si">}</span><span class="s2"> total system cores.&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;This may cause oversubscription on shared systems!&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Consider setting OMP_NUM_THREADS explicitly for your allocation.&quot;</span><span class="p">)</span>
+        <span class="c1"># Default to 1 core to be safe on shared systems</span>
+        <span class="n">ntomp_val</span> <span class="o">=</span> <span class="mi">1</span> 
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Defaulting to ntomp=</span><span class="si">{</span><span class="n">ntomp_val</span><span class="si">}</span><span class="s2"> for safety on shared systems&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ntomp_val</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not detect CPU cores: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, defaulting to ntomp=1&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span></div>
+
+        
+
 <div class="viewcode-block" id="sort_for_gmx">
 <a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.gmxmd.sort_for_gmx">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sort_for_gmx</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>

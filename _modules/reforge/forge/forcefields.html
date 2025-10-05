@@ -99,7 +99,7 @@
 
 <span class="c1"># List of available force fields</span>
 <span class="n">forcefields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;martini30rna&quot;</span><span class="p">,</span> <span class="s2">&quot;martini31nucleic&quot;</span><span class="p">]</span>
-<span class="n">RNA_SYSTEM</span> <span class="o">=</span> <span class="s2">&quot;test&quot;</span>
+<span class="n">ITP_SYSTEM</span> <span class="o">=</span> <span class="s2">&quot;rna&quot;</span>
 
 
 <span class="c1">###################################</span>
@@ -283,6 +283,50 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">sc_pairs</span><span class="p">(</span><span class="n">resname</span><span class="p">),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sc_vs3s</span><span class="p">(</span><span class="n">resname</span><span class="p">),</span>
         <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="NucleicForceField.update_non_standard_mapping">
+<a class="viewcode-back" href="../../../reforge.forge.html#reforge.forge.forcefields.NucleicForceField.update_non_standard_mapping">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_non_standard_mapping</span><span class="p">(</span><span class="n">mapping</span><span class="p">):</span>
+        <span class="n">mapping</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;RA3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RA5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;A3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;A5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;2MA&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;6MA&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RAP&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;DMA&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;DHA&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;SPA&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RC3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RC5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;C3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;C5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;5MC&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;3MP&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;MRC&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;NMC&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RG3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RG5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;G3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;G5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;1MG&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;2MG&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;7MG&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;MRG&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;G&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RU3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;RU5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;U3&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;U5&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;4SU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;DHU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;PSU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;5MU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;3MU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;3MP&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;MRU&quot;</span><span class="p">:</span><span class="n">mapping</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">],</span>
+        <span class="p">})</span></div>
 </div>
 
 
@@ -321,7 +365,7 @@
     <span class="n">g_mapping</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;SC1&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C8&quot;</span><span class="p">,</span> <span class="s2">&quot;H8&quot;</span><span class="p">,</span> <span class="s2">&quot;N9&quot;</span><span class="p">),</span>
         <span class="s2">&quot;SC2&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C4&quot;</span><span class="p">,</span> <span class="s2">&quot;N3&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;SC3&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C2&quot;</span><span class="p">,</span> <span class="s2">&quot;N2&quot;</span><span class="p">,</span> <span class="s2">&quot;H21&quot;</span><span class="p">,</span> <span class="s2">&quot;H22&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;SC3&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C2&quot;</span><span class="p">,</span> <span class="s2">&quot;N2&quot;</span><span class="p">,</span> <span class="s2">&quot;H21&quot;</span><span class="p">,</span> <span class="s2">&quot;H22&quot;</span><span class="p">,),</span>
         <span class="s2">&quot;SC4&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;N1&quot;</span><span class="p">,),</span>
         <span class="s2">&quot;SC5&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C6&quot;</span><span class="p">,</span> <span class="s2">&quot;O6&quot;</span><span class="p">),</span>
         <span class="s2">&quot;SC6&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C5&quot;</span><span class="p">,</span> <span class="s2">&quot;N7&quot;</span><span class="p">),</span>
@@ -332,8 +376,7 @@
         <span class="s2">&quot;SC3&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;N3&quot;</span><span class="p">,),</span>
         <span class="s2">&quot;SC4&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;C4&quot;</span><span class="p">,</span> <span class="s2">&quot;O4&quot;</span><span class="p">),</span>
     <span class="p">}</span>
-    <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">a_mapping</span><span class="p">},</span>
+    <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">a_mapping</span><span class="p">},</span>
         <span class="s2">&quot;ADE&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">a_mapping</span><span class="p">},</span>       
         <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">c_mapping</span><span class="p">},</span>
         <span class="s2">&quot;CYT&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">c_mapping</span><span class="p">},</span>
@@ -343,7 +386,7 @@
         <span class="s2">&quot;URA&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">bb_mapping</span><span class="p">,</span> <span class="o">**</span><span class="n">u_mapping</span><span class="p">},</span>
     <span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="s2">&quot;rna_reg&quot;</span><span class="p">,</span> <span class="n">mol</span><span class="o">=</span><span class="n">RNA_SYSTEM</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;new&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="s2">&quot;rna_reg&quot;</span><span class="p">,</span> <span class="n">mol</span><span class="o">=</span><span class="n">ITP_SYSTEM</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;new&quot;</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mol</span><span class="p">,</span> <span class="n">version</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;martini30rna&quot;</span>
 
@@ -423,6 +466,8 @@
         <span class="n">sc_atoms</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_atoms</span><span class="p">,</span> <span class="n">c_atoms</span><span class="p">,</span> <span class="n">g_atoms</span><span class="p">,</span> <span class="n">u_atoms</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mapdict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resnames</span><span class="p">,</span> <span class="n">sc_atoms</span><span class="p">))</span>
 
+        <span class="n">NucleicForceField</span><span class="o">.</span><span class="n">update_non_standard_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mapping</span><span class="p">)</span>
+
 <div class="viewcode-block" id="Martini30RNA.sc_atoms">
 <a class="viewcode-back" href="../../../reforge.forge.html#reforge.forge.forcefields.Martini30RNA.sc_atoms">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">sc_atoms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resname</span><span class="p">):</span>
@@ -451,7 +496,7 @@
     <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;rna_pol&quot;</span><span class="p">,</span> <span class="n">mol</span><span class="o">=</span><span class="n">RNA_SYSTEM</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;new&quot;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;rna_pol&quot;</span><span class="p">,</span> <span class="n">mol</span><span class="o">=</span><span class="n">ITP_SYSTEM</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;new&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;martini31nucleic&quot;</span>
         <span class="n">charges</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;TDU&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
@@ -531,7 +576,7 @@
             <span class="s2">&quot;pair&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
-        <span class="n">a_itp</span><span class="p">,</span> <span class="n">c_itp</span><span class="p">,</span> <span class="n">g_itp</span><span class="p">,</span> <span class="n">u_itp</span> <span class="o">=</span> <span class="n">NucleicForceField</span><span class="o">.</span><span class="n">read_itps</span><span class="p">(</span><span class="n">RNA_SYSTEM</span><span class="p">,</span> <span class="s2">&quot;polar&quot;</span><span class="p">,</span> <span class="s2">&quot;new&quot;</span><span class="p">)</span>
+        <span class="n">a_itp</span><span class="p">,</span> <span class="n">c_itp</span><span class="p">,</span> <span class="n">g_itp</span><span class="p">,</span> <span class="n">u_itp</span> <span class="o">=</span> <span class="n">NucleicForceField</span><span class="o">.</span><span class="n">read_itps</span><span class="p">(</span><span class="n">ITP_SYSTEM</span><span class="p">,</span> <span class="s2">&quot;polar&quot;</span><span class="p">,</span> <span class="s2">&quot;new&quot;</span><span class="p">)</span>
 
         <span class="n">mapping_a</span> <span class="o">=</span> <span class="n">nsplit</span><span class="p">(</span><span class="s2">&quot;TA1 TA2 TA3 TA4 TA5 TA6&quot;</span><span class="p">)</span>
         <span class="n">connectivity_a</span><span class="p">,</span> <span class="n">itp_params_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">itp_to_indata</span><span class="p">(</span><span class="n">a_itp</span><span class="p">)</span>

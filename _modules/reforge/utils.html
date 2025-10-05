@@ -84,24 +84,8 @@
 <span class="sd">    for changing the working directory, and helper functions for cleaning directories and</span>
 <span class="sd">    detecting CUDA availability.</span>
 
-<span class="sd">Usage Example:</span>
-<span class="sd">    &gt;&gt;&gt; from utils import timeit, memprofit, cd, clean_dir, cuda_info</span>
-<span class="sd">    &gt;&gt;&gt;</span>
-<span class="sd">    &gt;&gt;&gt; @timeit</span>
-<span class="sd">    ... def my_function():</span>
-<span class="sd">    ...     # Function implementation here</span>
-<span class="sd">    ...     pass</span>
-<span class="sd">    &gt;&gt;&gt;</span>
-<span class="sd">    &gt;&gt;&gt; with cd(&quot;/tmp&quot;):</span>
-<span class="sd">    ...     # Perform operations in /tmp</span>
-<span class="sd">    ...     pass</span>
-<span class="sd">    &gt;&gt;&gt;</span>
-<span class="sd">    &gt;&gt;&gt; cuda_info()</span>
-
 <span class="sd">Requirements:</span>
 <span class="sd">    - Python 3.x</span>
-<span class="sd">    - cupy</span>
-<span class="sd">    - Standard libraries: logging, os, time, tracemalloc, contextlib, functools, pathlib</span>
 
 <span class="sd">Author: DY</span>
 <span class="sd">Date: YYYY-MM-DD</span>
@@ -111,62 +95,143 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tracemalloc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">wraps</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">cupy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cp</span>
+<div class="viewcode-block" id="get_logger">
+<a class="viewcode-back" href="../../reforge.html#reforge.utils.get_logger">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_logger</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;reforge&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the configured logger instance.</span>
+<span class="sd">    </span>
+<span class="sd">    Since logging is now configured in reforge.__init__.py, this function</span>
+<span class="sd">    simply returns the already-configured logger instance.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Logger name (default: &quot;reforge&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logging.Logger</span>
+<span class="sd">        The configured logger instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
 
-<span class="c1"># Use an environment variable (DEBUG=1) to toggle debug logging</span>
-<span class="n">DEBUG</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span>
-<span class="n">LOG_LEVEL</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">DEBUG</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">LOG_LEVEL</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;[</span><span class="si">%(levelname)s</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># logger.debug(&quot;Debug mode is enabled.&quot;)</span>
-<span class="c1"># logger.info(&quot;Logger is set up.&quot;)</span>
+
+
+<span class="c1"># Backward compatibility - provide logger at module level</span>
+<span class="c1"># For new code, prefer: from reforge.utils import get_logger; logger = get_logger()</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="timeit">
 <a class="viewcode-back" href="../../reforge.html#reforge.utils.timeit">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">timeit</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to measure and log the execution time of a function.&quot;&quot;&quot;</span>
-    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>  <span class="c1"># Start timer</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>      <span class="c1"># Execute the function</span>
-        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>      <span class="c1"># End timer</span>
-        <span class="n">execution_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-            <span class="s2">&quot;Function &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39; executed in </span><span class="si">%.6f</span><span class="s2"> seconds.&quot;</span><span class="p">,</span>
-            <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
-            <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-            <span class="n">execution_time</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">result</span>
-    <span class="k">return</span> <span class="n">wrapper</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">timeit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Backwards-compatible timeit decorator&quot;&quot;&quot;</span>
+    <span class="c1"># If called with no args, it&#39;s being used as @timeit</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_timeit</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="c1"># If first arg is a function, it&#39;s being used as @timeit</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">callable</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="n">_timeit</span><span class="p">()(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        
+    <span class="c1"># If first arg is a level, it&#39;s being used as @timeit(level=...)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_timeit</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    
+    <span class="c1"># New style with explicit parameters</span>
+    <span class="k">return</span> <span class="n">_timeit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_timeit</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to measure and log execution time of a function, with adjustable log level and time unit.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        level (int): Logging level (default: logging.DEBUG)</span>
+<span class="sd">        unit (str): Time unit to display. Options:</span>
+<span class="sd">            - &#39;ms&#39;: milliseconds</span>
+<span class="sd">            - &#39;s&#39;: seconds (default)</span>
+<span class="sd">            - &#39;m&#39;: minutes</span>
+<span class="sd">            - &#39;auto&#39;: automatically choose best unit</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+            <span class="n">execution_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+            
+            <span class="c1"># Convert to requested unit</span>
+            <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;ms&#39;</span> <span class="ow">or</span> <span class="p">(</span><span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;auto&#39;</span> <span class="ow">and</span> <span class="n">execution_time</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">display_time</span> <span class="o">=</span> <span class="n">execution_time</span> <span class="o">*</span> <span class="mi">1000</span>
+                <span class="n">unit_str</span> <span class="o">=</span> <span class="s1">&#39;milliseconds&#39;</span>
+            <span class="k">elif</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;m&#39;</span> <span class="ow">or</span> <span class="p">(</span><span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;auto&#39;</span> <span class="ow">and</span> <span class="n">execution_time</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">):</span>
+                <span class="n">display_time</span> <span class="o">=</span> <span class="n">execution_time</span> <span class="o">/</span> <span class="mi">60</span>
+                <span class="n">unit_str</span> <span class="o">=</span> <span class="s1">&#39;minutes&#39;</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># seconds is default</span>
+                <span class="n">display_time</span> <span class="o">=</span> <span class="n">execution_time</span>
+                <span class="n">unit_str</span> <span class="o">=</span> <span class="s1">&#39;seconds&#39;</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                <span class="n">level</span><span class="p">,</span>
+                <span class="s2">&quot;Function &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39; executed in </span><span class="si">%.6f</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
+                <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">display_time</span><span class="p">,</span>
+                <span class="n">unit_str</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorator</span>
 
 
 <div class="viewcode-block" id="memprofit">
 <a class="viewcode-back" href="../../reforge.html#reforge.utils.memprofit">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">memprofit</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to profile and log the memory usage of a function.&quot;&quot;&quot;</span>
-    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># Start memory tracking</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># Execute the function</span>
-        <span class="n">current</span><span class="p">,</span> <span class="n">peak</span> <span class="o">=</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()</span>  <span class="c1"># Get memory usage</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-            <span class="s2">&quot;Memory usage after executing &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%.2f</span><span class="s2"> MB, Peak: </span><span class="si">%.2f</span><span class="s2"> MB&quot;</span><span class="p">,</span>
-            <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
-            <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-            <span class="n">current</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">peak</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">tracemalloc</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>  <span class="c1"># Stop memory tracking</span>
-        <span class="k">return</span> <span class="n">result</span>
-    <span class="k">return</span> <span class="n">wrapper</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">memprofit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Backwards-compatible memory profiling decorator&quot;&quot;&quot;</span>
+    <span class="c1"># If called with no args, it&#39;s being used as @memprofit</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_memprofit</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="c1"># If first arg is a function, it&#39;s being used as @memprofit</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">callable</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="n">_memprofit</span><span class="p">()(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        
+    <span class="c1"># If first arg is a level, it&#39;s being used as @memprofit(level=...)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_memprofit</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    
+    <span class="c1"># New style with explicit parameters</span>
+    <span class="k">return</span> <span class="n">_memprofit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_memprofit</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to profile and log the memory usage of a function.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># Start memory tracking</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>  <span class="c1"># Execute the function</span>
+            <span class="n">current</span><span class="p">,</span> <span class="n">peak</span> <span class="o">=</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()</span>  <span class="c1"># Get memory usage</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                <span class="n">level</span><span class="p">,</span>
+                <span class="s2">&quot;Memory usage after executing &#39;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%.2f</span><span class="s2"> MB, Peak: </span><span class="si">%.2f</span><span class="s2"> MB&quot;</span><span class="p">,</span>
+                <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
+                <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">current</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">peak</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">tracemalloc</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>  <span class="c1"># Stop memory tracking</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">decorator</span>
 
 
 <div class="viewcode-block" id="cd">
@@ -206,41 +271,6 @@
     <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">directory</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">file_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
             <span class="n">file_path</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span></div>
-
-
-
-<div class="viewcode-block" id="cuda_info">
-<a class="viewcode-back" href="../../reforge.html#reforge.utils.cuda_info">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cuda_info</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Check CUDA availability and log CUDA device information if available.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        bool: True if CUDA is available, False otherwise.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA is available&quot;</span><span class="p">)</span>
-        <span class="n">device_count</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">getDeviceCount</span><span class="p">()</span>  <span class="c1"># pylint: disable=c-extension-no-member</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Number of CUDA devices: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_count</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">True</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA is not available&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="kc">False</span></div>
-
-
-
-<div class="viewcode-block" id="cuda_detected">
-<a class="viewcode-back" href="../../reforge.html#reforge.utils.cuda_detected">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cuda_detected</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Check if CUDA is detected without logging detailed device information.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        bool: True if CUDA is available, False otherwise.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
-        <span class="k">return</span> <span class="kc">True</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CUDA is not available&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="kc">False</span></div>
 
 </pre></div>
 

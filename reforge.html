@@ -68,26 +68,15 @@
 <li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx"><code class="docutils literal notranslate"><span class="pre">gmx()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.cli.change_directory"><code class="docutils literal notranslate"><span class="pre">change_directory()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.cli.from_wdir"><code class="docutils literal notranslate"><span class="pre">from_wdir()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_editconf"><code class="docutils literal notranslate"><span class="pre">gmx_editconf()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_solvate"><code class="docutils literal notranslate"><span class="pre">gmx_solvate()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_make_ndx"><code class="docutils literal notranslate"><span class="pre">gmx_make_ndx()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_grompp"><code class="docutils literal notranslate"><span class="pre">gmx_grompp()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_mdrun"><code class="docutils literal notranslate"><span class="pre">gmx_mdrun()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_trjconv"><code class="docutils literal notranslate"><span class="pre">gmx_trjconv()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_rmsf"><code class="docutils literal notranslate"><span class="pre">gmx_rmsf()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_rms"><code class="docutils literal notranslate"><span class="pre">gmx_rms()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_rdf"><code class="docutils literal notranslate"><span class="pre">gmx_rdf()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_cluster"><code class="docutils literal notranslate"><span class="pre">gmx_cluster()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_extract_cluster"><code class="docutils literal notranslate"><span class="pre">gmx_extract_cluster()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_covar"><code class="docutils literal notranslate"><span class="pre">gmx_covar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_anaeig"><code class="docutils literal notranslate"><span class="pre">gmx_anaeig()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.gmx_make_edi"><code class="docutils literal notranslate"><span class="pre">gmx_make_edi()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.cli.args_to_str"><code class="docutils literal notranslate"><span class="pre">args_to_str()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.cli.kwargs_to_str"><code class="docutils literal notranslate"><span class="pre">kwargs_to_str()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.run_command"><code class="docutils literal notranslate"><span class="pre">run_command()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reforge.cli.create_job_script"><code class="docutils literal notranslate"><span class="pre">create_job_script()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-reforge.io">reforge.io module</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.io.read_positions"><code class="docutils literal notranslate"><span class="pre">read_positions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reforge.io.read_positions_tmp"><code class="docutils literal notranslate"><span class="pre">read_positions_tmp()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.io.read_velocities"><code class="docutils literal notranslate"><span class="pre">read_velocities()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.io.parse_covar_dat"><code class="docutils literal notranslate"><span class="pre">parse_covar_dat()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.io.fname_filter"><code class="docutils literal notranslate"><span class="pre">fname_filter()</span></code></a></li>
@@ -202,12 +191,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-reforge.utils">reforge.utils module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#reforge.utils.get_logger"><code class="docutils literal notranslate"><span class="pre">get_logger()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.utils.timeit"><code class="docutils literal notranslate"><span class="pre">timeit()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.utils.memprofit"><code class="docutils literal notranslate"><span class="pre">memprofit()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.utils.cd"><code class="docutils literal notranslate"><span class="pre">cd()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reforge.utils.clean_dir"><code class="docutils literal notranslate"><span class="pre">clean_dir()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.utils.cuda_info"><code class="docutils literal notranslate"><span class="pre">cuda_info()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#reforge.utils.cuda_detected"><code class="docutils literal notranslate"><span class="pre">cuda_detected()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-reforge">Module contents</a></li>
@@ -272,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="reforge.forge.html#reforge.forge.forcefields.NucleicForceField.sc_pairs"><code class="docutils literal notranslate"><span class="pre">NucleicForceField.sc_pairs()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.forge.html#reforge.forge.forcefields.NucleicForceField.sc_vs3s"><code class="docutils literal notranslate"><span class="pre">NucleicForceField.sc_vs3s()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.forge.html#reforge.forge.forcefields.NucleicForceField.sc_blist"><code class="docutils literal notranslate"><span class="pre">NucleicForceField.sc_blist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.forge.html#reforge.forge.forcefields.NucleicForceField.update_non_standard_mapping"><code class="docutils literal notranslate"><span class="pre">NucleicForceField.update_non_standard_mapping()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.forge.html#reforge.forge.forcefields.Martini30RNA"><code class="docutils literal notranslate"><span class="pre">Martini30RNA</span></code></a><ul>
@@ -365,144 +354,19 @@
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.dssp"><code class="docutils literal notranslate"><span class="pre">dssp()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.append_to"><code class="docutils literal notranslate"><span class="pre">append_to()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.fix_go_map"><code class="docutils literal notranslate"><span class="pre">fix_go_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.martinize_go"><code class="docutils literal notranslate"><span class="pre">martinize_go()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.martinize_en"><code class="docutils literal notranslate"><span class="pre">martinize_en()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.martinize_nucleotide"><code class="docutils literal notranslate"><span class="pre">martinize_nucleotide()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.martinize_rna"><code class="docutils literal notranslate"><span class="pre">martinize_rna()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.run_martinize_go"><code class="docutils literal notranslate"><span class="pre">run_martinize_go()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.run_martinize_en"><code class="docutils literal notranslate"><span class="pre">run_martinize_en()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.run_martinize_nucleotide"><code class="docutils literal notranslate"><span class="pre">run_martinize_nucleotide()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.run_martinize_rna"><code class="docutils literal notranslate"><span class="pre">run_martinize_rna()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martini_tools.insert_membrane"><code class="docutils literal notranslate"><span class="pre">insert_membrane()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="reforge.martini.html#module-reforge.martini.martinize_nucleotides">reforge.martini.martinize_nucleotides module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Option"><code class="docutils literal notranslate"><span class="pre">Option</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Option.setvalue"><code class="docutils literal notranslate"><span class="pre">Option.setvalue()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.help"><code class="docutils literal notranslate"><span class="pre">help()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.str2atom"><code class="docutils literal notranslate"><span class="pre">str2atom()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.option_parser"><code class="docutils literal notranslate"><span class="pre">option_parser()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.spl"><code class="docutils literal notranslate"><span class="pre">spl()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.nsplit"><code class="docutils literal notranslate"><span class="pre">nsplit()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.hash"><code class="docutils literal notranslate"><span class="pre">hash()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pat"><code class="docutils literal notranslate"><span class="pre">pat()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.formatString"><code class="docutils literal notranslate"><span class="pre">formatString()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.cos_angle"><code class="docutils literal notranslate"><span class="pre">cos_angle()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.norm2"><code class="docutils literal notranslate"><span class="pre">norm2()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.norm"><code class="docutils literal notranslate"><span class="pre">norm()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.distance2"><code class="docutils literal notranslate"><span class="pre">distance2()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained"><code class="docutils literal notranslate"><span class="pre">CoarseGrained</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.dna_bb"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.dna_bb</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.rna_bb"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.rna_bb</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.residue_bead_names_dna"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.residue_bead_names_dna</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.residue_bead_names_rna"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.residue_bead_names_rna</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.names"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.names</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CoarseGrained.mass"><code class="docutils literal notranslate"><span class="pre">CoarseGrained.mass</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.aver"><code class="docutils literal notranslate"><span class="pre">aver()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.map"><code class="docutils literal notranslate"><span class="pre">map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.mapIndex"><code class="docutils literal notranslate"><span class="pre">mapIndex()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.tt"><code class="docutils literal notranslate"><span class="pre">tt()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.typesub"><code class="docutils literal notranslate"><span class="pre">typesub()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ssClassification"><code class="docutils literal notranslate"><span class="pre">ssClassification()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField"><code class="docutils literal notranslate"><span class="pre">ForceField</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.read_itp"><code class="docutils literal notranslate"><span class="pre">ForceField.read_itp()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.read_itps"><code class="docutils literal notranslate"><span class="pre">ForceField.read_itps()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.itp_to_indata"><code class="docutils literal notranslate"><span class="pre">ForceField.itp_to_indata()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetBead"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetBead()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetBond"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetBond()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetAngle"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetAngle()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetExclusion"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetExclusion()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetPair"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetPair()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.bbGetDihedral"><code class="docutils literal notranslate"><span class="pre">ForceField.bbGetDihedral()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.getCharge"><code class="docutils literal notranslate"><span class="pre">ForceField.getCharge()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.messages"><code class="docutils literal notranslate"><span class="pre">ForceField.messages()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.update_adenine"><code class="docutils literal notranslate"><span class="pre">ForceField.update_adenine()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.update_cytosine"><code class="docutils literal notranslate"><span class="pre">ForceField.update_cytosine()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.update_guanine"><code class="docutils literal notranslate"><span class="pre">ForceField.update_guanine()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.update_uracil"><code class="docutils literal notranslate"><span class="pre">ForceField.update_uracil()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.ForceField.update_non_standard_mapping"><code class="docutils literal notranslate"><span class="pre">ForceField.update_non_standard_mapping()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini30nucleic"><code class="docutils literal notranslate"><span class="pre">martini30nucleic</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini30nucleic.bb_mapping"><code class="docutils literal notranslate"><span class="pre">martini30nucleic.bb_mapping</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini30nucleic.mapping"><code class="docutils literal notranslate"><span class="pre">martini30nucleic.mapping</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini31nucleic"><code class="docutils literal notranslate"><span class="pre">martini31nucleic</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini31nucleic.bb_mapping"><code class="docutils literal notranslate"><span class="pre">martini31nucleic.bb_mapping</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.martini31nucleic.mapping"><code class="docutils literal notranslate"><span class="pre">martini31nucleic.mapping</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.decayFunction"><code class="docutils literal notranslate"><span class="pre">decayFunction()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.rubberBands"><code class="docutils literal notranslate"><span class="pre">rubberBands()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbBoxString"><code class="docutils literal notranslate"><span class="pre">pdbBoxString()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbAtom"><code class="docutils literal notranslate"><span class="pre">pdbAtom()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbOut"><code class="docutils literal notranslate"><span class="pre">pdbOut()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.isPdbAtom"><code class="docutils literal notranslate"><span class="pre">isPdbAtom()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbBoxRead"><code class="docutils literal notranslate"><span class="pre">pdbBoxRead()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbChains"><code class="docutils literal notranslate"><span class="pre">pdbChains()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.pdbFrameIterator"><code class="docutils literal notranslate"><span class="pre">pdbFrameIterator()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.getChargeType"><code class="docutils literal notranslate"><span class="pre">getChargeType()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.streamTag"><code class="docutils literal notranslate"><span class="pre">streamTag()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Residue"><code class="docutils literal notranslate"><span class="pre">Residue</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.residues"><code class="docutils literal notranslate"><span class="pre">residues()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.residueDistance2"><code class="docutils literal notranslate"><span class="pre">residueDistance2()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.breaks"><code class="docutils literal notranslate"><span class="pre">breaks()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.contacts"><code class="docutils literal notranslate"><span class="pre">contacts()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.add_dummy"><code class="docutils literal notranslate"><span class="pre">add_dummy()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.check_merge"><code class="docutils literal notranslate"><span class="pre">check_merge()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain"><code class="docutils literal notranslate"><span class="pre">Chain</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.atoms"><code class="docutils literal notranslate"><span class="pre">Chain.atoms()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.split"><code class="docutils literal notranslate"><span class="pre">Chain.split()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.getname"><code class="docutils literal notranslate"><span class="pre">Chain.getname()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.set_ss"><code class="docutils literal notranslate"><span class="pre">Chain.set_ss()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.dss"><code class="docutils literal notranslate"><span class="pre">Chain.dss()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.type"><code class="docutils literal notranslate"><span class="pre">Chain.type()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.cg"><code class="docutils literal notranslate"><span class="pre">Chain.cg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Chain.conect"><code class="docutils literal notranslate"><span class="pre">Chain.conect()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Bonded"><code class="docutils literal notranslate"><span class="pre">Bonded</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Bonded.set"><code class="docutils literal notranslate"><span class="pre">Bonded.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Bond"><code class="docutils literal notranslate"><span class="pre">Bond</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Bond.set"><code class="docutils literal notranslate"><span class="pre">Bond.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Angle"><code class="docutils literal notranslate"><span class="pre">Angle</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Angle.set"><code class="docutils literal notranslate"><span class="pre">Angle.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Vsite"><code class="docutils literal notranslate"><span class="pre">Vsite</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Vsite.set"><code class="docutils literal notranslate"><span class="pre">Vsite.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Exclusion"><code class="docutils literal notranslate"><span class="pre">Exclusion</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Exclusion.set"><code class="docutils literal notranslate"><span class="pre">Exclusion.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Pair"><code class="docutils literal notranslate"><span class="pre">Pair</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Pair.set"><code class="docutils literal notranslate"><span class="pre">Pair.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Dihedral"><code class="docutils literal notranslate"><span class="pre">Dihedral</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Dihedral.set"><code class="docutils literal notranslate"><span class="pre">Dihedral.set()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.CategorizedList"><code class="docutils literal notranslate"><span class="pre">CategorizedList</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Topology"><code class="docutils literal notranslate"><span class="pre">Topology</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Topology.fromNucleicAcidSequence"><code class="docutils literal notranslate"><span class="pre">Topology.fromNucleicAcidSequence()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.Topology.fromMoleculeList"><code class="docutils literal notranslate"><span class="pre">Topology.fromMoleculeList()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_nucleotides.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="reforge.martini.html#reforge-martini-martinize-nucleotides-module">reforge.martini.martinize_nucleotides module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.martini.html#module-reforge.martini.martinize_rna">reforge.martini.martinize_rna module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_rna.martinize_rna_parser"><code class="docutils literal notranslate"><span class="pre">martinize_rna_parser()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_rna.martinize_rna"><code class="docutils literal notranslate"><span class="pre">martinize_rna()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_rna.process_chain"><code class="docutils literal notranslate"><span class="pre">process_chain()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_rna.merge_topologies"><code class="docutils literal notranslate"><span class="pre">merge_topologies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.martini.html#reforge.martini.martinize_rna.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.martini.html#module-reforge.martini">Module contents</a></li>
@@ -512,9 +376,7 @@
 <li class="toctree-l2"><a class="reference internal" href="reforge.mdsystem.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.mdsystem.html#module-reforge.mdsystem.gmxmd">reforge.mdsystem.gmxmd module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem"><code class="docutils literal notranslate"><span class="pre">GmxSystem</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.MDATDIR"><code class="docutils literal notranslate"><span class="pre">GmxSystem.MDATDIR</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.MMDPDIR"><code class="docutils literal notranslate"><span class="pre">GmxSystem.MMDPDIR</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.MITPDIR"><code class="docutils literal notranslate"><span class="pre">GmxSystem.MITPDIR</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.gmx"><code class="docutils literal notranslate"><span class="pre">GmxSystem.gmx()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.prepare_files"><code class="docutils literal notranslate"><span class="pre">GmxSystem.prepare_files()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxSystem.make_cg_structure"><code class="docutils literal notranslate"><span class="pre">GmxSystem.make_cg_structure()</span></code></a></li>
@@ -548,14 +410,18 @@
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.GmxRun.get_rmsd_by_chain"><code class="docutils literal notranslate"><span class="pre">GmxRun.get_rmsd_by_chain()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.get_ntomp"><code class="docutils literal notranslate"><span class="pre">get_ntomp()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.gmxmd.sort_for_gmx"><code class="docutils literal notranslate"><span class="pre">sort_for_gmx()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.mdsystem.html#module-reforge.mdsystem.mdsystem">reforge.mdsystem.mdsystem module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem"><code class="docutils literal notranslate"><span class="pre">MDSystem</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.MDATDIR"><code class="docutils literal notranslate"><span class="pre">MDSystem.MDATDIR</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.MITPDIR"><code class="docutils literal notranslate"><span class="pre">MDSystem.MITPDIR</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.NUC_RESNAMES"><code class="docutils literal notranslate"><span class="pre">MDSystem.NUC_RESNAMES</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.chains"><code class="docutils literal notranslate"><span class="pre">MDSystem.chains</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.segments"><code class="docutils literal notranslate"><span class="pre">MDSystem.segments</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.prepare_files"><code class="docutils literal notranslate"><span class="pre">MDSystem.prepare_files()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.sort_input_pdb"><code class="docutils literal notranslate"><span class="pre">MDSystem.sort_input_pdb()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.clean_pdb_mm"><code class="docutils literal notranslate"><span class="pre">MDSystem.clean_pdb_mm()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.clean_pdb_gmx"><code class="docutils literal notranslate"><span class="pre">MDSystem.clean_pdb_gmx()</span></code></a></li>
@@ -586,35 +452,24 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.mdsystem.html#module-reforge.mdsystem.mmmd">reforge.mdsystem.mmmd module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#module-mmmd">Module mmmd</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#classes">Classes</a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#helper-functions">Helper Functions</a></li>
-</ul>
-</li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem"><code class="docutils literal notranslate"><span class="pre">MmSystem</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.MDATDIR"><code class="docutils literal notranslate"><span class="pre">MmSystem.MDATDIR</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.MITPDIR"><code class="docutils literal notranslate"><span class="pre">MmSystem.MITPDIR</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.NUC_RESNAMES"><code class="docutils literal notranslate"><span class="pre">MmSystem.NUC_RESNAMES</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.chains"><code class="docutils literal notranslate"><span class="pre">MmSystem.chains</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.mdruns"><code class="docutils literal notranslate"><span class="pre">MmSystem.mdruns</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.prepare_files"><code class="docutils literal notranslate"><span class="pre">MmSystem.prepare_files()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.clean_pdb"><code class="docutils literal notranslate"><span class="pre">MmSystem.clean_pdb()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.forcefield"><code class="docutils literal notranslate"><span class="pre">MmSystem.forcefield()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.modeller"><code class="docutils literal notranslate"><span class="pre">MmSystem.modeller()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmSystem.model"><code class="docutils literal notranslate"><span class="pre">MmSystem.model()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun"><code class="docutils literal notranslate"><span class="pre">MdRun</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.prepare_files"><code class="docutils literal notranslate"><span class="pre">MdRun.prepare_files()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.build_modeller"><code class="docutils literal notranslate"><span class="pre">MdRun.build_modeller()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.simulation"><code class="docutils literal notranslate"><span class="pre">MdRun.simulation()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.save_state"><code class="docutils literal notranslate"><span class="pre">MdRun.save_state()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.em"><code class="docutils literal notranslate"><span class="pre">MdRun.em()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.eq"><code class="docutils literal notranslate"><span class="pre">MdRun.eq()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MdRun.md"><code class="docutils literal notranslate"><span class="pre">MdRun.md()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun"><code class="docutils literal notranslate"><span class="pre">MmRun</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun.get_std_reporters"><code class="docutils literal notranslate"><span class="pre">MmRun.get_std_reporters()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun.em"><code class="docutils literal notranslate"><span class="pre">MmRun.em()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun.hu"><code class="docutils literal notranslate"><span class="pre">MmRun.hu()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun.eq"><code class="docutils literal notranslate"><span class="pre">MmRun.eq()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmRun.extend"><code class="docutils literal notranslate"><span class="pre">MmRun.extend()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.sort_uld"><code class="docutils literal notranslate"><span class="pre">sort_uld()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmReporter"><code class="docutils literal notranslate"><span class="pre">MmReporter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmReporter.describeNextReport"><code class="docutils literal notranslate"><span class="pre">MmReporter.describeNextReport()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="reforge.mdsystem.html#reforge.mdsystem.mmmd.MmReporter.report"><code class="docutils literal notranslate"><span class="pre">MmReporter.report()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.mdsystem.html#module-reforge.mdsystem">Module contents</a></li>
@@ -646,6 +501,7 @@
 <li class="toctree-l3"><a class="reference internal" href="reforge.rfgmath.html#reforge.rfgmath.rcmath.perturbation_matrix_old"><code class="docutils literal notranslate"><span class="pre">perturbation_matrix_old()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.rfgmath.html#reforge.rfgmath.rcmath.perturbation_matrix_par"><code class="docutils literal notranslate"><span class="pre">perturbation_matrix_par()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reforge.rfgmath.html#reforge.rfgmath.rcmath.td_perturbation_matrix"><code class="docutils literal notranslate"><span class="pre">td_perturbation_matrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reforge.rfgmath.html#reforge.rfgmath.rcmath.td_perturbation_matrix_par"><code class="docutils literal notranslate"><span class="pre">td_perturbation_matrix_par()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reforge.rfgmath.html#module-reforge.rfgmath.rpykernels">reforge.rfgmath.rpykernels module</a><ul>
@@ -873,346 +729,6 @@ function.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_editconf">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_editconf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_editconf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_editconf" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘editconf’ command to modify system configuration.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>wdir</strong> (<em>str</em>) – The working directory where the command is executed.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘editconf’. Defaults are:</dt><dd><ul class="simple">
-<li><p>f: ‘solute.pdb’ (input file)</p></li>
-<li><p>o: ‘solute.pdb’ (output file)</p></li>
-<li><p>bt: ‘triclinic’ (box type)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_solvate">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_solvate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_solvate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_solvate" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘solvate’ command to add solvent to the system.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>wdir</strong> (<em>str</em>) – The working directory where the command is executed.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘solvate’. Defaults are:</dt><dd><ul class="simple">
-<li><p>cp: ‘solute.pdb’ (input configuration file)</p></li>
-<li><p>cs: ‘water.gro’ (solvent structure file)</p></li>
-<li><p>p: ‘system.top’ (topology file)</p></li>
-<li><p>o: ‘system.pdb’ (output configuration file)</p></li>
-<li><p>radius: ‘0.23’ (minimal solute-solvent distance)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_make_ndx">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_make_ndx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_make_ndx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_make_ndx" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘make_ndx’ command to create an index file.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for defining index groups.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘make_ndx’. Defaults are:</dt><dd><ul class="simple">
-<li><p>f: ‘system.pdb’ (input configuration file)</p></li>
-<li><p>o: ‘index.ndx’ (output index file)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_grompp">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_grompp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_grompp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_grompp" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘grompp’ command to preprocess input files and
-generate a .tpr file.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘grompp’. Defaults are:</dt><dd><ul class="simple">
-<li><p>maxwarn: ‘1’</p></li>
-<li><p>f: ‘../mdp/em.mdp’ (input parameter file)</p></li>
-<li><p>c: ‘../system.pdb’ (input configuration file)</p></li>
-<li><p>r: ‘../system.pdb’ (input structure for position restraints)</p></li>
-<li><p>p: ‘../system.top’ (input topology file)</p></li>
-<li><p>o: ‘em.tpr’ (output run file)</p></li>
-</ul>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_mdrun">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_mdrun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_mdrun"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_mdrun" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘mdrun’ command to perform molecular dynamics
-simulations or energy minimization.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘mdrun’. Defaults are:</dt><dd><ul class="simple">
-<li><p>ntomp: ‘8’</p></li>
-<li><p>pin: ‘on’</p></li>
-<li><p>pinstride: ‘1’</p></li>
-</ul>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_trjconv">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_trjconv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1\n1\n'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_trjconv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_trjconv" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘trjconv’ command to convert trajectory files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for trajectory frame selection (default ‘1n1n’).</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional options for ‘trjconv’.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_rmsf">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_rmsf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_rmsf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_rmsf" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘rmsf’ command to compute root mean square
-fluctuations (RMSF).</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>wdir</strong> (<em>str</em>) – The working directory where the command is executed.</p></li>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘rmsf’. Defaults are:</dt><dd><ul class="simple">
-<li><p>s: ‘md.tpr’ (input run file)</p></li>
-<li><p>f: ‘mdc.xtc’ (trajectory file)</p></li>
-<li><p>o: ‘rms_analysis/rmsf.xvg’ (output file)</p></li>
-<li><p>b: ‘0’ (start time)</p></li>
-<li><p>xvg: ‘none’ (output format)</p></li>
-<li><p>res: ‘yes’ (calculate per-residue RMSF)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_rms">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_rms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_rms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_rms" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘rms’ command to compute root mean square deviation
-(RMSD).</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>wdir</strong> (<em>str</em>) – The working directory where the command is executed.</p></li>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘rms’. Defaults are:</dt><dd><ul class="simple">
-<li><p>s: ‘md.tpr’ (input run file)</p></li>
-<li><p>f: ‘mdc.xtc’ (trajectory file)</p></li>
-<li><p>o: ‘rms_analysis/rmsd.xvg’ (output file)</p></li>
-<li><p>b: ‘0’ (start time)</p></li>
-<li><p>xvg: ‘none’ (output format)</p></li>
-<li><p>fit: ‘rot+trans’ (fitting method)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_rdf">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_rdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_rdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_rdf" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘rdf’ command to compute radial distribution
-functions (RDF).</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>wdir</strong> (<em>str</em>) – The working directory where the command is executed.</p></li>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘rdf’. Defaults are:</dt><dd><ul class="simple">
-<li><p>s: ‘md.tpr’ (input run file)</p></li>
-<li><p>f: ‘mdc.xtc’ (trajectory file)</p></li>
-<li><p>o: ‘rms_analysis/rdf.xvg’ (output file)</p></li>
-<li><p>b: ‘0’ (start time)</p></li>
-<li><p>xvg: ‘none’ (output format)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_cluster">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_cluster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_cluster" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘cluster’ command to perform clustering analysis.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional options for ‘cluster’.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_extract_cluster">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_extract_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_extract_cluster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_extract_cluster" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘extract-cluster’ command to extract clustered
-structures.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional options for ‘extract-cluster’.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_covar">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_covar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_covar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_covar" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘covar’ command to compute the covariance matrix and
-normal modes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional options for ‘covar’.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_anaeig">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_anaeig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_anaeig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_anaeig" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘anaeig’ command to analyze eigenvalues and
-eigenvectors.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for defining groups.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘anaeig’. Defaults include:</dt><dd><ul class="simple">
-<li><p>v: ‘eigenvec.trr’ (eigenvector file)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.cli.gmx_make_edi">
-<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">gmx_make_edi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#gmx_make_edi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.gmx_make_edi" title="Link to this definition"></a></dt>
-<dd><p>Execute the GROMACS ‘make_edi’ command to generate essential dynamics
-(ED) information.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>clinput</strong> (<em>str, optional</em>) – Input string for atom selection.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict</em>) –</p>
-<dl class="simple">
-<dt>Additional options for ‘make_edi’. Defaults are:</dt><dd><ul class="simple">
-<li><p>f: ‘eigenvec.trr’ (input eigenvector file)</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="reforge.cli.args_to_str">
 <span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">args_to_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#args_to_str"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.args_to_str" title="Link to this definition"></a></dt>
 <dd><p>Convert positional arguments to a space-separated string.</p>
@@ -1243,6 +759,44 @@ prefix.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A formatted string of the keyword arguments.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="reforge.cli.run_command">
+<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">run_command</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#run_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.run_command" title="Link to this definition"></a></dt>
+<dd><p>Automatically discover and run functions from command line arguments.
+This eliminates the need to manually maintain a function mapping.
+Can be imported and used by any workflow script.</p>
+<dl class="simple">
+<dt>Usage:</dt><dd><dl class="simple">
+<dt>if __name__ == “__main__”:</dt><dd><p>from reforge.cli import run_command
+run_command()</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="reforge.cli.create_job_script">
+<span class="sig-prename descclassname"><span class="pre">reforge.cli.</span></span><span class="sig-name descname"><span class="pre">create_job_script</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_script</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">function</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/cli.html#create_job_script"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.cli.create_job_script" title="Link to this definition"></a></dt>
+<dd><p>Create a standalone job script that captures the function call at submission time.
+This prevents issues when the original script is modified after job submission.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>original_script</strong> (<em>str</em>) – Path to the original Python script to be executed</p></li>
+<li><p><strong>function</strong> (<em>str</em>) – Name of the function to be called</p></li>
+<li><p><strong>*args</strong> (<em>tuple</em>) – Arguments to pass to the function</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the generated wrapper script</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>str</p>
@@ -1314,9 +868,14 @@ position coordinates.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="reforge.io.read_positions_tmp">
+<span class="sig-prename descclassname"><span class="pre">reforge.io.</span></span><span class="sig-name descname"><span class="pre">read_positions_tmp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e=10000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_rate=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float32'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/io.html#read_positions_tmp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.io.read_positions_tmp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="reforge.io.read_velocities">
 <span class="sig-prename descclassname"><span class="pre">reforge.io.</span></span><span class="sig-name descname"><span class="pre">read_velocities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e=10000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_rate=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.float32'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/io.html#read_velocities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.io.read_velocities" title="Link to this definition"></a></dt>
-<dd><p>Saimilar to the previous. Read and return velocities from an MDAnalysis trajectory.</p>
+<dd><p>Similar to the previous. Read and return velocities from an MDAnalysis trajectory.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1658,14 +1217,15 @@ parameters is a tuple of numbers (first as int, rest as floats), and comment is 
 
 <dl class="py function">
 <dt class="sig sig-object py" id="reforge.itpio.format_header">
-<span class="sig-prename descclassname"><span class="pre">reforge.itpio.</span></span><span class="sig-name descname"><span class="pre">format_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'molecule'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forcefield</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arguments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/reforge/itpio.html#format_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.itpio.format_header" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">reforge.itpio.</span></span><span class="sig-name descname"><span class="pre">format_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'molecule'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forcefield</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arguments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/reforge/itpio.html#format_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.itpio.format_header" title="Link to this definition"></a></dt>
 <dd><p>Format the header of the topology file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>molname</strong> (<em>str, optional</em>) – Molecule name. Default is “molecule”.</p></li>
 <li><p><strong>forcefield</strong> (<em>str, optional</em>) – Force field identifier.</p></li>
-<li><p><strong>arguments</strong> (<em>str, optional</em>) – Command-line arguments used.</p></li>
+<li><p><strong>arguments</strong> (<em>str, optional</em>) – Parsed arguments with their values including defaults.</p></li>
+<li><p><strong>timestamp</strong> (<em>str, optional</em>) – Timestamp when file was generated.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -2865,46 +2425,48 @@ params - list of kwargs dictionary for the ax</p>
 <section id="module-reforge.utils">
 <span id="reforge-utils-module"></span><h2>reforge.utils module<a class="headerlink" href="#module-reforge.utils" title="Link to this heading"></a></h2>
 <p>Utility wrappers and functions</p>
-<dl>
+<dl class="simple">
 <dt>Description:</dt><dd><p>This module provides utility functions and decorators for the reForge workflow.
 It includes decorators for timing and memory profiling functions, a context manager
 for changing the working directory, and helper functions for cleaning directories and
 detecting CUDA availability.</p>
 </dd>
-<dt>Usage Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timeit</span><span class="p">,</span> <span class="n">memprofit</span><span class="p">,</span> <span class="n">cd</span><span class="p">,</span> <span class="n">clean_dir</span><span class="p">,</span> <span class="n">cuda_info</span>
-<span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nd">@timeit</span>
-<span class="gp">... </span><span class="k">def</span><span class="w"> </span><span class="nf">my_function</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="c1"># Function implementation here</span>
-<span class="gp">... </span>    <span class="k">pass</span>
-<span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s2">&quot;/tmp&quot;</span><span class="p">):</span>
-<span class="gp">... </span>    <span class="c1"># Perform operations in /tmp</span>
-<span class="gp">... </span>    <span class="k">pass</span>
-<span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cuda_info</span><span class="p">()</span>
-</pre></div>
-</div>
-</dd>
 <dt>Requirements:</dt><dd><ul class="simple">
 <li><p>Python 3.x</p></li>
-<li><p>cupy</p></li>
-<li><p>Standard libraries: logging, os, time, tracemalloc, contextlib, functools, pathlib</p></li>
 </ul>
 </dd>
 </dl>
 <p>Author: DY
 Date: YYYY-MM-DD</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="reforge.utils.get_logger">
+<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">get_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reforge'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#get_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.get_logger" title="Link to this definition"></a></dt>
+<dd><p>Get the configured logger instance.</p>
+<p>Since logging is now configured in reforge.__init__.py, this function
+simply returns the already-configured logger instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str, optional</em>) – Logger name (default: “reforge”)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The configured logger instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>logging.Logger</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="reforge.utils.timeit">
-<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">timeit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#timeit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.timeit" title="Link to this definition"></a></dt>
-<dd><p>Decorator to measure and log the execution time of a function.</p>
+<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">timeit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#timeit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.timeit" title="Link to this definition"></a></dt>
+<dd><p>Backwards-compatible timeit decorator</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="reforge.utils.memprofit">
-<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">memprofit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#memprofit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.memprofit" title="Link to this definition"></a></dt>
-<dd><p>Decorator to profile and log the memory usage of a function.</p>
+<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">memprofit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#memprofit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.memprofit" title="Link to this definition"></a></dt>
+<dd><p>Backwards-compatible memory profiling decorator</p>
 </dd></dl>
 
 <dl class="py function">
@@ -2926,26 +2488,6 @@ Date: YYYY-MM-DD</p>
 <dl class="simple">
 <dt>Parameters:</dt><dd><p>directory (str or Path, optional): Directory to search (default: current directory).
 pattern (str, optional): Glob pattern for files to remove (default: “#*”).</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.utils.cuda_info">
-<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">cuda_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#cuda_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.cuda_info" title="Link to this definition"></a></dt>
-<dd><p>Check CUDA availability and log CUDA device information if available.</p>
-<dl class="simple">
-<dt>Returns:</dt><dd><p>bool: True if CUDA is available, False otherwise.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.utils.cuda_detected">
-<span class="sig-prename descclassname"><span class="pre">reforge.utils.</span></span><span class="sig-name descname"><span class="pre">cuda_detected</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/utils.html#cuda_detected"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.utils.cuda_detected" title="Link to this definition"></a></dt>
-<dd><p>Check if CUDA is detected without logging detailed device information.</p>
-<dl class="simple">
-<dt>Returns:</dt><dd><p>bool: True if CUDA is available, False otherwise.</p>
 </dd>
 </dl>
 </dd></dl>

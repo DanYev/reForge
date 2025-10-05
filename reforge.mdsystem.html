@@ -146,18 +146,8 @@ simulations using GROMACS.</p>
 <p>Most attributes are paths to files and directories needed to set up
 and run the MD simulation.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxSystem.MDATDIR">
-<span class="sig-name descname"><span class="pre">MDATDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/datdir')</span></em><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxSystem.MDATDIR" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxSystem.MMDPDIR">
 <span class="sig-name descname"><span class="pre">MMDPDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/datdir/mdp')</span></em><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxSystem.MMDPDIR" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxSystem.MITPDIR">
-<span class="sig-name descname"><span class="pre">MITPDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/itp')</span></em><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxSystem.MITPDIR" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -178,18 +168,8 @@ and run the MD simulation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxSystem.prepare_files">
-<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#GmxSystem.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxSystem.prepare_files" title="Link to this definition"></a></dt>
-<dd><p>Prepares the simulation by creating necessary directories and copying input files.</p>
-<dl class="simple">
-<dt>The method:</dt><dd><ul class="simple">
-<li><p>Creates directories for proteins, nucleotides, topologies, maps, mdp files,
-coarse-grained PDBs, GRO files, MD runs, data, and PNG outputs.</p></li>
-<li><p>Copies .mdp files from the master MDP directory.</p></li>
-<li><p>Copies ‘water.gro’ and ‘atommass.dat’ from the master data directory.</p></li>
-<li><p>Copies .itp files from the master ITP directory to the system topology directory.</p></li>
-</ul>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#GmxSystem.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxSystem.prepare_files" title="Link to this definition"></a></dt>
+<dd><p>Extension for GROMACS system</p>
 </dd></dl>
 
 <dl class="py method">
@@ -310,8 +290,7 @@ backbone, solvent, and individual chains.</p>
 <dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxRun">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.gmxmd.</span></span><span class="sig-name descname"><span class="pre">GmxRun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sysdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sysname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runname</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#GmxRun"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxRun" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#reforge.mdsystem.mdsystem.MDRun" title="reforge.mdsystem.mdsystem.MDRun"><code class="xref py py-class docutils literal notranslate"><span class="pre">MDRun</span></code></a></p>
-<p>Subclass of GmxSystem for executing molecular dynamics (MD) simulations
-and performing post-processing analyses.</p>
+<p>Subclass of MDRun for running MD simulations with GROMACS.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.GmxRun.gmx">
 <span class="sig-name descname"><span class="pre">gmx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'-h'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clinput</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_wdir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#GmxRun.gmx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.GmxRun.gmx" title="Link to this definition"></a></dt>
@@ -616,6 +595,12 @@ and performing post-processing analyses.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.get_ntomp">
+<span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.gmxmd.</span></span><span class="sig-name descname"><span class="pre">get_ntomp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#get_ntomp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.get_ntomp" title="Link to this definition"></a></dt>
+<dd><p>Detect number of available CPU cores for OpenMP threads</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="reforge.mdsystem.gmxmd.sort_for_gmx">
 <span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.gmxmd.</span></span><span class="sig-name descname"><span class="pre">sort_for_gmx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/gmxmd.html#sort_for_gmx"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.gmxmd.sort_for_gmx" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -650,6 +635,16 @@ Date: 2025-02-27</p>
 <p>Most attributes are paths to files and directories needed to set up
 and run the MD simulation.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.MDATDIR">
+<span class="sig-name descname"><span class="pre">MDATDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/datdir')</span></em><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.MDATDIR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.MITPDIR">
+<span class="sig-name descname"><span class="pre">MITPDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/itp')</span></em><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.MITPDIR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.NUC_RESNAMES">
 <span class="sig-name descname"><span class="pre">NUC_RESNAMES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['A',</span> <span class="pre">'C',</span> <span class="pre">'G',</span> <span class="pre">'U',</span> <span class="pre">'RA3',</span> <span class="pre">'RA5',</span> <span class="pre">'RC3',</span> <span class="pre">'RC5',</span> <span class="pre">'RG3',</span> <span class="pre">'RG5',</span> <span class="pre">'RU3',</span> <span class="pre">'RU5']</span></em><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.NUC_RESNAMES" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -672,6 +667,21 @@ input PDB.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.prepare_files">
+<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pour_martini</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.prepare_files" title="Link to this definition"></a></dt>
+<dd><p>Prepares the simulation by creating necessary directories and copying input files.</p>
+<dl class="simple">
+<dt>The method:</dt><dd><ul class="simple">
+<li><p>Creates directories for proteins, nucleotides, topologies, maps, mdp files,
+coarse-grained PDBs, GRO files, MD runs, data, and PNG outputs.</p></li>
+<li><p>Copies ‘water.gro’ and ‘atommass.dat’ from the master data directory.</p></li>
+<li><p>Copies .itp files from the master ITP directory to the system topology directory.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.sort_input_pdb">
 <span class="sig-name descname"><span class="pre">sort_input_pdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'inpdb.pdb'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.sort_input_pdb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.sort_input_pdb" title="Link to this definition"></a></dt>
 <dd><p>Sorts and renames atoms and chains in the input PDB file.</p>
@@ -685,13 +695,16 @@ input PDB.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.clean_pdb_mm">
-<span class="sig-name descname"><span class="pre">clean_pdb_mm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_pdb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.clean_pdb_mm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.clean_pdb_mm" title="Link to this definition"></a></dt>
-<dd><p>Cleans the starting PDB file using PDBfixer (via OpenMM).</p>
+<span class="sig-name descname"><span class="pre">clean_pdb_mm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdb_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_missing_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_hydrogens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pH</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.clean_pdb_mm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.clean_pdb_mm" title="Link to this definition"></a></dt>
+<dd><p>Clean the starting PDB file using PDBfixer by OpenMM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>in_pdb (str, optional)</strong> (<em>Input PDB file to clean. If None, uses self.inpdb.</em>)</p></li>
-<li><p><strong>kwargs</strong> (<em>Additional keyword arguments for pdbtools.clean_pdb.</em>)</p></li>
+<li><p><strong>pdb_file</strong> (<em>str</em>) – Path to the input PDB file.</p></li>
+<li><p><strong>add_missing_atoms</strong> (<em>bool, optional</em>) – Whether to add missing atoms (default: False).</p></li>
+<li><p><strong>add_hydrogens</strong> (<em>bool, optional</em>) – Whether to add missing hydrogens (default: False).</p></li>
+<li><p><strong>pH</strong> (<em>float, optional</em>) – pH value for adding hydrogens (default: 7.0).</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments (ignored).</p></li>
 </ul>
 </dd>
 </dl>
@@ -867,16 +880,14 @@ with the actual protein name and cleans temporary files.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.get_td_averages">
-<span class="sig-name descname"><span class="pre">get_td_averages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.get_td_averages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.get_td_averages" title="Link to this definition"></a></dt>
-<dd><p>Calculates time-dependent averages from a set of numpy files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>fname (str)</strong> (<em>Filename pattern to pull files from the MD runs directory.</em>)</p></li>
+<span class="sig-name descname"><span class="pre">get_td_averages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.get_td_averages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.get_td_averages" title="Link to this definition"></a></dt>
+<dd><p>Calculates time-dependent averages from a set of numpy files.
+:Parameters: * <strong>fname (str)</strong> (<em>Filename pattern to pull files from the MD runs directory.</em>)</p>
+<blockquote>
+<div><ul class="simple">
 <li><p><strong>loop (bool, optional)</strong> (<em>If True, processes files sequentially (default: True).</em>)</p></li>
 </ul>
-</dd>
-</dl>
+</div></blockquote>
 <dl class="simple">
 <dt>Returns:</dt><dd><p>numpy.ndarray: The time-dependent average.</p>
 </dd>
@@ -979,221 +990,49 @@ and performing post-processing analyses.</p>
 </section>
 <section id="module-reforge.mdsystem.mmmd">
 <span id="reforge-mdsystem-mmmd-module"></span><h2>reforge.mdsystem.mmmd module<a class="headerlink" href="#module-reforge.mdsystem.mmmd" title="Link to this heading"></a></h2>
-<section id="module-mmmd">
-<h3>Module mmmd<a class="headerlink" href="#module-mmmd" title="Link to this heading"></a></h3>
-<p>This module defines classes and functions to set up and run coarse-grained (CG)
-molecular dynamics simulations using OpenMM and associated tools. It includes
-the system preparation, file management, and MD run routines.</p>
-<section id="classes">
-<h4>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h4>
-<dl class="simple">
-<dt>MmSystem</dt><dd><p>Sets up and analyzes protein-nucleotide-lipid systems for MD simulations.</p>
+<p>File: mmmd.py</p>
+<dl>
+<dt>Description:</dt><dd><p>This module provides classes and functions for setting up, running, and
+analyzing molecular dynamics (MD) simulations using GROMACS. The main
+classes include:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Mm: Provides methods to prepare simulation files, process PDB
+files, run GROMACS commands, and perform various analyses on MD data.</p></li>
+<li><p>MmRun: A subclass of GmxSystem dedicated to executing MD simulations and
+performing post-processing tasks (e.g., RMSF, RMSD, covariance analysis).</p></li>
+</ul>
+</div></blockquote>
 </dd>
-<dt>MdRun</dt><dd><p>Inherits from MmSystem to perform an MD simulation run, including energy
-minimization, equilibration, and production.</p>
-</dd>
-</dl>
-</section>
-<section id="helper-functions">
-<h4>Helper Functions<a class="headerlink" href="#helper-functions" title="Link to this heading"></a></h4>
-<dl class="simple">
-<dt>sort_uld(alist)</dt><dd><p>Sorts characters in a list so that uppercase letters come first, then lowercase,
-followed by digits.</p>
+<dt>Usage:</dt><dd><p>Import this module and instantiate the MmSystem or MmRun classes to set up
+and run your MD simulations.</p>
 </dd>
 </dl>
-</section>
-</section>
+<p>Author: DY</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.mmmd.</span></span><span class="sig-name descname"><span class="pre">MmSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sysdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sysname</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Set up and analyze protein–nucleotide–lipid systems for CG MD simulation.</p>
-<p>This class initializes file paths and directories required for running CG
-molecular dynamics simulations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sysdir</strong> (<em>str</em>) – Directory for the system files.</p></li>
-<li><p><strong>sysname</strong> (<em>str</em>) – Name of the system.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments (currently unused).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Variables<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>sysname</strong> (<em>str</em>) – Name of the system.</p></li>
-<li><p><strong>sysdir</strong> (<em>str</em>) – Absolute path to the system directory.</p></li>
-<li><p><strong>wdir</strong> (<em>str</em>) – Working directory (sysdir joined with sysname).</p></li>
-<li><p><strong>inpdb</strong> (<em>str</em>) – Path to the input PDB file.</p></li>
-<li><p><strong>syspdb</strong> (<em>str</em>) – Path to the system PDB file.</p></li>
-<li><p><strong>sysxml</strong> (<em>str</em>) – Path to the system XML file.</p></li>
-<li><p><strong>mdcpdb</strong> (<em>str</em>) – Path to the MD configuration PDB file.</p></li>
-<li><p><strong>trjpdb</strong> (<em>str</em>) – Path to the trajectory PDB file.</p></li>
-<li><p><strong>prodir</strong> (<em>str</em>) – Directory for protein files.</p></li>
-<li><p><strong>nucdir</strong> (<em>str</em>) – Directory for nucleotide files.</p></li>
-<li><p><strong>iondir</strong> (<em>str</em>) – Directory for ion files.</p></li>
-<li><p><strong>ionpdb</strong> (<em>str</em>) – Path to the ion PDB file.</p></li>
-<li><p><strong>topdir</strong> (<em>str</em>) – Directory for topology files.</p></li>
-<li><p><strong>mapdir</strong> (<em>str</em>) – Directory for mapping files.</p></li>
-<li><p><strong>mdpdir</strong> (<em>str</em>) – Directory for MD parameter files.</p></li>
-<li><p><strong>cgdir</strong> (<em>str</em>) – Directory for CG PDB files.</p></li>
-<li><p><strong>mddir</strong> (<em>str</em>) – Directory for MD run files.</p></li>
-<li><p><strong>datdir</strong> (<em>str</em>) – Directory for data files.</p></li>
-<li><p><strong>pngdir</strong> (<em>str</em>) – Directory for PNG figures.</p></li>
-<li><p><strong>_chains</strong> (<em>list</em>) – Cached list of chain identifiers.</p></li>
-<li><p><strong>_mdruns</strong> (<em>list</em>) – Cached list of MD run directories.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.MDATDIR">
-<span class="sig-name descname"><span class="pre">MDATDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/data')</span></em><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.MDATDIR" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.MITPDIR">
-<span class="sig-name descname"><span class="pre">MITPDIR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/scratch/dyangali/reforge/reforge/martini/itp')</span></em><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.MITPDIR" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.NUC_RESNAMES">
-<span class="sig-name descname"><span class="pre">NUC_RESNAMES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['A',</span> <span class="pre">'C',</span> <span class="pre">'G',</span> <span class="pre">'U',</span> <span class="pre">'RA3',</span> <span class="pre">'RA5',</span> <span class="pre">'RC3',</span> <span class="pre">'RC5',</span> <span class="pre">'RG3',</span> <span class="pre">'RG5',</span> <span class="pre">'RU3',</span> <span class="pre">'RU5']</span></em><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.NUC_RESNAMES" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.chains">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">chains</span></span><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.chains" title="Link to this definition"></a></dt>
-<dd><p>Retrieve the chain identifiers from the system PDB file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List of chain identifiers.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>list</p>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<p>If chain IDs have already been extracted, returns the cached list.
-Otherwise, parses the system PDB file.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.mdruns">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mdruns</span></span><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.mdruns" title="Link to this definition"></a></dt>
-<dd><p>Retrieve the list of MD run directories.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List of MD run directory names.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>list</p>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<p>If the list is already cached, returns it. Otherwise, looks up the directories
-in the MD runs folder.</p>
-</dd></dl>
-
+<dd><p>Bases: <a class="reference internal" href="#reforge.mdsystem.mdsystem.MDSystem" title="reforge.mdsystem.mdsystem.MDSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">MDSystem</span></code></a></p>
+<p>Subclass for OpenMM</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.prepare_files">
-<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.prepare_files" title="Link to this definition"></a></dt>
-<dd><p>Prepare simulation directories and copy necessary input files.</p>
-<p class="rubric">Notes</p>
-<p>Creates directories (proteins, nucleotides, topology, mapping, MD parameters,
-CG PDB, MD runs, data, PNG) and copies files from source directories.</p>
+<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.prepare_files" title="Link to this definition"></a></dt>
+<dd><p>Extension for OpenMM system</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.clean_pdb">
-<span class="sig-name descname"><span class="pre">clean_pdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdb_file</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.clean_pdb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.clean_pdb" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">clean_pdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pdb_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_missing_atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_hydrogens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pH</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.clean_pdb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.clean_pdb" title="Link to this definition"></a></dt>
 <dd><p>Clean the starting PDB file using PDBfixer by OpenMM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pdb_file</strong> (<em>str</em>) – Path to the input PDB file.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments for the cleaning routine.</p></li>
+<li><p><strong>add_missing_atoms</strong> (<em>bool, optional</em>) – Whether to add missing atoms (default: False).</p></li>
+<li><p><strong>add_hydrogens</strong> (<em>bool, optional</em>) – Whether to add missing hydrogens (default: False).</p></li>
+<li><p><strong>pH</strong> (<em>float, optional</em>) – pH value for adding hydrogens (default: 7.0).</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments (ignored).</p></li>
 </ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.forcefield">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">forcefield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force_field</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'amber14-all.xml'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">water_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'amber14/tip3p.xml'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.forcefield"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.forcefield" title="Link to this definition"></a></dt>
-<dd><p>Create and return an OpenMM ForceField object.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>force_field</strong> (<em>str, optional</em>) – Force field file or identifier (default: ‘amber14-all.xml’).</p></li>
-<li><p><strong>water_model</strong> (<em>str, optional</em>) – Water model file or identifier (default: ‘amber14/tip3p.xml’).</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments for the ForceField constructor.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The constructed ForceField object.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>openmm.app.ForceField</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.modeller">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">modeller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inpdb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forcefield</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.modeller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.modeller" title="Link to this definition"></a></dt>
-<dd><p>Generate a modeller object with added solvent.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>inpdb</strong> (<em>str</em>) – Path to the input PDB file.</p></li>
-<li><p><strong>forcefield</strong> (<em>openmm.app.ForceField</em>) – The force field object to be used.</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) –</p>
-<dl class="simple">
-<dt>Additional keyword arguments for solvent addition. Default values include:</dt><dd><p>model : ‘tip3p’
-boxShape : ‘dodecahedron’
-padding : 1.0 * nanometer
-positiveIon : ‘Na+’
-negativeIon : ‘Cl-’
-ionicStrength : 0.1 * molar</p>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The modeller object with solvent added.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>openmm.app.Modeller</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmSystem.model">
-<span class="sig-name descname"><span class="pre">model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">forcefield</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modeller_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">barostat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermostat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmSystem.model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmSystem.model" title="Link to this definition"></a></dt>
-<dd><p>Create a simulation model using the specified force field and modeller.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul>
-<li><p><strong>forcefield</strong> (<em>openmm.app.ForceField</em>) – The force field object.</p></li>
-<li><p><strong>modeller_obj</strong> (<em>openmm.app.Modeller</em>) – The modeller object with the prepared topology.</p></li>
-<li><p><strong>barostat</strong> (<em>openmm.Force, optional</em>) – Barostat force to add (default: None).</p></li>
-<li><p><strong>thermostat</strong> (<em>openmm.Force, optional</em>) – Thermostat force to add (default: None).</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) –</p>
-<dl class="simple">
-<dt>Additional keyword arguments for creating the system. Defaults include:</dt><dd><p>nonbondedMethod : app.PME
-nonbondedCutoff : 1.0 * nanometer
-constraints : app.HBonds</p>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The simulation system created by the force field.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>openmm.System</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1201,99 +1040,23 @@ constraints : app.HBonds</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.mmmd.</span></span><span class="sig-name descname"><span class="pre">MdRun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sysdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sysname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runname</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#reforge.mdsystem.mmmd.MmSystem" title="reforge.mdsystem.mmmd.MmSystem"><code class="xref py py-class docutils literal notranslate"><span class="pre">MmSystem</span></code></a></p>
-<p>Run molecular dynamics (MD) simulation using specified input files.</p>
-<p>This class extends MmSystem to perform an MD simulation run including
-energy minimization, equilibration, and production.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sysdir</strong> (<em>str</em>) – Directory for the system files.</p></li>
-<li><p><strong>sysname</strong> (<em>str</em>) – Name of the system.</p></li>
-<li><p><strong>runname</strong> (<em>str</em>) – Name of the MD run.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Variables<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>rundir</strong> (<em>str</em>) – Directory for the run files.</p></li>
-<li><p><strong>rmsdir</strong> (<em>str</em>) – Directory for RMS analysis.</p></li>
-<li><p><strong>covdir</strong> (<em>str</em>) – Directory for covariance analysis.</p></li>
-<li><p><strong>lrtdir</strong> (<em>str</em>) – Directory for LRT analysis.</p></li>
-<li><p><strong>cludir</strong> (<em>str</em>) – Directory for clustering.</p></li>
-<li><p><strong>pngdir</strong> (<em>str</em>) – Directory for output figures.</p></li>
-</ul>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.mmmd.</span></span><span class="sig-name descname"><span class="pre">MmRun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sysdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sysname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runname</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#reforge.mdsystem.mdsystem.MDRun" title="reforge.mdsystem.mdsystem.MDRun"><code class="xref py py-class docutils literal notranslate"><span class="pre">MDRun</span></code></a></p>
 <dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.prepare_files">
-<span class="sig-name descname"><span class="pre">prepare_files</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.prepare_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.prepare_files" title="Link to this definition"></a></dt>
-<dd><p>Create directories required for the MD run.</p>
-<p class="rubric">Notes</p>
-<p>Creates directories for run outputs including RMS, covariance, LRT,
-clustering, and figures.</p>
-</dd></dl>
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun.get_std_reporters">
+<span class="sig-name descname"><span class="pre">get_std_reporters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">append</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'md'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nchk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun.get_std_reporters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun.get_std_reporters" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.build_modeller">
-<span class="sig-name descname"><span class="pre">build_modeller</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.build_modeller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.build_modeller" title="Link to this definition"></a></dt>
-<dd><p>Generate a modeller object from the system PDB file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The modeller object initialized with the system topology and positions.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>openmm.app.Modeller</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.simulation">
-<span class="sig-name descname"><span class="pre">simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modeller_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.simulation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.simulation" title="Link to this definition"></a></dt>
-<dd><p>Initialize and return a simulation object for the MD run.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>modeller_obj</strong> (<em>openmm.app.Modeller</em>) – The modeller object with prepared topology and positions.</p></li>
-<li><p><strong>integrator</strong> (<em>openmm.Integrator</em>) – The integrator for the simulation.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The initialized simulation object.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>openmm.app.Simulation</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.save_state">
-<span class="sig-name descname"><span class="pre">save_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sim'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.save_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.save_state" title="Link to this definition"></a></dt>
-<dd><p>Save the current simulation state to XML and PDB files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>simulation_obj</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
-<li><p><strong>file_prefix</strong> (<em>str, optional</em>) – Prefix for the state files (default: ‘sim’).</p></li>
-</ul>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<p>Saves the simulation state as an XML file and writes the current positions to a PDB file.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.em">
-<span class="sig-name descname"><span class="pre">em</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.em"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.em" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun.em">
+<span class="sig-name descname"><span class="pre">em</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun.em"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun.em" title="Link to this definition"></a></dt>
 <dd><p>Perform energy minimization for the simulation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>simulation_obj</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
-<li><p><strong>tolerance</strong> (<em>float, optional</em>) – Tolerance for energy minimization (default: 100).</p></li>
+<li><p><strong>simulation</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
+<li><p><strong>tolerance [kJ/nm/mol]</strong> (<em>float, optional</em>) – RMSF force tolerance for energy minimization (default: 10).</p></li>
 <li><p><strong>max_iterations</strong> (<em>int, optional</em>) – Maximum number of iterations (default: 1000).</p></li>
 </ul>
 </dd>
@@ -1303,62 +1066,85 @@ clustering, and figures.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.eq">
-<span class="sig-name descname"><span class="pre">eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.eq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.eq" title="Link to this definition"></a></dt>
-<dd><p>Run equilibration simulation.</p>
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun.hu">
+<span class="sig-name descname"><span class="pre">hu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cycles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_cycle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun.hu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun.hu" title="Link to this definition"></a></dt>
+<dd><p>Run equilibration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>simulation_obj</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
+<li><p><strong>simulation</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
 <li><p><strong>nsteps</strong> (<em>int, optional</em>) – Number of steps for equilibration (default: 10000).</p></li>
-<li><p><strong>nlog</strong> (<em>int, optional</em>) – Logging frequency (default: 10000).</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments for the StateDataReporter.</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>Loads the minimized state, runs equilibration, and saves the equilibrated state.</p>
+<p>Loads the minimized state, runs heatup, and saves the final state.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MdRun.md">
-<span class="sig-name descname"><span class="pre">md</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nchk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MdRun.md"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MdRun.md" title="Link to this definition"></a></dt>
-<dd><p>Run production MD simulation.</p>
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun.eq">
+<span class="sig-name descname"><span class="pre">eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cycles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_cycle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun.eq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun.eq" title="Link to this definition"></a></dt>
+<dd><p>Run equilibration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>simulation_obj</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
-<li><p><strong>nsteps</strong> (<em>int, optional</em>) – Number of production steps (default: 100000).</p></li>
-<li><p><strong>nout</strong> (<em>int, optional</em>) – Frequency for writing trajectory frames (default: 1000).</p></li>
-<li><p><strong>nlog</strong> (<em>int, optional</em>) – Logging frequency (default: 10000).</p></li>
-<li><p><strong>nchk</strong> (<em>int, optional</em>) – Checkpoint frequency (default: 10000).</p></li>
-<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments for the StateDataReporter.</p></li>
+<li><p><strong>simulation</strong> (<em>openmm.app.Simulation</em>) – The simulation object.</p></li>
+<li><p><strong>nsteps</strong> (<em>int, optional</em>) – Number of steps for equilibration (default: 10000).</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict, optional</em>) – Additional keyword arguments.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>Loads the equilibrated state, runs production, and saves the final simulation state.</p>
+<p>Loads the heated state, runs equilibration, and saves the equilibrated state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmRun.extend">
+<span class="sig-name descname"><span class="pre">extend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">until_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmRun.extend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmRun.extend" title="Link to this definition"></a></dt>
+<dd><p>Extend production MD simulation</p>
 </dd></dl>
 
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.sort_uld">
-<span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.mmmd.</span></span><span class="sig-name descname"><span class="pre">sort_uld</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alist</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#sort_uld"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.sort_uld" title="Link to this definition"></a></dt>
-<dd><p>Sort characters in a list in a specific order.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmReporter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">reforge.mdsystem.mmmd.</span></span><span class="sig-name descname"><span class="pre">MmReporter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reportInterval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enforcePeriodicBox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writer_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmReporter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmReporter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Most of this code is adapted from <a class="reference external" href="https://github.com/sef43/openmm-mdanalysis-reporter">https://github.com/sef43/openmm-mdanalysis-reporter</a>.
+MDAReporter outputs a series of frames from a Simulation to any file format supported by MDAnalysis.
+To use it, create a MDAReporter, then add it to the Simulation’s list of reporters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmReporter.describeNextReport">
+<span class="sig-name descname"><span class="pre">describeNextReport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmReporter.describeNextReport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmReporter.describeNextReport" title="Link to this definition"></a></dt>
+<dd><p>Get information about the next report this object will generate.
+:Parameters: <strong>simulation</strong> (<em>Simulation</em>) – The Simulation to generate a report for</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>alist</strong> (<em>list of str</em>) – List of characters to sort.</p>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A six element tuple. The first element is the number of steps
+until the next report. The next four elements specify whether
+that report will require positions, velocities, forces, and
+energies respectively.  The final element specifies whether
+positions should be wrapped to lie in a single periodic box.</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Sorted list with uppercase letters first, then lowercase letters, and digits last.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>list of str</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
 </dd>
 </dl>
-<p class="rubric">Notes</p>
-<p>This function is used to help organize GROMACS multichain files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmReporter.report">
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmReporter.report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmReporter.report" title="Link to this definition"></a></dt>
+<dd><p>Generate a report.
+:Parameters: * <strong>simulation</strong> (<em>Simulation</em>) – The Simulation to generate a report for</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>state</strong> (<em>State</em>) – The current state of the simulation</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
 </dd></dl>
 
 </section>

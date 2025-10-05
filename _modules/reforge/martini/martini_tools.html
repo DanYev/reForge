@@ -84,15 +84,21 @@
 <span class="sd">Note that this module is intended for internal use.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">MDAnalysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">Universe</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">MDAnalysis.analysis.dssp</span><span class="w"> </span><span class="kn">import</span> <span class="n">translate</span><span class="p">,</span> <span class="n">DSSP</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">reforge</span><span class="w"> </span><span class="kn">import</span> <span class="n">cli</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">cd</span><span class="p">,</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.martini</span><span class="w"> </span><span class="kn">import</span> <span class="n">martinize_rna</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.martini.martinize_rna</span><span class="w"> </span><span class="kn">import</span> <span class="n">martinize_rna</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">reforge.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">cd</span>
 
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Reader has no dt information, set to 1.0 ps&quot;</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="dssp">
 <a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.dssp">[docs]</a>
@@ -101,7 +107,7 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    in_file : str</span>
+<span class="sd">    in_file : str or Path</span>
 <span class="sd">        Path to the PDB file.</span>
 
 <span class="sd">    Returns</span>
@@ -125,15 +131,34 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    in_file : str</span>
+<span class="sd">    in_file : str or Path</span>
 <span class="sd">        Path to the source file.</span>
-<span class="sd">    out_file : str</span>
+<span class="sd">    out_file : str or Path</span>
 <span class="sd">        Path to the destination file.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">src</span><span class="p">:</span>
+    <span class="c1"># Convert to Path objects</span>
+    <span class="n">in_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span>
+    <span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_file</span><span class="p">)</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Appending </span><span class="si">{</span><span class="n">in_path</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> (excluding first line)&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check if input file exists</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Source file does not exist: </span><span class="si">{</span><span class="n">in_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="c1"># Create parent directory for output file if it doesn&#39;t exist</span>
+    <span class="n">out_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">in_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">src</span><span class="p">:</span>
         <span class="n">lines</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_file</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">dest</span><span class="p">:</span>
-        <span class="n">dest</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span></div>
+    
+    <span class="n">lines_appended</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">dest</span><span class="p">:</span>
+        <span class="n">dest</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Appended </span><span class="si">{</span><span class="n">lines_appended</span><span class="si">}</span><span class="s2"> lines from </span><span class="si">{</span><span class="n">in_path</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 
@@ -144,31 +169,42 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    wdir : str</span>
+<span class="sd">    wdir : str or Path</span>
 <span class="sd">        Working directory.</span>
-<span class="sd">    in_map : str</span>
+<span class="sd">    in_map : str or Path</span>
 <span class="sd">        Input map filename.</span>
-<span class="sd">    out_map : str, optional</span>
+<span class="sd">    out_map : str or Path, optional</span>
 <span class="sd">        Output map filename. Default is &quot;go.map&quot;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">bdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">wdir</span><span class="p">)</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">in_map</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">in_file</span><span class="p">:</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_map</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out_file</span><span class="p">:</span>
+    <span class="n">wdir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">wdir</span><span class="p">)</span>
+    <span class="n">in_map_path</span> <span class="o">=</span> <span class="n">wdir_path</span> <span class="o">/</span> <span class="n">in_map</span>
+    <span class="n">out_map_path</span> <span class="o">=</span> <span class="n">wdir_path</span> <span class="o">/</span> <span class="n">out_map</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fixing Go-map file: </span><span class="si">{</span><span class="n">in_map_path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">out_map_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_map_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input map file does not exist: </span><span class="si">{</span><span class="n">in_map_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input map file does not exist: </span><span class="si">{</span><span class="n">in_map_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines_processed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">lines_modified</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">in_map_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">in_file</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_map_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out_file</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">in_file</span><span class="p">:</span>
+                <span class="n">lines_processed</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;R &quot;</span><span class="p">):</span>
                     <span class="n">new_line</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
                     <span class="n">out_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_line</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">bdir</span><span class="p">)</span></div>
+                    <span class="n">lines_modified</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">out_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Go-map fix completed: </span><span class="si">{</span><span class="n">lines_processed</span><span class="si">}</span><span class="s2"> lines processed, </span><span class="si">{</span><span class="n">lines_modified</span><span class="si">}</span><span class="s2"> lines modified&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output written to: </span><span class="si">{</span><span class="n">out_map_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="martinize_go">
-<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.martinize_go">[docs]</a>
+<div class="viewcode-block" id="run_martinize_go">
+<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.run_martinize_go">[docs]</a>
 <span class="nd">@cli</span><span class="o">.</span><span class="n">from_wdir</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">martinize_go</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">topdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;protein&quot;</span><span class="p">,</span> <span class="n">go_eps</span><span class="o">=</span><span class="mf">9.414</span><span class="p">,</span>
-                 <span class="n">go_low</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">go_up</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-                 <span class="n">go_write_file</span><span class="o">=</span><span class="s2">&quot;map/contacts.map&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_martinize_go</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">topdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;protein&quot;</span><span class="p">,</span> <span class="n">go_eps</span><span class="o">=</span><span class="mf">9.414</span><span class="p">,</span>
+                 <span class="n">go_low</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">go_up</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run virtual site-based GoMartini via martinize2.</span>
 
 <span class="sd">    Parameters</span>
@@ -191,8 +227,6 @@
 <span class="sd">        Upper distance cutoff (nm). Default is 1.1.</span>
 <span class="sd">    go_res_dist : int, optional</span>
 <span class="sd">        Minimum residue distance below which contacts are removed. Default is 3.</span>
-<span class="sd">    go_write_file : str, optional</span>
-<span class="sd">        Output file for Go-map. Default is &quot;map/contacts.map&quot;.</span>
 <span class="sd">    **kwargs :</span>
 <span class="sd">        Additional keyword arguments.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -207,22 +241,48 @@
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;resid&quot;</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">)</span>
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;ff&quot;</span><span class="p">,</span> <span class="s2">&quot;martini3001&quot;</span><span class="p">)</span>
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;maxwarn&quot;</span><span class="p">,</span> <span class="s2">&quot;1000&quot;</span><span class="p">)</span>
-    <span class="n">ss</span> <span class="o">=</span> <span class="n">dssp</span><span class="p">(</span><span class="n">aapdb</span><span class="p">)</span>
+    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;from&quot;</span><span class="p">,</span> <span class="s2">&quot;amber&quot;</span><span class="p">)</span>
+    <span class="c1"># Convert paths to Path objects</span>
+    <span class="n">wdir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">wdir</span><span class="p">)</span>
+    <span class="n">topdir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">topdir</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting martinize_go for protein &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Working directory: </span><span class="si">{</span><span class="n">wdir_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Topology directory: </span><span class="si">{</span><span class="n">topdir_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input AA PDB: </span><span class="si">{</span><span class="n">aapdb</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input CG PDB: </span><span class="si">{</span><span class="n">cgpdb</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="n">wdir</span><span class="p">):</span>
+        <span class="n">go_write_path</span> <span class="o">=</span> <span class="n">wdir_path</span> <span class="o">/</span> <span class="s2">&quot;maps&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.map&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Go-map will be written to: </span><span class="si">{</span><span class="n">go_write_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">go_write_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created directory: </span><span class="si">{</span><span class="n">go_write_path</span><span class="o">.</span><span class="n">parent</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">relative_go_path</span> <span class="o">=</span> <span class="n">go_write_path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">wdir_path</span><span class="p">)</span>
         <span class="n">line</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;-name </span><span class="si">{}</span><span class="s2"> -go-eps </span><span class="si">{}</span><span class="s2"> -go-low </span><span class="si">{}</span><span class="s2"> -go-up </span><span class="si">{}</span><span class="s2"> -go-res-dis </span><span class="si">{}</span><span class="s2"> &quot;</span>
-                <span class="s2">&quot;-go-write-file </span><span class="si">{}</span><span class="s2"> -ss </span><span class="si">{}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">name</span><span class="p">,</span> <span class="n">go_eps</span><span class="p">,</span> <span class="n">go_low</span><span class="p">,</span> <span class="n">go_up</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="p">,</span> <span class="n">go_write_file</span><span class="p">,</span> <span class="n">ss</span><span class="p">)</span>
+                <span class="s2">&quot;-go-write-file </span><span class="si">{}</span><span class="s2"> -dssp&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span> <span class="n">go_eps</span><span class="p">,</span> <span class="n">go_low</span><span class="p">,</span> <span class="n">go_up</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="p">,</span> <span class="n">relative_go_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running martinize2 with command: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">cli</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;martinize2&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">append_to</span><span class="p">(</span><span class="s2">&quot;go_atomtypes.itp&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">topdir</span><span class="p">,</span> <span class="s2">&quot;go_atomtypes.itp&quot;</span><span class="p">))</span>
-        <span class="n">append_to</span><span class="p">(</span><span class="s2">&quot;go_nbparams.itp&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">topdir</span><span class="p">,</span> <span class="s2">&quot;go_nbparams.itp&quot;</span><span class="p">))</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.itp&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">topdir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.itp&quot;</span><span class="p">))</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;martinize2 execution completed&quot;</span><span class="p">)</span>
+        <span class="n">go_atomtypes_src</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;go_atomtypes.itp&quot;</span><span class="p">)</span>
+        <span class="n">go_atomtypes_dst</span> <span class="o">=</span> <span class="n">topdir_path</span> <span class="o">/</span> <span class="s2">&quot;go_atomtypes.itp&quot;</span>
+        <span class="n">go_nbparams_src</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;go_nbparams.itp&quot;</span><span class="p">)</span>
+        <span class="n">go_nbparams_dst</span> <span class="o">=</span> <span class="n">topdir_path</span> <span class="o">/</span> <span class="s2">&quot;go_nbparams.itp&quot;</span>
+        <span class="n">protein_itp_src</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.itp&quot;</span><span class="p">)</span>
+        <span class="n">protein_itp_dst</span> <span class="o">=</span> <span class="n">topdir_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.itp&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Moving files to topology directory: </span><span class="si">{</span><span class="n">topdir_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">append_to</span><span class="p">(</span><span class="n">go_atomtypes_src</span><span class="p">,</span> <span class="n">go_atomtypes_dst</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Appended </span><span class="si">{</span><span class="n">go_atomtypes_src</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">go_atomtypes_dst</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">append_to</span><span class="p">(</span><span class="n">go_nbparams_src</span><span class="p">,</span> <span class="n">go_nbparams_dst</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Appended </span><span class="si">{</span><span class="n">go_nbparams_src</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">go_nbparams_dst</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">protein_itp_src</span><span class="p">,</span> <span class="n">protein_itp_dst</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Moved </span><span class="si">{</span><span class="n">protein_itp_src</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">protein_itp_dst</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;martinize_go completed successfully for protein &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="martinize_en">
-<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.martinize_en">[docs]</a>
+<div class="viewcode-block" id="run_martinize_en">
+<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.run_martinize_en">[docs]</a>
 <span class="nd">@cli</span><span class="o">.</span><span class="n">from_wdir</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">martinize_en</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="n">ef</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span> <span class="n">el</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">eu</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_martinize_en</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="n">ef</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span> <span class="n">el</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">eu</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run protein elastic network generation via martinize2.</span>
 
 <span class="sd">    Parameters</span>
@@ -260,9 +320,9 @@
 
 
 
-<div class="viewcode-block" id="martinize_nucleotide">
-<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.martinize_nucleotide">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">martinize_nucleotide</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="run_martinize_nucleotide">
+<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.run_martinize_nucleotide">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_martinize_nucleotide</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run nucleotide coarse-graining using martinize_nucleotides.</span>
 
 <span class="sd">    Parameters</span>
@@ -289,9 +349,9 @@
 
 
 
-<div class="viewcode-block" id="martinize_rna">
-<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.martinize_rna">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">martinize_rna</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="run_martinize_rna">
+<a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.run_martinize_rna">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_martinize_rna</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run RNA coarse-graining using martinize_rna.</span>
 
 <span class="sd">    Parameters</span>
@@ -302,8 +362,7 @@
 <span class="sd">        Additional parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="n">wdir</span><span class="p">):</span>
-        <span class="n">script</span> <span class="o">=</span> <span class="s2">&quot;reforge.martini.martinize_rna&quot;</span>
-        <span class="n">cli</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;python3 -m&quot;</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="n">martinize_rna</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
 
