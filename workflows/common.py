@@ -6,6 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import MDAnalysis as mda
+from MDAnalysis.analysis import rms
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import BisectingKMeans, KMeans
@@ -170,6 +171,37 @@ def get_means_sems(sysdir, sysname):
     plots.plot_pdfi(system, tag='dfi')
 
 ################################################################################
+### RMSD/RMSF Analysis ###
+################################################################################
+
+def rms_analysis(sysdir, sysname, runname, selection="name CA", step=1):
+    mdsys = MDSystem(sysdir, sysname)
+    mdrun = MDRun(sysdir, sysname, runname)
+    rmsdir = mdrun.rmsdir
+    rmsdir.mkdir(exist_ok=True)    
+    top = mdrun.rundir / "topology.pdb"
+    traj = mdrun.rundir / f"samples.{TRJEXT}"
+    # Load trajectory
+    u = mda.Universe(str(top), str(traj))
+    atoms = u.select_atoms(selection)  
+    # Calculate RMSD
+    rmsd_analysis = rms.RMSD(atoms, reference=atoms, select=selection)
+    rmsd_analysis.run(step=step)
+    # Calculate RMSF
+    rmsf_analysis = rms.RMSF(atoms)
+    rmsf_analysis.run(step=step)
+    # Get residue IDs
+    residue_ids = np.array([atom.resid for atom in atoms])
+    # Save arrays
+    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.rmsd[:, 2])  # RMSD values (in nm)
+    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 0])   # Time values (in ps)
+    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in nm)
+    np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
+    # plots
+    plots.plot_rmsd(mdsys)
+    # plots.plot_rmsf(mdsys)
+    
+################################################################################
 ### TDLRT ###
 ################################################################################
 
@@ -296,6 +328,9 @@ def _pdb_to_seq(pdb):
     seq = "".join(res.resname for res in protein.residues)  # three-letter codes
     seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
     return seq_oneletter
+
+
+
 
 
 if __name__ == "__main__":
