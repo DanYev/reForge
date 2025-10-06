@@ -314,7 +314,7 @@ class MmReporter(object):
         """
         if self._nextModel == 0:
             self._topology = simulation.topology
-            dt = simulation.integrator.getStepSize()*self._reportInterval
+            dt = simulation.integrator.getStepSize() * self._reportInterval # Time between frames in ps
             self._mdaUniverse = mda.Universe(
                 simulation.topology,
                 simulation,
@@ -343,6 +343,11 @@ class MmReporter(object):
         boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.angstrom)
         self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
         self._mdaUniverse.dimensions[:3] = self._sanitize_box_angles(self._mdaUniverse.dimensions[:3])
+        # Set simulation time on the universe's trajectory timestep
+        sim_time = state.getTime().value_in_unit(unit.picosecond)
+        # Update the universe's timestep attributes
+        self._mdaUniverse.trajectory.ts.time = sim_time
+        self._mdaUniverse.trajectory.ts.frame = self._nextModel - 1
         # write to the trajectory file
         self._mdaWriter.write(self._atomGroup)
         self._nextModel += 1

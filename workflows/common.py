@@ -6,6 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import MDAnalysis as mda
+from MDAnalysis.analysis import rms
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import BisectingKMeans, KMeans
@@ -15,20 +16,18 @@ from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
-import plots
+from . import plots
 
 logger = get_logger(__name__)
 
-
+INPDB = 'input.pdb'
 SELECTION = "name CA" 
 TRJEXT = 'trr' # 'xtc' or 'trr'
 
 ################################################################################
 ### PCA/Clustering ###
 ################################################################################
-def pca_trajs(sysdir, sysname):
-    selection = "name CA" # CA for AA or Go-Martini; BB for Martini
-    step = 1 # in frames
+def pca_trajs(sysdir, sysname, selection=SELECTION, step=1):
     mdsys = MDSystem(sysdir, sysname)
     clean_dir(mdsys.datdir, "*")
     tops = io.pull_files(mdsys.mddir, "topology.pdb")
@@ -37,6 +36,7 @@ def pca_trajs(sysdir, sysname):
     # Reading 
     logger.info("Reading trajectories")
     u = mda.Universe(tops[0], trajs, in_memory_step=step, ) # in_memory=True)
+    logger.info(f'Selecting atoms for PCA analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9).T
     # PCA
@@ -119,16 +119,16 @@ def _plot_traj_pca(data, i, j, ids, labels, mdsys, skip=1, alpha=0.3, out_tag="p
     plt.close()
 
 
-def clust_cov(sysdir, sysname):
+def clust_cov(sysdir, sysname, selection = SELECTION):
     logger.info("Doing cluster covariance analysis")
     mdsys = MDSystem(sysdir, sysname)
-    selection = "name CA"
     clusters = io.pull_files(mdsys.datdir, "cluster*.xtc")
     tops = io.pull_files(mdsys.datdir, "topology*.pdb")
     clusters.append(mdsys.datdir / "filtered.xtc")
     tops.append(mdsys.datdir / "filtered.pdb")
     for idx, (cluster, top) in enumerate(zip(clusters, tops)):
         u = mda.Universe(top, cluster)
+        logger.info(f'Selecting atoms for cluster DFI analysis: {selection}')
         ag = u.atoms.select_atoms(selection)
         dtype = np.float32
         positions = io.read_positions(u, ag, sample_rate=1, b=0, e=1e9, dtype=dtype)
@@ -144,13 +144,13 @@ def clust_cov(sysdir, sysname):
 ### DFI/DCI ###
 ################################################################################
 
-def cov_analysis(sysdir, sysname, runname):
+def cov_analysis(sysdir, sysname, runname, selection=SELECTION):
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.covdir.mkdir(exist_ok=True, parents=True)
     top = mdrun.rundir / "topology.pdb"
     traj = mdrun.rundir / f"samples.{TRJEXT}"
     u = mda.Universe(top, traj, in_memory=False)
-    selection = "name CA"
+    logger.info(f'Selecting atoms for covariance analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     clean_dir(mdrun.covdir, "*npy")
     mdrun.get_covmats(u, ag, sample_rate=1, b=0, e=1e12, n=2, outtag="covmat") 
@@ -170,10 +170,44 @@ def get_means_sems(sysdir, sysname):
     plots.plot_pdfi(system, tag='dfi')
 
 ################################################################################
+### RMSD/RMSF Analysis ###
+################################################################################
+
+def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
+    mdsys = MDSystem(sysdir, sysname)
+    mdrun = MDRun(sysdir, sysname, runname)
+    rmsdir = mdrun.rmsdir
+    rmsdir.mkdir(exist_ok=True)    
+    top = mdrun.rundir / "topology.pdb"
+    traj = mdrun.rundir / f"samples.{TRJEXT}"
+    # Load trajectory
+    u = mda.Universe(str(top), str(traj))
+    atoms = u.select_atoms(selection)  
+    # Calculate RMSD
+    logger.info(f'Calculating RMSD and RMSF for selection: {selection}')
+    rmsd_analysis = rms.RMSD(atoms, reference=atoms, select=selection)
+    rmsd_analysis.run(step=step)
+    # Calculate RMSF
+    rmsf_analysis = rms.RMSF(atoms)
+    rmsf_analysis.run(step=step)
+    # Get residue IDs
+    residue_ids = np.array([atom.resid for atom in atoms])
+    # Save arrays
+    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.rmsd[:, 2])  # RMSD values (in angstroms)
+    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 1])   # Time values (in ps)
+    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in angstroms)
+    np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
+    logger.info(f"Saved RMSD and RMSF data to {rmsdir}")
+    # Plots
+    logger.info("Generating RMSD and RMSF plots")
+    plots.plot_rmsd(mdsys)
+    plots.plot_rmsf(mdsys)
+    
+################################################################################
 ### TDLRT ###
 ################################################################################
 
-def tdlrt_analysis(sysdir, sysname, runname):
+def tdlrt_analysis(sysdir, sysname, runname, selection=SELECTION):
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.lrtdir.mkdir(exist_ok=True, parents=True)
     ps_path = mdrun.rundir / "positions.npy"
@@ -186,8 +220,10 @@ def tdlrt_analysis(sysdir, sysname, runname):
         traj = mdrun.rundir / f"samples.{TRJEXT}"
         top = mdrun.rundir / "topology.pdb"
         u = mda.Universe(top, traj)
-        ps = io.read_positions(u, u.atoms) # (n_atoms*3, nframes)
-        vs = io.read_velocities(u, u.atoms) # (n_atoms*3, nframes)
+        ag = u.atoms.select_atoms(selection)
+        logger.info(f"Reading positions and velocities for selection: {selection}")
+        ps = io.read_positions(u, ag) # (n_atoms*3, nframes)
+        vs = io.read_velocities(u, ag) # (n_atoms*3, nframes)
     ps = ps - ps[:, 0][..., None]
     # CCF calculations
     adict = {'pp': (ps, ps), } 
@@ -281,7 +317,7 @@ def initiate_systems_from_emu(*args):
     u = mda.Universe(top, samples)
     step = 10  # every 10 frames
     for i, ts in enumerate(u.trajectory[1::step]):
-        idx = i + 98
+        idx = i 
         outdir = newsys_dir / f"sample_{idx:03d}"
         outdir.mkdir(parents=True, exist_ok=True)
         outpdb = outdir / "sample.pdb"
@@ -292,10 +328,14 @@ def initiate_systems_from_emu(*args):
 
 def _pdb_to_seq(pdb):
     u = mda.Universe(pdb)
+    logger.info('Selecting protein atoms for sequence extraction')
     protein = u.select_atoms("protein")
     seq = "".join(res.resname for res in protein.residues)  # three-letter codes
     seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
     return seq_oneletter
+
+
+
 
 
 if __name__ == "__main__":

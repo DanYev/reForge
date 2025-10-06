@@ -19,16 +19,17 @@ TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
-TOTAL_TIME = 40 * unit.picoseconds
-TOTAL_STEPS = 10000 
+TOTAL_TIME = 1000 * unit.nanoseconds
 TSTEP = 2 * unit.femtoseconds
+TOTAL_STEPS = 100000 
 # Reporting
 TRJ_NOUT = 1000 # save every NOUT steps
-CHK_NOUT = 1000 
+CHK_NOUT = 100000 
 LOG_NOUT = 1000 
 OUT_SELECTION = "protein" 
+TRJEXT = 'trr' # 'xtc' or 'trr'
 # Analysis
-SELECTION = "name CA" 
+SELECTION = "protein" 
 
 
 def setup(*args):
@@ -112,7 +113,7 @@ def md_npt(sysdir, sysname, runname):
     simulation.minimizeEnergy(maxIterations=1000)
     logger.info("Heating up...")
     n_cycles = 100
-    steps_per_cycle = 100
+    steps_per_cycle = 1000
     for i in range(n_cycles):
         simulation.integrator.setTemperature(TEMPERATURE*i/n_cycles)
         simulation.step(steps_per_cycle)
@@ -123,18 +124,19 @@ def md_npt(sysdir, sysname, runname):
     simulation.system.addForce(barostat)
     simulation.integrator.setTemperature(TEMPERATURE)
     simulation.context.reinitialize(preserveState=True)
-    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=100)
+    mdrun.eq(simulation, n_cycles=100, steps_per_cycle=1000)
     # MD
     logger.info("Production...")
     simulation.loadState(str(mdrun.rundir / "eq.xml"))
     simulation.integrator.setStepSize(TSTEP)
-    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
+    logger.info(f'Saving reference PDB with selection: {OUT_SELECTION}')
+    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb")
     simulation.reporters = []  # clear existing reporters
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
-    # nsteps = int(TOTAL_TIME / TSTEP)
-    # simulation.step(nsteps)
-    simulation.step(TOTAL_STEPS)
+    nsteps = int(TOTAL_TIME / TSTEP)
+    simulation.step(nsteps)
+    # simulation.step(TOTAL_STEPS)
     simulation.saveState(str(mdrun.rundir / "md.xml"))
 
 
@@ -172,6 +174,7 @@ def md_nve(sysdir, sysname, runname):
     state = simulation.context.getState(getPositions=True, getVelocities=True)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setState(state)
+    logger.info(f'Saving reference PDB with selection: {OUT_SELECTION}')
     mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
     reporters = _get_reporters(mdrun, append=False, prefix='md')
     simulation.reporters.extend(reporters)
@@ -183,12 +186,19 @@ def _get_reporters(mdrun, append=False, prefix="md"):
     mdrun.rundir.mkdir(parents=True, exist_ok=True)
     log_reporter = app.StateDataReporter(
             str(mdrun.rundir / f"{prefix}.log"), 
-            LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True, append=append)
+            LOG_NOUT, step=True, time=True, potentialEnergy=True, kineticEnergy=True,
+            temperature=True, speed=True, append=append)
     err_reporter =  app.StateDataReporter(
-            sys.stderr, LOG_NOUT, step=True, potentialEnergy=True, kineticEnergy=True,
-            totalEnergy=True, temperature=True, speed=True, append=append)
-    traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
+            sys.stderr, LOG_NOUT, time=True, step=True, potentialEnergy=True, kineticEnergy=True,
+            temperature=True, speed=True, append=append)
+    logger.info(f'Setting up trajectory reporter with selection: {OUT_SELECTION}')
+    if TRJEXT == 'trr':
+        traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.trr"), 
+            reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
+    if TRJEXT == 'xtc':
+        # traj_reporter = app.XTCReporter(str(mdrun.rundir / f"{prefix}.xtc"), 
+        #     reportInterval=TRJ_NOUT)
+        traj_reporter = MmReporter(str(mdrun.rundir / f"{prefix}.xtc"), 
             reportInterval=TRJ_NOUT, selection=OUT_SELECTION)
     state_reporter = app.CheckpointReporter(str(mdrun.rundir / f"{prefix}.xml"), CHK_NOUT, writeState=True)
     return log_reporter, err_reporter, traj_reporter, state_reporter
@@ -220,18 +230,19 @@ def trjconv(sysdir, sysname, runname):
     # INPUT
     top = mdrun.rundir / "md.pdb"
     # top = mdrun.syspdb  # use original topology to avoid missing atoms
-    traj = mdrun.rundir / "md.trr"
-    ext = mdrun.rundir / "ext.trr"
+    traj = mdrun.rundir / f"md.{TRJEXT}"
+    ext = mdrun.rundir / f"ext.{TRJEXT}"
     trajs = [traj]  # combine both md and ext
     if ext.exists():
         trajs.append(ext)
     # CONVERT
     conv_top = mdrun.rundir / "topology.pdb"
-    conv_traj = mdrun.rundir / "md_selection.trr"
+    conv_traj = mdrun.rundir / f"md_selection.{TRJEXT}"
+    logger.info(f'Converting trajectory with selection: {SELECTION}')
     _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
     # FIT + OUTPUT
-    out_traj = mdrun.rundir / "samples.trr"
-    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=True)
+    out_traj = mdrun.rundir / f"samples.{TRJEXT}"
+    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=TRJEXT=='trr')
 
 
 def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
@@ -260,7 +271,7 @@ def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
             W.write(ag)
             if ts.frame % 1000 == 0:
                 frame = ts.frame
-                time_ns = ts.time // 1000
+                time_ns = ts.time / 1000
                 logger.info(f"Current frame: %s at %s ns", frame, time_ns)
     logger.info("Done!")
 

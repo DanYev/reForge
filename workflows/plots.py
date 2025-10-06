@@ -104,26 +104,29 @@ def plot_cluster_dfi(system, tag='cdfi'):
 
 
 def plot_rmsf(system):
-    # Pulling data
-    datas, errs = pull_data(system.datdir, 'crmsf_B*')
+   # Pulling data
+    files = io.pull_files(system.mddir, 'rmsf_values*.npy')
+    datas = [np.load(file) for file in files]
+    labels = [file.split('/')[-3] for file in files]
+    ys = [data for data in datas] 
     xs = [np.arange(len(data)) for data in datas]
-    datas = [data*10 for data in datas]
-    errs = [err*10 for err in errs]
-    params = [{'lw':2} for data in datas]
+    params = [{'lw':2, 'label':label} for label in labels]
     # Plotting
     fig, ax = init_figure(grid=(1, 1), axsize=(12, 5))
-    make_errorbar(ax, xs, datas, errs, params, alpha=0.7)
+    make_plot(ax, xs, ys, params)
     set_ax_parameters(ax, xlabel='Residue', ylabel='RMSF (Angstrom)')
-    plot_figure(fig, ax, figname=system.sysname.upper(), figpath='png/rmsf.png',)
+    plot_figure(fig, ax, figname=system.sysname.upper(), figpath=system.pngdir / 'rmsf.png')
 
 
 def plot_rmsd(system):
     # Pulling data
-    files = io.pull_files(system.mddir, 'rmsd*npy')
-    datas = [np.load(file) for file in files]
-    labels = [file.split('/')[-3] for file in files]
-    xs = [data[0]*1e-3 for data in datas]
-    ys = [data[1]*10 for data in datas]
+    dfiles = io.pull_files(system.mddir, 'rmsd_values*.npy')
+    tfiles = io.pull_files(system.mddir, 'rmsd_times*.npy')
+    datas = [np.load(file) for file in dfiles]
+    times = [np.load(file) for file in tfiles]
+    labels = [file.split('/')[-3] for file in dfiles]
+    ys = [data for data in datas] 
+    xs = [time*1e-3 for time in times] # convert ps to ns
     params = [{'lw':2, 'label':label} for label in labels]
     # Plotting
     fig, ax = init_figure(grid=(1, 1), axsize=(12, 5))
