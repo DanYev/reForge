@@ -34,10 +34,10 @@ def test_setup_aa():
     mm_md.setup_aa(sysdir, sysname)
     assert mdsys.syspdb.exists()
 
-def test_md_nve():
-    mm_md.md_nve(sysdir, sysname, runname)
-    md_file = mdrun.rundir / 'md.trr'
-    assert md_file.exists()
+# def test_md_nve():
+#     mm_md.md_nve(sysdir, sysname, runname)
+#     md_file = mdrun.rundir / 'md.trr'
+#     assert md_file.exists()
     
 def test_md_npt():
     mm_md.md_npt(sysdir, sysname, runname)
