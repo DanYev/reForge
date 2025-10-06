@@ -28,7 +28,7 @@ def cleanup_test_files():
     if mdsys.root.exists():
         shutil.rmtree(mdsys.root)
     yield mdsys  # This runs the tests
-    # shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
+    # shutil.rmtree(mdsys.root) # Need them for the next tests
 
 def test_setup_aa():
     mm_md.setup_aa(sysdir, sysname)
@@ -36,22 +36,25 @@ def test_setup_aa():
 
 def test_md_nve():
     mm_md.md_nve(sysdir, sysname, runname)
-    md_file = mdrun.root / 'md.trr'
+    md_file = mdrun.rundir / 'md.trr'
     assert md_file.exists()
-
+    
 def test_md_npt():
     mm_md.md_npt(sysdir, sysname, runname)
-    md_file = mdrun.root / 'md.trr'
+    md_file = mdrun.rundir / 'md.trr'
     assert md_file.exists()
 
 def test_extend():
     mm_md.extend(sysdir, sysname, runname)
-    md_file = mdrun.root / 'md_1.trr'
+    md_file = mdrun.rundir / 'md_1.trr'
     assert md_file.exists()
 
 def test_trjconv():
     mm_md.trjconv(sysdir, sysname, runname)
-    samples_file = mdrun.root / 'samples.trr'
-    top_file = mdrun.root / 'topology.pdb'
+    samples_file = mdrun.rundir / 'samples.trr'
+    top_file = mdrun.rundir / 'topology.pdb'
     assert samples_file.exists()
     assert top_file.exists()
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

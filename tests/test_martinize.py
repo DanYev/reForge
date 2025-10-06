@@ -58,3 +58,6 @@ def test_make_cg_topology():
     mdsys.make_cg_topology()
     assert mdsys.systop.exists()
 
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
+

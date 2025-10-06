@@ -17,11 +17,10 @@ from workflows import common
 
 # Create test system instances
 sysdir = 'tests'
-sysname = 'sys_test'
-runname = 'run_test'
+sysname = 'mm_sys'
+runname = 'mm_run'
 mdsys = MDSystem(sysdir, sysname)
 mdrun = MDRun(sysdir, sysname, runname)
-in_pdb = '../1btl.pdb'
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():

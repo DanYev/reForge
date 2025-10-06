@@ -72,3 +72,6 @@ def test_trjconv():
     gmx_md.trjconv(sysdir, sysname, runname)
     trj_path = mdrun.rundir / "samples.xtc"
     assert trj_path.exists()
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
