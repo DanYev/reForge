@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import MDAnalysis as mda
@@ -237,20 +238,20 @@ def trjconv(sysdir, sysname, runname):
     logger.info(f"WDIR: %s", mdrun.rundir)
     # INPUT
     top = mdrun.rundir / "md.pdb"
-    # top = mdrun.syspdb  # use original topology to avoid missing atoms
+    # top = mdrun.syspdb  # use original topology if needed
     traj = mdrun.rundir / f"md.{TRJEXT}"
-    ext = mdrun.rundir / f"ext.{TRJEXT}"
-    trajs = [traj]  # combine both md and ext
-    if ext.exists():
-        trajs.append(ext)
+    ext_trajs = sorted([f for f in mdrun.rundir.glob(f"md_*.{TRJEXT}")])
+    trajs = [traj] + ext_trajs
+    logger.info(f'Input trajectory files: {trajs}')
     # CONVERT
-    conv_top = mdrun.rundir / "topology.pdb"
-    conv_traj = mdrun.rundir / f"md_selection.{TRJEXT}"
-    logger.info(f'Converting trajectory with selection: {SELECTION}')
-    _trjconv_selection(trajs, top, conv_traj, conv_top, selection=SELECTION, step=1)
-    # FIT + OUTPUT
+    out_top = mdrun.rundir / "topology.pdb"
+    tmp_traj = mdrun.rundir / f"conv.{TRJEXT}"
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
-    _trjconv_fit(conv_traj, conv_top, out_traj, transform_vels=TRJEXT=='trr')
+    logger.info(f'Converting trajectory with selection: {SELECTION}')
+    _trjconv_selection(trajs, top, tmp_traj, out_top, selection=SELECTION, step=1)
+    # FIT + OUTPUT
+    _trjconv_fit(tmp_traj, out_top, out_traj, transform_vels=TRJEXT=='trr')
+    os.remove(tmp_traj)
 
 
 def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):

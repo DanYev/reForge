@@ -39,11 +39,12 @@ def test_clust_cov():
 
 def test_cov_analysis():
     common.cov_analysis(sysdir, sysname, runname)
-    assert (mdrun.covdir / "dfi_0.npy").exists()
+    assert (mdrun.covdir / "dfi_1.npy").exists()
 
 def test_rms_analysis():
     common.rms_analysis(sysdir, sysname, runname)
-    assert (mdsys.rmsdir / 'rmsf.npy').exists()
+    assert (mdrun.rmsdir / 'rmsf_values.npy').exists()
+    assert (mdrun.rmsdir / 'rmsd_values.npy').exists()
 
 def test_get_means_sems():
     common.get_means_sems(sysdir, sysname)
