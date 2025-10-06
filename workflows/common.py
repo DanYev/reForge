@@ -335,9 +335,6 @@ def _pdb_to_seq(pdb):
     return seq_oneletter
 
 
-
-
-
 if __name__ == "__main__":
     from reforge.cli import run_command
     run_command()

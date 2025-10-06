@@ -1,16 +1,3 @@
-"""
-EGFR Pipeline
-=================
-
-This module serves as a tutorial for setting up, running and analyzing
-coarse-grained molecular dynamics (MD) simulations for protein+lipid bilayer 
-system using the reForge package and GROMACS. 
-
-Author: DY
-Date: 2025-XX-XX
-"""
-
-import logging
 import os
 from pathlib import Path
 import sys
@@ -18,9 +5,11 @@ import shutil
 import numpy as np
 import cupy as cp
 import MDAnalysis as mda
-from reforge import cli, io, mdm, pdbtools
+from reforge import cli, io, mdm
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
-from reforge.utils import *
+from reforge.utils import clean_dir, get_logger
+
+logger = get_logger(__name__)
 
 
 def setup(*args):
@@ -31,12 +20,11 @@ def setup_cg_protein_membrane(sysdir, sysname):
     ### FOR CG PROTEIN+LIPID BILAYERS ###
     mdsys = GmxSystem(sysdir, sysname)
 
-    # 1.1. Need to copy force field and md-parameter files and prepare directories.
-    mdsys.prepare_files() # be careful it can overwrite later files
-    mdsys.sort_input_pdb("egfr.pdb") # sorts chains in the input file and returns mdsys.inpdb file
-    label_segments(in_pdb=mdsys.inpdb, out_pdb=mdsys.inpdb) # label the segments in the input PDB file 
-    # # We may need to run mdsys.inpdb through OpenMM's or GROMACS' pdb tools but not always needed.
-    mdsys.clean_pdb_mm(add_missing_atoms=False, add_hydrogens=True, pH=7.0)
+    # 1.1. Need to copy force field and md-parameter files, prepare directories and clean input PDB
+    mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
+    mdsys.sort_input_pdb(mdsys.sysdir / ".." / ".." / "egfr_v.pdb") # sorts chains in the input file and returns mdsys.inpdb file
+    label_segments(in_pdb=mdsys.inpdb, out_pdb=mdsys.inpdb) # label the segments in the input PDB file
+    mdsys.clean_pdb_mm(pdb_file=mdsys.inpdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
     # mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, 6 for AMBER FF
     
     # 1.2. Splitting chains before the coarse-graining and cleaning if needed.
@@ -56,10 +44,9 @@ def setup_cg_protein_membrane(sysdir, sysname):
     # Option 'dm' shifts the membrane along z-axis
     mdsys.insert_membrane(
         f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=15, y=15, z=30, dm=0, 
+        x=15, y=15, z=30, dm=10, 
         u='POPC:1', l='POPC:1', sol='W',
     )
-
     # 1.4 Insert membrane generates a .gro file but we want to have a .pdb so we will convert it first and then add ions to the box
     mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
     mdsys.add_bulk_ions(conc=0.15, pname='NA', nname='CL')

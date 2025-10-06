@@ -17,48 +17,39 @@ from workflows import common
 
 # Create test system instances
 sysdir = 'tests'
-sysname = 'sys_test'
-runname = 'run_test'
+sysname = 'mm_sys'
+runname = 'mm_run'
 mdsys = MDSystem(sysdir, sysname)
 mdrun = MDRun(sysdir, sysname, runname)
-in_pdb = '../1btl.pdb'
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
     """Setup and cleanup test files"""
-    if mdsys.root.exists():
-        shutil.rmtree(mdsys.root)
     yield mdsys  # This runs the tests
-    # Cleanup - only runs if tests complete successfully
-    if mdsys.root.exists():
+    if mdsys.root.exists():  # Cleanup - only runs if tests complete successfully
         shutil.rmtree(mdsys.root)
-
 
 def test_pca_trajs():
-    """Test PCA trajectory analysis"""
     common.pca_trajs(sysdir, sysname)
+    assert (mdsys.datdir / "cluster_0.xtc").exists()
 
+def test_clust_cov():
+    common.clust_cov(sysdir, sysname)
+    assert (mdsys.datdir / "cdfi_filt_av.npy").exists()
 
-# def test_cov_analysis():
-#     """Test covariance analysis"""
-#     common.cov_analysis(sysdir, sysname, runname)
+def test_cov_analysis():
+    common.cov_analysis(sysdir, sysname, runname)
+    assert (mdrun.covdir / "dfi_1.npy").exists()
 
+def test_rms_analysis():
+    common.rms_analysis(sysdir, sysname, runname)
+    assert (mdrun.rmsdir / 'rmsf_values.npy').exists()
+    assert (mdrun.rmsdir / 'rmsd_values.npy').exists()
 
-# def test_rms_analysis():
-#     """Test RMSD/RMSF analysis"""
-#     result = common.rms_analysis(sysdir, sysname, runname)
-#     # Should return None when no trajectory exists or a tuple of 4 elements
-#     assert result is None or len(result) == 4
-
-
-# def test_get_means_sems():
-#     """Test calculation of means and standard errors"""
-#     common.get_means_sems(sysdir, sysname)
-
-
-# def test_clust_cov():
-#     """Test cluster covariance analysis"""
-#     common.clust_cov(sysdir, sysname)
+def test_get_means_sems():
+    common.get_means_sems(sysdir, sysname)
+    assert (mdsys.datdir / 'dfi_av.npy').exists()
+    assert (mdsys.datdir / 'dfi_err.npy').exists()
 
 
 # def test_tdlrt_analysis():

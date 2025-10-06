@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=0-00:10:00                                                       
+#SBATCH --time=0-00:15:00                                                       
 #SBATCH --partition=htc
 #SBATCH --qos=public
 #SBATCH --nodes=1
@@ -54,6 +54,7 @@ else
         "tests/test_martinize.py"
         "tests/test_gmxmd.py"
         "tests/test_mmmd.py"
+        "tests/test_common.py"
     )
     
     # Run each test and track results

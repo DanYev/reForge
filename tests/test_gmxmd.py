@@ -55,12 +55,23 @@ def test_clean_chains_gmx():
 
 def test_setup_martini():
     gmx_md.setup_martini(sysdir, sysname)
+    top_path = mdsys.root / "system.top"
+    pdb_path = mdsys.root / "system.pdb"
+    assert top_path.exists()
+    assert pdb_path.exists()
 
 def test_md_npt():
     gmx_md.md_npt(sysdir, sysname, runname)
+    md_path = mdrun.rundir / "md.xtc"
+    assert md_path.exists()
 
 def test_extend():
     gmx_md.extend(sysdir, sysname, runname)
 
 def test_trjconv():
     gmx_md.trjconv(sysdir, sysname, runname)
+    trj_path = mdrun.rundir / "samples.xtc"
+    assert trj_path.exists()
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
