@@ -1,16 +1,3 @@
-"""
-EGFR Pipeline
-=================
-
-This module serves as a tutorial for setting up, running and analyzing
-coarse-grained molecular dynamics (MD) simulations for protein+lipid bilayer 
-system using the reForge package and GROMACS. 
-
-Author: DY
-Date: 2025-XX-XX
-"""
-
-import logging
 import os
 from pathlib import Path
 import sys
@@ -20,7 +7,9 @@ import cupy as cp
 import MDAnalysis as mda
 from reforge import cli, io, mdm, pdbtools
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
-from reforge.utils import *
+from reforge.utils import clean_dir, get_logger
+
+logger = get_logger(__name__)
 
 
 def setup(*args):

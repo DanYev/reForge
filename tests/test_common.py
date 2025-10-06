@@ -26,8 +26,8 @@ mdrun = MDRun(sysdir, sysname, runname)
 def cleanup_test_files():
     """Setup and cleanup test files"""
     yield mdsys  # This runs the tests
-    # if mdsys.root.exists():  # Cleanup - only runs if tests complete successfully
-    #     shutil.rmtree(mdsys.root)
+    if mdsys.root.exists():  # Cleanup - only runs if tests complete successfully
+        shutil.rmtree(mdsys.root)
 
 def test_pca_trajs():
     common.pca_trajs(sysdir, sysname)
@@ -49,6 +49,7 @@ def test_rms_analysis():
 def test_get_means_sems():
     common.get_means_sems(sysdir, sysname)
     assert (mdsys.datdir / 'dfi_av.npy').exists()
+    assert (mdsys.datdir / 'dfi_err.npy').exists()
 
 
 # def test_tdlrt_analysis():

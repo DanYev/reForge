@@ -10,7 +10,7 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
 from reforge.utils import clean_dir, get_logger
 
-logger = get_logger()
+logger = get_logger(__name__)
 
 # Global settings
 INPDB = '1btl.pdb'
@@ -23,10 +23,10 @@ PRESSURE = 1 * unit.bar
 TOTAL_TIME = 100 * unit.picoseconds
 TSTEP = 2 * unit.femtoseconds
 TOTAL_STEPS = 100000 
-# Reporting
-TRJ_NOUT = 10000 # save every NOUT steps
+# Reporting: save every NOUT steps
+TRJ_NOUT = 1000     # normally you want 10000 or 100000 here
+LOG_NOUT = 1000     # 100000 or more
 CHK_NOUT = 100000 
-LOG_NOUT = 10000 
 OUT_SELECTION = "protein" 
 TRJEXT = 'trr' # 'xtc' if don't need velocities or 'trr' if do
 # Analysis and trjconv

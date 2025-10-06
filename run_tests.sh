@@ -53,7 +53,7 @@ else
         # "tests/test_pdbtools.py"
         # "tests/test_martinize.py"
         # "tests/test_gmxmd.py"
-        # "tests/test_mmmd.py"
+        "tests/test_mmmd.py"
         "tests/test_common.py"
     )
     
