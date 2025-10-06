@@ -215,10 +215,10 @@ class MmRun(MDRun):
  
     @memprofit(level=logging.INFO)
     @timeit(level=logging.INFO, unit='auto')
-    def extend(self, simulation, until_time=1000, nsteps=None, **kwargs):
+    def extend(self, simulation, curr_prefix, next_prefix, until_time=1000, nsteps=None, **kwargs):
         """Extend production MD simulation"""
         logger.info("Extending run...")
-        in_xml = os.path.join(self.rundir, "md.xml")
+        in_xml = os.path.join(self.rundir, f"{curr_prefix}.xml")
         simulation.loadState(in_xml)
         state = simulation.context.getState()
         curr_time = state.getTime()
@@ -232,7 +232,7 @@ class MmRun(MDRun):
                 sys.exit(0) 
         logger.info(f"Number of steps left: %s", nsteps)
         simulation.step(nsteps)
-        out_xml = self.rundir / "ext.xml"
+        out_xml = self.rundir / f"{next_prefix}.xml"
         simulation.saveState(str(out_xml))
         logger.info("Production completed.")
 
