@@ -30,6 +30,7 @@ sphinx_gallery_conf = {
     'examples_dirs': '../examples',  # folder with your scripts (e.g. your example_c60.py)
     'gallery_dirs': 'auto_examples',
     'filename_pattern': r'.*',    
+    'ignore_pattern': r'__init__\.py|workflow\.py|run\.sh',  # Exclude helper files
     'plot_gallery': True, 
     'run_stale_examples': False,  # Do not re-run examples if they are up-to-date.
     'remove_config_comments': True,

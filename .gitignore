@@ -4,7 +4,9 @@ build/
 *.egg-info/
 
 # Documentation outputs
-docs/examples/
+docs/examples/__pychache__/
+docs/examples/slurm_jobs/
+docs/examples/systems/
 docs/source/auto_examples/
 docs/source/sg_execution_times.rst
 
