@@ -1,10 +1,11 @@
 Why use reForge?
 ================
 
-Need to simulate a large biomolecular complex? Or even many?
-------------------------------------------------------------
+Working with large biomolecular complexes?
+-------------------------------------------
 
-Then reForge is the right tool. If offers a (*almost*) pain-free setup for Martini+CG Protein/RNA/Lipid complexes.
+reForge aims to simplify the setup process for coarse-grained or all-atom Protein/RNA/Lipid complexes, 
+helping to streamline what can often be a complex workflow.
 
   .. image:: img/reforge_ribosome.png
      :alt: reForge Ribosome
@@ -14,31 +15,32 @@ Then reForge is the right tool. If offers a (*almost*) pain-free setup for Marti
 Python-Based
 ------------
 
-reForge is built entirely in *Python*, making it easy to use and integrate.
+reForge is built in *Python*, designed to be accessible and easy to integrate into existing workflows.
 
-- **Simple Scripts:**  
-  A couple of Python scripts are all you need. Whether you run tens or hundreds of MD simulations, 
-  reForge handles it with just one button press.
+- **Streamlined Workflows:**  
+  Python scripts help automate repetitive tasks. Whether managing a few or many MD simulations, 
+  reForge aims to reduce manual setup overhead.
 
 
 Accelerated C- and CUDA Routines
 --------------------------------
 
-- **High Performance:**  
-  Process terabytes of data with remarkable speed compared to standard Python and NumPy.
+- **Performance Optimization:**  
+  Utilizes C and CUDA acceleration to improve processing speeds for large datasets 
+  compared to standard Python implementations.
 
 .. image:: img/reforge_speedup.png
    :alt: reForge Speedup Performance
    :scale: 60 %
 
-This performance gain is impressive even for a medium-sized system of about 1000 residues. 
-Imagine scaling up to hundreds or thousands of systems!
+Performance improvements can be particularly beneficial for medium to large systems 
+(~1000+ residues) and when scaling to multiple systems.
 
 
 Tools for Custom Model Development
 ------------------------------------
 
-Build your own models and integrate them with existing MD engines and analysis tools.
+Provides utilities to help develop custom models and integrate them with existing MD engines and analysis tools.
 
 .. image:: img/reforge_dsrna.png
    :alt: reForge dsRNA
@@ -48,8 +50,9 @@ Build your own models and integrate them with existing MD engines and analysis t
 For New Users
 -------------
 
-- **Tutorials:**  
-  Tutorials and examples that demonstrate basic workflows are provided with the package.
+- **Learning Resources:**  
+  Tutorials and examples are included to help users get started with basic workflows and understand 
+  the package's capabilities.
 
 
 Indices and Tables
