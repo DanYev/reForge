@@ -620,12 +620,18 @@
 <a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.get_td_averages">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_td_averages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates time-dependent averages from a set of numpy files.</span>
+<span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">            fname (str): Filename pattern to pull files from the MD runs directory.</span>
-<span class="sd">            loop (bool, optional): If True, processes files sequentially (default: True).</span>
-<span class="sd">        Returns:</span>
-<span class="sd">            numpy.ndarray: The time-dependent average.</span>
+<span class="sd">        fname : str</span>
+<span class="sd">            Filename pattern to pull files from the MD runs directory.</span>
+<span class="sd">        loop : bool, optional</span>
+<span class="sd">            If True, processes files sequentially (default: True).</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        numpy.ndarray</span>
+<span class="sd">            The time-dependent average.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">def</span><span class="w"> </span><span class="nf">slicer</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span> <span class="c1"># Slice object to crop arrays to min_shape</span>
             <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">)</span>

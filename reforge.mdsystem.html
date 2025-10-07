@@ -881,15 +881,19 @@ with the actual protein name and cleans temporary files.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mdsystem.MDSystem.get_td_averages">
 <span class="sig-name descname"><span class="pre">get_td_averages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mdsystem.html#MDSystem.get_td_averages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mdsystem.MDSystem.get_td_averages" title="Link to this definition"></a></dt>
-<dd><p>Calculates time-dependent averages from a set of numpy files.
-:Parameters: * <strong>fname (str)</strong> (<em>Filename pattern to pull files from the MD runs directory.</em>)</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><strong>loop (bool, optional)</strong> (<em>If True, processes files sequentially (default: True).</em>)</p></li>
+<dd><p>Calculates time-dependent averages from a set of numpy files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fname</strong> (<em>str</em>) – Filename pattern to pull files from the MD runs directory.</p></li>
+<li><p><strong>loop</strong> (<em>bool, optional</em>) – If True, processes files sequentially (default: True).</p></li>
 </ul>
-</div></blockquote>
-<dl class="simple">
-<dt>Returns:</dt><dd><p>numpy.ndarray: The time-dependent average.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The time-dependent average.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1136,13 +1140,15 @@ positions should be wrapped to lie in a single periodic box.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="reforge.mdsystem.mmmd.MmReporter.report">
 <span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/reforge/mdsystem/mmmd.html#MmReporter.report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#reforge.mdsystem.mmmd.MmReporter.report" title="Link to this definition"></a></dt>
-<dd><p>Generate a report.
-:Parameters: * <strong>simulation</strong> (<em>Simulation</em>) – The Simulation to generate a report for</p>
-<blockquote>
-<div><ul class="simple">
+<dd><p>Generate a report.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>simulation</strong> (<em>Simulation</em>) – The Simulation to generate a report for</p></li>
 <li><p><strong>state</strong> (<em>State</em>) – The current state of the simulation</p></li>
 </ul>
-</div></blockquote>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

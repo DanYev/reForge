@@ -13,7 +13,7 @@
       <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
       <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
       <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=dc75d08a" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=2d384e66" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -49,7 +49,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Why use reForge?</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#need-to-simulate-a-large-biomolecular-complex-or-even-many">Need to simulate a large biomolecular complex? Or even many?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-large-biomolecular-complexes">Working with large biomolecular complexes?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-based">Python-Based</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#accelerated-c-and-cuda-routines">Accelerated C- and CUDA Routines</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#tools-for-custom-model-development">Tools for Custom Model Development</a></li>
@@ -88,9 +88,10 @@
              
   <section id="why-use-reforge">
 <h1>Why use reForge?<a class="headerlink" href="#why-use-reforge" title="Link to this heading"></a></h1>
-<section id="need-to-simulate-a-large-biomolecular-complex-or-even-many">
-<h2>Need to simulate a large biomolecular complex? Or even many?<a class="headerlink" href="#need-to-simulate-a-large-biomolecular-complex-or-even-many" title="Link to this heading"></a></h2>
-<p>Then reForge is the right tool. If offers a (<em>almost</em>) pain-free setup for Martini+CG Protein/RNA/Lipid complexes.</p>
+<section id="working-with-large-biomolecular-complexes">
+<h2>Working with large biomolecular complexes?<a class="headerlink" href="#working-with-large-biomolecular-complexes" title="Link to this heading"></a></h2>
+<p>reForge aims to simplify the setup process for coarse-grained or all-atom Protein/RNA/Lipid complexes,
+helping to streamline what can often be a complex workflow.</p>
 <blockquote>
 <div><a class="reference internal image-reference" href="_images/reforge_ribosome.png"><img alt="reForge Ribosome" src="_images/reforge_ribosome.png" style="width: 375.5px; height: 386.5px;" />
 </a>
@@ -98,35 +99,37 @@
 </section>
 <section id="python-based">
 <h2>Python-Based<a class="headerlink" href="#python-based" title="Link to this heading"></a></h2>
-<p>reForge is built entirely in <em>Python</em>, making it easy to use and integrate.</p>
+<p>reForge is built in <em>Python</em>, designed to be accessible and easy to integrate into existing workflows.</p>
 <ul class="simple">
-<li><p><strong>Simple Scripts:</strong>
-A couple of Python scripts are all you need. Whether you run tens or hundreds of MD simulations,
-reForge handles it with just one button press.</p></li>
+<li><p><strong>Streamlined Workflows:</strong>
+Python scripts help automate repetitive tasks. Whether managing a few or many MD simulations,
+reForge aims to reduce manual setup overhead.</p></li>
 </ul>
 </section>
 <section id="accelerated-c-and-cuda-routines">
 <h2>Accelerated C- and CUDA Routines<a class="headerlink" href="#accelerated-c-and-cuda-routines" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><strong>High Performance:</strong>
-Process terabytes of data with remarkable speed compared to standard Python and NumPy.</p></li>
+<li><p><strong>Performance Optimization:</strong>
+Utilizes C and CUDA acceleration to improve processing speeds for large datasets
+compared to standard Python implementations.</p></li>
 </ul>
 <a class="reference internal image-reference" href="_images/reforge_speedup.png"><img alt="reForge Speedup Performance" src="_images/reforge_speedup.png" style="width: 787.1999999999999px; height: 211.79999999999998px;" />
 </a>
-<p>This performance gain is impressive even for a medium-sized system of about 1000 residues.
-Imagine scaling up to hundreds or thousands of systems!</p>
+<p>Performance improvements can be particularly beneficial for medium to large systems
+(~1000+ residues) and when scaling to multiple systems.</p>
 </section>
 <section id="tools-for-custom-model-development">
 <h2>Tools for Custom Model Development<a class="headerlink" href="#tools-for-custom-model-development" title="Link to this heading"></a></h2>
-<p>Build your own models and integrate them with existing MD engines and analysis tools.</p>
+<p>Provides utilities to help develop custom models and integrate them with existing MD engines and analysis tools.</p>
 <a class="reference internal image-reference" href="_images/reforge_dsrna.png"><img alt="reForge dsRNA" src="_images/reforge_dsrna.png" style="width: 510.0px; height: 231.0px;" />
 </a>
 </section>
 <section id="for-new-users">
 <h2>For New Users<a class="headerlink" href="#for-new-users" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><strong>Tutorials:</strong>
-Tutorials and examples that demonstrate basic workflows are provided with the package.</p></li>
+<li><p><strong>Learning Resources:</strong>
+Tutorials and examples are included to help users get started with basic workflows and understand
+the package’s capabilities.</p></li>
 </ul>
 </section>
 <section id="indices-and-tables">

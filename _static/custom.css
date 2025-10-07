@@ -24,3 +24,19 @@ div.highlight pre {
 .eqno {
     float: right;
 }
+
+/* Adjust image backgrounds to match theme */
+img[alt*="reForge"] {
+    background-color: #fcfcfc;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+/* Alternative: Add subtle border instead */
+/*
+img[alt*="reForge"] {
+    border: 1px solid #e1e4e5;
+    border-radius: 4px;
+    padding: 5px;
+}
+*/
