@@ -64,7 +64,7 @@ For Developers
 Acknowledgements
 ----------------
 
-The reForge package is maintained by ****. 
+The reForge package is maintained by **DanYev**. 
 This project is inspired by and builds upon multiple excellent open-source 
 packages such as Cython, NumPy, CuPy, GROMACS, OpenMM, Vermouth and MDAnalysis. 
 
