@@ -125,6 +125,45 @@ def setup_go_protein(sysdir='systems', sysname='test'):
     print(f"Main topology: {mdsys.systop}")
     print(f"System structure: {mdsys.syspdb}")
     
+    #%%
+    # Demonstrate utilities for file handling and visualization
+    print("\n" + "="*50)
+    print("🛠️  Using reForge Example Utilities")
+    print("="*50)
+    
+    # Import our utilities
+    from utilities import list_outputs, quick_analysis, create_pdb_html, create_summary_html
+    
+    # List all output files systematically
+    print("\n📋 System Output Summary:")
+    outputs = list_outputs(sysdir, sysname)
+    
+    # Analyze the main system PDB
+    if mdsys.syspdb.exists():
+        print(f"\n🔬 Quick Analysis of {mdsys.syspdb.name}:")
+        stats = quick_analysis(mdsys.syspdb)
+        for key, value in stats.items():
+            if key != "error":
+                print(f"   {key}: {value}")
+    
+    # Create HTML visualizations
+    print("\n🌐 Creating HTML Visualizations...")
+    
+    # Create visualization for the final system
+    if mdsys.syspdb.exists():
+        html_viz = create_pdb_html(mdsys.syspdb, 
+                                  output_html=mdsys.root / "system_viz.html",
+                                  style="cartoon", 
+                                  color="chain")
+        
+    # Create comprehensive system summary
+    summary_html = create_summary_html(sysdir, sysname)
+    
+    print(f"\n💡 Generated HTML files:")
+    print(f"   📄 Structure viewer: {mdsys.root}/system_viz.html") 
+    print(f"   📊 System summary: {mdsys.root}/{sysname}_summary.html")
+    print(f"   🌐 Open these in your browser to explore the system!")
+    
     return mdsys
 
 
