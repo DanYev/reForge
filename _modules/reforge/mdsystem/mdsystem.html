@@ -101,6 +101,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">openmm.app</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDBFile</span>
@@ -241,7 +242,7 @@
 <span class="sd">        **kwargs : dict, optional</span>
 <span class="sd">            Additional keyword arguments (ignored).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleaning the PDB&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleaning the PDB with PDBfixer...&quot;</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">pdb_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">pdb</span> <span class="o">=</span> <span class="n">PDBFixer</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">pdb_file</span><span class="p">))</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Removing heterogens and checking for missing residues...&quot;</span><span class="p">)</span>
@@ -266,7 +267,7 @@
 
 <div class="viewcode-block" id="MDSystem.clean_pdb_gmx">
 <a class="viewcode-back" href="../../../reforge.mdsystem.html#reforge.mdsystem.mdsystem.MDSystem.clean_pdb_gmx">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">clean_pdb_gmx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_pdb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clean_pdb_gmx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdb_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Cleans the PDB file using GROMACS pdb2gmx tool.</span>
 
 <span class="sd">        Parameters</span>
@@ -276,11 +277,19 @@
 
 <span class="sd">        After running pdb2gmx, cleans up temporary files (e.g., &quot;topol*&quot; and &quot;posre*&quot;).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleaning the PDB using GROMACS pdb2gmx...&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_pdb</span><span class="p">:</span>
-            <span class="n">in_pdb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inpdb</span>
-        <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">):</span>
-            <span class="n">cli</span><span class="o">.</span><span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;pdb2gmx&quot;</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">in_pdb</span><span class="p">,</span> <span class="n">o</span><span class="o">=</span><span class="n">in_pdb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleaning the PDB with GROMACS pdb2gmx...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">pdb_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;.pdb&#39;</span><span class="p">,</span> <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_pdb</span><span class="p">:</span>
+            <span class="n">temp_pdb_path</span> <span class="o">=</span> <span class="n">temp_pdb</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pdb_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">infile</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">infile</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ATOM&#39;</span><span class="p">):</span>
+                        <span class="n">temp_pdb</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">):</span>
+                <span class="n">cli</span><span class="o">.</span><span class="n">gmx</span><span class="p">(</span><span class="s2">&quot;pdb2gmx&quot;</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">temp_pdb_path</span><span class="p">,</span> <span class="n">o</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inpdb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">temp_pdb_path</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Remove the temporary PDB file</span>
         <span class="n">clean_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="s2">&quot;topol*&quot;</span><span class="p">)</span>
         <span class="n">clean_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="s2">&quot;posre*&quot;</span><span class="p">)</span></div>
 

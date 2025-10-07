@@ -204,7 +204,7 @@
 <a class="viewcode-back" href="../../../reforge.martini.html#reforge.martini.martini_tools.run_martinize_go">[docs]</a>
 <span class="nd">@cli</span><span class="o">.</span><span class="n">from_wdir</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_martinize_go</span><span class="p">(</span><span class="n">wdir</span><span class="p">,</span> <span class="n">topdir</span><span class="p">,</span> <span class="n">aapdb</span><span class="p">,</span> <span class="n">cgpdb</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;protein&quot;</span><span class="p">,</span> <span class="n">go_eps</span><span class="o">=</span><span class="mf">9.414</span><span class="p">,</span>
-                 <span class="n">go_low</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">go_up</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">go_low</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">go_up</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">go_res_dist</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">from_ff</span><span class="o">=</span><span class="s1">&#39;amber&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run virtual site-based GoMartini via martinize2.</span>
 
 <span class="sd">    Parameters</span>
@@ -241,7 +241,7 @@
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;resid&quot;</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">)</span>
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;ff&quot;</span><span class="p">,</span> <span class="s2">&quot;martini3001&quot;</span><span class="p">)</span>
     <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;maxwarn&quot;</span><span class="p">,</span> <span class="s2">&quot;1000&quot;</span><span class="p">)</span>
-    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;from&quot;</span><span class="p">,</span> <span class="s2">&quot;amber&quot;</span><span class="p">)</span>
+    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;from&quot;</span><span class="p">,</span> <span class="n">from_ff</span><span class="p">)</span>
     <span class="c1"># Convert paths to Path objects</span>
     <span class="n">wdir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">wdir</span><span class="p">)</span>
     <span class="n">topdir_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">topdir</span><span class="p">)</span>
