@@ -41,7 +41,7 @@ def test_gmx():
     mdsys.gmx('')
 
 def test_clean_pdb_gmx():
-    mdsys.clean_pdb_gmx(clinput='6\n7\n', ignh='yes')
+    mdsys.clean_pdb_gmx(mdsys.root / "inpdb.pdb", clinput='6\n7\n', ignh='yes')
 
 def test_split_chains():
     mdsys.split_chains()
