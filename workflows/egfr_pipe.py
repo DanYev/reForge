@@ -22,21 +22,19 @@ def setup_cg_protein_membrane(sysdir, sysname):
 
     # 1.1. Need to copy force field and md-parameter files, prepare directories and clean input PDB
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.sort_input_pdb(mdsys.sysdir / ".." / "egfr_v3.pdb") # sorts chains in the input file and returns mdsys.inpdb file
+    mdsys.sort_input_pdb(mdsys.sysdir / "egfr_v3.pdb") # sorts chains in the input file and returns mdsys.inpdb file
     label_segments(in_pdb=mdsys.inpdb, out_pdb=mdsys.inpdb) # label the segments in the input PDB file
-    mdsys.clean_pdb_mm(pdb_file=mdsys.inpdb, add_missing_atoms=True, add_hydrogens=False, pH=7.0)
-    # mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='yes', renum='yes') # 8 for CHARMM, 6 for AMBER FF
-    
+    # mdsys.clean_pdb_mm(pdb_file=mdsys.inpdb, add_missing_atoms=True, add_hydrogens=False, pH=7.0)
+    mdsys.clean_pdb_gmx(in_pdb=mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, 6 for AMBER FF
+
     # 1.2. Splitting chains before the coarse-graining and cleaning if needed.
     mdsys.split_chains()
-    # mdsys.clean_chains_gmx(clinput='8\n 7\n', ignh='yes', renum='yes')
-    # mdsys.clean_chains_mm(add_missing_atoms=True, add_hydrogens=True, pH=7.0)  # if didn't work for the whole PDB
     # mdsys.get_go_maps(append=True)
 
     # # 1.3. COARSE-GRAINING. Done separately for each chain. If don't want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='amber', p='backbone', pf=500, append=False) # Martini + Go-network FF
-    mdsys.make_cg_topology(add_resolved_ions=False, prefix='chain') # CG topology. Returns mdsys.systop ("mdsys.top") file
+    mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='charmm', p='backbone', pf=500, append=False) # Martini + Go-network FF
+    mdsys.make_cg_topology(add_resolved_ions=False, prefix='chain') # CG topology. Returns mdsys.systop ("system.top") file
     mdsys.make_cg_structure() # CG topology. Returns mdsys.solupdb ("solute.pdb") file
     label_segments(in_pdb=mdsys.solupdb, out_pdb=mdsys.solupdb) # label the segments in the CG PDB file 
 
@@ -44,7 +42,7 @@ def setup_cg_protein_membrane(sysdir, sysname):
     # Option 'dm' shifts the membrane along z-axis
     mdsys.insert_membrane(
         f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=15, y=15, z=30, dm=10, 
+        x=14, y=14, z=22, dm=10, 
         u='POPC:1', l='POPC:1', sol='W',
     )
     # 1.4 Insert membrane generates a .gro file but we want to have a .pdb so we will convert it first and then add ions to the box
