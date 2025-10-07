@@ -305,6 +305,7 @@ class MmReporter(object):
 
     def report(self, simulation, state):
         """Generate a report.
+        
         Parameters
         ----------
         simulation : Simulation

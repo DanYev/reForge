@@ -20,14 +20,6 @@ reforge.martini.martini\_tools module
    :show-inheritance:
    :undoc-members:
 
-reforge.martini.martinize\_nucleotides module
----------------------------------------------
-
-.. automodule:: reforge.martini.martinize_nucleotides
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 reforge.martini.martinize\_rna module
 -------------------------------------
 

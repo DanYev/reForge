@@ -490,12 +490,18 @@ class MDSystem:
 
     def get_td_averages(self, pattern):
         """Calculates time-dependent averages from a set of numpy files.
+        
         Parameters
         ----------
-            fname (str): Filename pattern to pull files from the MD runs directory.
-            loop (bool, optional): If True, processes files sequentially (default: True).
-        Returns:
-            numpy.ndarray: The time-dependent average.
+        fname : str
+            Filename pattern to pull files from the MD runs directory.
+        loop : bool, optional
+            If True, processes files sequentially (default: True).
+            
+        Returns
+        -------
+        numpy.ndarray
+            The time-dependent average.
         """
         def slicer(shape): # Slice object to crop arrays to min_shape
             return tuple(slice(0, s) for s in shape)
