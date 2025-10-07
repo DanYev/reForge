@@ -39,5 +39,5 @@ If you use this script in your research, please cite:
 
 ### License
 
-Copyright (c) 2025, Danis Yangaliev  
+Copyright (c) 2025, DY
 Licensed under the GNU General Public License v3.0
