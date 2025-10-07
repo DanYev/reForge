@@ -54,8 +54,8 @@ if __name__ == "__main__":
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
 
-    sysdir = 'tests/test' 
-    sysnames = ['sys_test'] 
+    sysdir = 'systems' 
+    sysnames = ['test_system'] 
     runs = ["run_test_1", "run_test_2"]
 
     submit = False

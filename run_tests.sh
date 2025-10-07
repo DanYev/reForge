@@ -20,9 +20,12 @@
 #
 # Usage:
 #   From the project root, run:
-#       ./run_tests.sh
+#       ./run_tests.sh                    # Run individual tests
+#       ./run_tests.sh --all              # Run all tests at once
+#       ./run_tests.sh --docs             # Run tests and build docs if tests pass
+#       ./run_tests.sh --all --docs       # Run all tests and build docs if tests pass
 #   or
-#       sbatch run_tests.sh
+#       sbatch run_tests.sh [options]
 #
 # Requirements:
 #   - Python 3.x and pytest must be installed.
@@ -37,8 +40,23 @@
 # Initialize test result tracking
 TEST_EXIT_CODE=0
 FAILED_TESTS=""
+BUILD_DOCS=false
 
-if [ "$1" == "--all" ]; then
+# Parse command line arguments
+for arg in "$@"; do
+    case $arg in
+        --docs)
+            BUILD_DOCS=true
+            shift
+            ;;
+        --all)
+            RUN_ALL_TESTS=true
+            shift
+            ;;
+    esac
+done
+
+if [ "$RUN_ALL_TESTS" = true ] || [ "$1" == "--all" ]; then
     echo "Running all tests..."
     pytest --maxfail=1 --disable-warnings -q
     TEST_EXIT_CODE=$?
@@ -55,6 +73,7 @@ else
         "tests/test_gmxmd.py"
         "tests/test_mmmd.py"
         "tests/test_common.py"
+        "tests/test_egfr_setup.py"
     )
     
     # Run each test and track results
@@ -86,13 +105,18 @@ else
 fi
 echo "=================================="
 
-# Uncomment if you want to build docs only on successful tests
-# if [ $TEST_EXIT_CODE -eq 0 ]; then
-#     echo "Tests passed, building documentation..."
-#     ghp-import -n -p -f build/html
-# else
-#     echo "Skipping documentation build due to test failures."
-# fi
+# Build documentation if requested
+if [ "$BUILD_DOCS" = true ]; then
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+        echo "Tests passed, building documentation..."
+        cd docs
+        make html
+        ghp-import -n -p -f build/html
+        cd ..
+    else
+        echo "Skipping documentation build due to test failures."
+    fi
+fi
 
 # Exit with the test result code so SLURM/CI can detect failures
 exit $TEST_EXIT_CODE
