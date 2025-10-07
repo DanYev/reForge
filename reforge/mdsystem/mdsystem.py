@@ -175,7 +175,7 @@ class MDSystem:
             PDBFile.writeFile(topology, positions, outfile)
         logger.info(f"Written cleaned PDB to {self.inpdb}")
 
-    def clean_pdb_gmx(self, in_pdb=None, **kwargs):
+    def clean_pdb_gmx(self, pdb_file, **kwargs):
         """Cleans the PDB file using GROMACS pdb2gmx tool.
 
         Parameters
@@ -185,11 +185,9 @@ class MDSystem:
 
         After running pdb2gmx, cleans up temporary files (e.g., "topol*" and "posre*").
         """
-        logger.info("Cleaning the PDB using GROMACS pdb2gmx...")
-        if not in_pdb:
-            in_pdb = self.inpdb
+        logger.info(f"Cleaning the {pdb_file} using GROMACS pdb2gmx...")
         with cd(self.root):
-            cli.gmx("pdb2gmx", f=in_pdb, o=in_pdb, **kwargs)
+            cli.gmx("pdb2gmx", f=pdb_file, o=self.inpdb, **kwargs)
         clean_dir(self.root, "topol*")
         clean_dir(self.root, "posre*")
 

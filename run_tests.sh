@@ -55,6 +55,7 @@ else
         "tests/test_gmxmd.py"
         "tests/test_mmmd.py"
         "tests/test_common.py"
+        "tests/test_egfr_setup.py"
     )
     
     # Run each test and track results

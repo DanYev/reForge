@@ -21,10 +21,10 @@ in_pdb = '../egfr_v3.pdb'
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
     """Setup and cleanup test files"""
-    # if mdsys.root.exists():
-        # shutil.rmtree(mdsys.root)
+    if mdsys.root.exists():
+        shutil.rmtree(mdsys.root)
     yield mdsys  # This runs the tests
-    # shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
+    shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
 
 def test_setup():
     egfr_pipe.setup(sysdir, sysname)
