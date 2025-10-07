@@ -190,7 +190,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
 
 
 @cli.from_wdir
-def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, **kwargs):
+def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, from_ff='amber', **kwargs):
     """Run protein elastic network generation via martinize2.
 
     Parameters
@@ -221,6 +221,7 @@ def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, **kwargs):
     kwargs.setdefault("ff", "martini3001")
     kwargs.setdefault("maxwarn", "1000")
     kwargs.setdefault("elastic", "")
+    kwargs.setdefault("from", from_ff)
     ss = dssp(aapdb)
     line = ("-ef {} -el {} -eu {} -ss {}").format(ef, el, eu, ss)
     with cd(wdir):

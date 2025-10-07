@@ -32,8 +32,8 @@ def setup_cg_protein_membrane(sysdir, sysname):
     # mdsys.get_go_maps(append=True)
 
     # # 1.3. COARSE-GRAINING. Done separately for each chain. If don't want to split some of them, it needs to be done manually. 
-    # mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='charmm', p='backbone', pf=500, append=False) # Martini + Go-network FF
+    mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, from_ff='charmm', p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
+    # mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='charmm', p='backbone', pf=500, append=False) # Martini + Go-network FF
     mdsys.make_cg_topology(add_resolved_ions=False, prefix='chain') # CG topology. Returns mdsys.systop ("system.top") file
     mdsys.make_cg_structure() # CG topology. Returns mdsys.solupdb ("solute.pdb") file
     label_segments(in_pdb=mdsys.solupdb, out_pdb=mdsys.solupdb) # label the segments in the CG PDB file 
