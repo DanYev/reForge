@@ -23,6 +23,7 @@ from pathlib import Path
 import sys
 import shutil
 import subprocess as sp
+import tempfile
 import numpy as np
 import logging
 from openmm.app import PDBFile
@@ -153,7 +154,7 @@ class MDSystem:
         **kwargs : dict, optional
             Additional keyword arguments (ignored).
         """
-        logger.info("Cleaning the PDB")
+        logger.info("Cleaning the PDB with PDBfixer...")
         logger.info(f"Processing {pdb_file}")
         pdb = PDBFixer(filename=str(pdb_file))
         logger.info("Removing heterogens and checking for missing residues...")
@@ -185,9 +186,19 @@ class MDSystem:
 
         After running pdb2gmx, cleans up temporary files (e.g., "topol*" and "posre*").
         """
-        logger.info(f"Cleaning the {pdb_file} using GROMACS pdb2gmx...")
-        with cd(self.root):
-            cli.gmx("pdb2gmx", f=pdb_file, o=self.inpdb, **kwargs)
+        logger.info(f"Cleaning the PDB with GROMACS pdb2gmx...")
+        logger.info(f"Processing {pdb_file}")
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.pdb', delete=False) as temp_pdb:
+            temp_pdb_path = temp_pdb.name
+            with open(pdb_file, 'r') as infile:
+                for line in infile:
+                    if line.startswith('ATOM'):
+                        temp_pdb.write(line)
+        try:
+            with cd(self.root):
+                cli.gmx("pdb2gmx", f=temp_pdb_path, o=self.inpdb, **kwargs)
+        finally:
+            Path(temp_pdb_path).unlink(missing_ok=True)  # Remove the temporary PDB file
         clean_dir(self.root, "topol*")
         clean_dir(self.root, "posre*")
 
