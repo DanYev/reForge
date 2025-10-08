@@ -64,6 +64,8 @@ def setup_go_protein(sysdir='systems', sysname='test'):
     view_orig.setStyle({'cartoon': {'colorscheme': 'chain'}})
     view_orig.setBackgroundColor('white')
     view_orig.zoomTo()
+    view_orig.show()
+    view_orig.png()
     print("✅ py3Dmol visualization created (PNG export needs Jupyter/browser environment)")
     logger.info("Preparing files and directories...")
     
