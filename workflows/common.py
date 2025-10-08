@@ -297,6 +297,25 @@ def _process_batch(args, dtype=np.float32):
     return local_sum, local_count
 
 ################################################################################
+### ENM analysis ###
+################################################################################
+
+def enm_analysis(sysdir, sysname):
+    """Calculate ENM-based metrics."""
+    system = MDSystem(sysdir, sysname)
+    in_pdb = system.inpdb
+    atoms = io.pdb2atomlist(in_pdb)
+    backbone_anames = ["CA", "P", "C1'"]
+    bb = atoms.mask(backbone_anames, mode='name')
+    vecs = np.array(bb.vecs)
+    hess = mdm.hessian(vecs, cutoff=27, dd=2)
+    invhess = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=200, dtype=np.float64)
+    pertmat = mdm.perturbation_matrix_iso(invhess.get())
+    # invhess /= np.sqrt(np.average(invhess**2))
+    out_pdb = system.datdir / "enm_cov.npy"
+    np.save(out_pdb, pertmat)
+
+################################################################################
 ### Bioemu ###
 ################################################################################
 

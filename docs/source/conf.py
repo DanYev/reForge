@@ -30,7 +30,7 @@ sphinx_gallery_conf = {
     'examples_dirs': '../examples',  # folder with your scripts (e.g. your example_c60.py)
     'gallery_dirs': 'auto_examples',
     'filename_pattern': r'.*',    
-    'ignore_pattern': r'__init__\.py|workflow\.py|run\.sh',  # Exclude helper files
+    'ignore_pattern': r'__init__\.py|workflow\.py|run\.sh|_.*\.py|.*utilities.*\.py|file_explorer\.py',  # Exclude helper files
     'plot_gallery': True, 
     'run_stale_examples': False,  # Do not re-run examples if they are up-to-date.
     'remove_config_comments': True,
@@ -75,7 +75,7 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "insane.py"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "insane*.py"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "default"
