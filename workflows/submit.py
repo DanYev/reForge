@@ -48,21 +48,20 @@ def run_job(function, submit=False, **kwargs):
                       J=f'{function}', **kwargs)
 
 
-MARTINI = True
-
 if __name__ == "__main__":
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
 
     sysdir = 'systems' 
-    sysnames = ['test_system'] 
-    runs = ["run_test_1", "run_test_2"]
+    sysnames = ['enm_system'] 
+    runs = ["nm_run"]
 
-    submit = False
+    submit = True
 
     ##### For MD #####
-    pyscript = str(pdir / 'egfr_pipe.py')
-    sys_job('setup', submit=submit)
+    pyscript = str(pdir / 'enm_toy_md.py')
+    run_job('main', submit=submit, G='1', c='1', mem='2G', t='00-00:15:00')
+    # sys_job('setup', submit=submit)
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     # run_job('trjconv', submit=submit)
