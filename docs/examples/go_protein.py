@@ -35,9 +35,9 @@ Author: DY
 """
 
 from pathlib import Path
-import nglview as nv
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import get_logger
+import py3Dmol
 
 logger = get_logger()
 
@@ -57,12 +57,14 @@ def setup_go_protein(sysdir='systems', sysname='test'):
     mdsys = GmxSystem(sysdir, sysname)
     inpdb = mdsys.sysdir / INPDB  # Input PDB file location
     print("🔬 Creating original structure visualization...")
-    view_orig = nv.show_file(str(inpdb))
-    view_orig.clear_representations()
-    view_orig.add_representation('cartoon', color='chain')
-    view_orig.camera = 'orthographic'
-    view_orig.stage.set_parameters(background_color='white')
-    view_orig
+    with open(str(inpdb), 'r') as f:
+        pdb_data = f.read()
+    view_orig = py3Dmol.view(width=800, height=600)
+    view_orig.addModel(pdb_data, 'pdb')
+    view_orig.setStyle({'cartoon': {'colorscheme': 'chain'}})
+    view_orig.setBackgroundColor('white')
+    view_orig.zoomTo()
+    print("✅ py3Dmol visualization created (PNG export needs Jupyter/browser environment)")
     logger.info("Preparing files and directories...")
     
     # #%%
