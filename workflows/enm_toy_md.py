@@ -50,12 +50,48 @@ def _load_system_from_xml(filename):
     logger.info(f"Loaded system from {filename}")
     return system
 
+##########################################################
+### Setup ###
+##########################################################
 
 def setup(*args):
     """Main setup function for ENM system"""
     print(f"Setup called with args: {args}", file=sys.stderr)
     setup_enm(*args)
 
+
+def setup_aa(sysdir, sysname):
+    mdsys = MmSystem(sysdir, sysname)
+    inpdb = mdsys.sysdir / INPDB
+    mdsys.prepare_files()
+    mdsys.clean_pdb(inpdb, add_missing_atoms=True, add_hydrogens=True)
+    pdb = app.PDBFile(str(mdsys.inpdb))
+    model = app.Modeller(pdb.topology, pdb.positions)
+    forcefield = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
+    logger.info("Adding solvent and ions")
+    model.addSolvent(forcefield, 
+        model='tip3p', 
+        boxShape='dodecahedron', #  ‘cube’, ‘dodecahedron’, and ‘octahedron’
+        padding=1.0 * unit.nanometer,
+        ionicStrength=0.1 * unit.molar,
+        positiveIon='Na+',
+        negativeIon='Cl-')
+    with open(mdsys.syspdb, "w", encoding="utf-8") as file:
+        app.PDBFile.writeFile(model.topology, model.positions, file, keepIds=True)    
+    logger.info("Saved solvated system to %s", mdsys.syspdb)
+    # Build a system WITHOUT any motion remover/barostat/thermostat. Add them later as needed.
+    logger.info("Generating topology...")
+    system = forcefield.createSystem(
+        model.topology,
+        nonbondedMethod=app.PME,
+        nonbondedCutoff=1.0 * unit.nanometer,
+        constraints=app.HBonds,
+        removeCMMotion=False,     # important for strict NVE
+        ewaldErrorTolerance=1e-5
+    )
+    _save_system_to_xml(system, mdsys.sysxml)
+    logger.info("Setup complete.")
+    
 ##########################################################
 ### ENM stuff ###
 ##########################################################
@@ -317,7 +353,7 @@ def enm_analysis(sysdir, sysname):
     ag = u.select_atoms("name CA")
     # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
     # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
-    hess = np.load(system.datdir / "enm_hess.npy")
+    hess = np.load(system.datdir / "num_hess.npy")
     covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
     covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
     outfile = system.datdir / "enm_cov.npy"
@@ -389,7 +425,94 @@ def get_hessian_from_enm(sysdir, sysname):
     outfile = system.datdir / "enm_hess.npy"
     np.save(outfile, hess)
     logger.info(f"Saved ENM Hessian matrix to {outfile}")
+
+
+def get_hessian_numerical(sysdir, sysname, delta=0.001):
+    """Calculate Hessian matrix numerically using finite differences of forces from OpenMM
     
+    The Hessian H_ij = d²U/dx_i dx_j can be calculated as:
+    H_ij ≈ -(F_i(x_j + δ) - F_i(x_j - δ)) / (2δ)
+    where F_i is the force on coordinate i and δ is a small displacement.
+    
+    Args:
+        sysdir: System directory
+        sysname: System name
+        delta: Finite difference step size in nanometers (default: 0.001 nm = 0.01 Å)
+    
+    Returns:
+        hess: Numerical Hessian matrix (3N x 3N)
+    """
+    mdsys = MmSystem(sysdir, sysname)
+    logger.info(f"Calculating numerical Hessian with finite difference step δ = {delta} nm")
+    # Load system and structure
+    pdb = app.PDBFile(str(mdsys.syspdb))
+    system = _load_system_from_xml(mdsys.sysxml)
+    # Create integrator and simulation (we only need context for energy/force calculations)
+    integrator = mm.VerletIntegrator(0.001 * unit.picosecond)  # Step size doesn't matter for static calculations
+    simulation = app.Simulation(pdb.topology, system, integrator)
+    context = simulation.context
+    # Set initial positions and minimize
+    logger.info("Setting positions and minimizing energy...")
+    context.setPositions(pdb.positions)
+    simulation.minimizeEnergy(maxIterations=1000, tolerance=1e-6)
+    # Get minimized positions
+    state = context.getState(getPositions=True)
+    positions = state.getPositions(asNumpy=True).value_in_unit(unit.nanometer)
+    n_atoms = len(positions)
+    n_coords = 3 * n_atoms
+    logger.info(f"Minimized structure with {n_atoms} atoms ({n_coords} coordinates)")
+    # Initialize Hessian matrix
+    hess = np.zeros((n_coords, n_coords))
+    # Convert delta to OpenMM units
+    delta_vec = np.zeros_like(positions)
+    delta_openmm = delta * unit.nanometer
+    logger.info("Calculating finite differences... This may take a while.")
+    # Calculate Hessian using finite differences: H_ij = -dF_i/dx_j
+    for j in range(n_coords):
+        # Get atom and coordinate indices
+        atom_j = j // 3
+        coord_j = j % 3
+        if j % 50 == 0:
+            logger.info(f"Processing coordinate {j+1}/{n_coords}")
+        # Forward displacement: x_j -> x_j + δ
+        delta_vec[atom_j, coord_j] = delta
+        pos_plus = positions + delta_vec
+        context.setPositions(pos_plus * unit.nanometer)
+        state_plus = context.getState(getForces=True)
+        forces_plus = state_plus.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole / unit.nanometer)
+        # Backward displacement: x_j -> x_j - δ
+        pos_minus = positions - delta_vec
+        context.setPositions(pos_minus * unit.nanometer)
+        state_minus = context.getState(getForces=True)
+        forces_minus = state_minus.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole / unit.nanometer)
+        # Calculate finite difference: H_ij = -(F_i(+δ) - F_i(-δ)) / (2δ)
+        force_diff = (forces_plus - forces_minus) / (2 * delta)
+        # Fill Hessian column j
+        for i in range(n_coords):
+            atom_i = i // 3
+            coord_i = i % 3
+            hess[i, j] = -force_diff[atom_i, coord_i]  # Negative because F = -dU/dx
+        # Reset displacement
+        delta_vec[atom_j, coord_j] = 0
+        # Reset to minimized positions for next iteration
+        context.setPositions(positions * unit.nanometer)
+    logger.info(f"Numerical Hessian calculation complete")
+    logger.info(f"Hessian matrix shape: {hess.shape}")
+    logger.info(f"Hessian matrix range: {np.min(hess):.6f} to {np.max(hess):.6f} kJ/mol/nm²")
+    # Check symmetry
+    symmetry_error = np.max(np.abs(hess - hess.T))
+    logger.info(f"Hessian symmetry error: {symmetry_error:.6e} (should be small)")
+    # Symmetrize the matrix (average with transpose to ensure perfect symmetry)
+    hess = 0.5 * (hess + hess.T)
+    # Save numerical Hessian
+    outfile = system.datdir / "num_hess.npy"
+    np.save(outfile, hess)
+    logger.info(f"Saved numerical Hessian matrix to {outfile}")
+    
+
+################################################################################
+### Main ###
+################################################################################
 
 def main(sysdir, sysname, runname):
     # sysdir = "/scratch/dyangali/reforge/workflows/systems/"

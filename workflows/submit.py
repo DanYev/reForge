@@ -81,4 +81,5 @@ if __name__ == "__main__":
     pyscript = str(pdir / 'enm_toy_md.py')
     # sys_job('get_hessian_from_md', submit=submit, G='1', mem='8G') 
     # sys_job('get_hessian_from_enm', submit=submit, G='1', mem='8G') 
+    sys_job('get_hessian_numerical', submit=submit, G='1', mem='8G') 
     sys_job('enm_analysis', submit=submit, G='1', mem='8G') 
