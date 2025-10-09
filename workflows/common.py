@@ -166,6 +166,7 @@ def get_means_sems(sysdir, sysname):
     system.get_mean_sem(pattern="dfi*.npy")
     system.get_mean_sem(pattern="dci*.npy")
     system.get_mean_sem(pattern="asym*.npy")
+    system.get_mean_sem(pattern="covmat*.npy")
     plots.plot_dfi(system, tag='dfi')
     plots.plot_pdfi(system, tag='dfi')
 
@@ -308,7 +309,8 @@ def enm_analysis(sysdir, sysname):
     ag = u.select_atoms("name CA")
     vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
     hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
-    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=200, dtype=np.float64)
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
     outfile = system.datdir / "enm_cov.npy"
     np.save(outfile, covmat)
     pertmat = mdm.perturbation_matrix_iso(covmat)
@@ -316,6 +318,15 @@ def enm_analysis(sysdir, sysname):
     dfi = mdm.dfi(pertmat)
     plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
     plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
+
+def ca_hessian_from_md(sysdir, sysname):
+    system = MDSystem(sysdir, sysname)
+    covmat = np.load(system.datdir / "covmat_av.npy")
+    hess = mdm.inverse_matrix(covmat, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    hess = hess / 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "md_hess.npy"
+    np.save(outfile, hess)
 
 
 ################################################################################

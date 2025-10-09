@@ -6,10 +6,12 @@ import numpy as np
 import MDAnalysis as mda
 import openmm as mm
 from openmm import app, unit
+from reforge import mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import clean_dir, get_logger
+import plots
 
 logger = get_logger(__name__)
 
@@ -49,6 +51,54 @@ def _load_system_from_xml(filename):
     return system
 
 
+def load_force_constants_matrix(sysdir, sysname):
+    """Load the saved pairwise force constants matrix"""
+    mdsys = MmSystem(sysdir, sysname)
+    force_constants_file = mdsys.sysdir / "enm_force_constants.npy"
+    if force_constants_file.exists():
+        force_constants_matrix = np.load(force_constants_file)
+        logger.info(f"Loaded force constants matrix from {force_constants_file}")
+        logger.info(f"Matrix shape: {force_constants_matrix.shape}")
+        logger.info(f"Force constant range: {np.min(force_constants_matrix[force_constants_matrix > 0]):.2f} - {np.max(force_constants_matrix):.2f} kJ/mol/nm²")
+        return force_constants_matrix
+    else:
+        logger.warning(f"Force constants file not found: {force_constants_file}")
+        return None
+
+
+def plot_force_constants_matrix(sysdir, sysname, output_dir=None):
+    """Plot the pairwise force constants matrix as a heatmap"""
+    import matplotlib.pyplot as plt
+    
+    force_constants_matrix = load_force_constants_matrix(sysdir, sysname)
+    if force_constants_matrix is None:
+        return
+    
+    if output_dir is None:
+        mdsys = MmSystem(sysdir, sysname)
+        output_dir = mdsys.sysdir
+    
+    fig, ax = plt.subplots(figsize=(10, 8))
+    im = ax.imshow(force_constants_matrix, cmap='viridis', aspect='auto')
+    
+    ax.set_xlabel('CA Atom Index')
+    ax.set_ylabel('CA Atom Index')
+    ax.set_title('Pairwise ENM Force Constants Matrix')
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label('Force Constant (kJ/mol/nm²)')
+    
+    # Save plot
+    output_file = Path(output_dir) / "enm_force_constants_matrix.png"
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    logger.info(f"Saved force constants matrix plot to {output_file}")
+    return output_file
+
+
 def setup(*args):
     """Main setup function for ENM system"""
     print(f"Setup called with args: {args}", file=sys.stderr)
@@ -81,15 +131,15 @@ def _get_bond_force_constant(atom_i, atom_j, distance, default_force_constant):
     """Calculate force constant for a specific bond between atoms i and j.
     For now this is for mock testing.
     """
-    # force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
-    # # Distance-dependent force constants
-    # if distance > 0.8:  # Long-range contacts
-    #     return force_constant * 0.5
-    # # Sequential neighbors (would need sequence info)
-    # if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
-    #     return force_constant * 2.0  # Stronger covalent-like
-    # # For testing: use the same force constant for all bonds
-    return default_force_constant
+    # For testing use the same force constant for all bonds
+    force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
+    # Distance-dependent force constants
+    if distance > 0.7:  # Long-range contacts
+        return force_constant * 0.5
+    # Sequential neighbors (would need sequence info)
+    if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
+        return force_constant * 2.0  # Stronger covalent-like
+    return force_constant
 
 
 def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORCE_CONSTANT, ca_atoms=None):
@@ -101,10 +151,18 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
         cutoff: Distance cutoff for ENM springs
         force_constant: Default force constant for springs
         ca_atoms: MDAnalysis AtomGroup with CA atoms (for future customization)
+    
+    Returns:
+        system: OpenMM system with ENM forces added
+        force_constants_matrix: N x N numpy array with pairwise force constants
     """
     logger.info(f"Adding ENM forces with cutoff {cutoff} and force constant {force_constant}")
     n_atoms = len(positions)
     cutoff_nm = cutoff.value_in_unit(unit.nanometer)
+    
+    # Initialize pairwise force constants matrix
+    force_constants_matrix = np.zeros((n_atoms, n_atoms))
+    
     # Create custom bond force for ENM springs with per-bond force constants
     enm_force = mm.CustomBondForce('k * (r - r0)^2')
     enm_force.addPerBondParameter('k')   # Force constant per bond
@@ -124,11 +182,18 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
             if distance <= cutoff_nm:
                 distance_with_units = distance * unit.nanometer
                 bond_force_constant = _get_bond_force_constant(i, j, distance, force_constant)
+                
+                # Store force constant in matrix (symmetric)
+                force_constant_value = bond_force_constant.value_in_unit(unit.kilojoules_per_mole / (unit.nanometer**2))
+                force_constants_matrix[i, j] = force_constant_value
+                force_constants_matrix[j, i] = force_constant_value
+                
                 enm_force.addBond(i, j, [bond_force_constant, distance_with_units])
                 bonds_added += 1
+    
     logger.info(f"Added {bonds_added} ENM springs")
     system.addForce(enm_force)
-    return system
+    return system, force_constants_matrix
 
 
 def setup_enm(sysdir, sysname):
@@ -145,7 +210,15 @@ def setup_enm(sysdir, sysname):
     carbon_mass = 60.01 * unit.amu # Fake carbons
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
-    system = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
+    system, force_constants_matrix = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
+    
+    # Save pairwise force constants matrix
+    force_constants_file = mdsys.datdir / "enm_force_constants.npy"
+    np.save(force_constants_file, force_constants_matrix)
+    logger.info(f"Saved pairwise force constants matrix to {force_constants_file}")
+    logger.info(f"Force constants matrix shape: {force_constants_matrix.shape}")
+    logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")  # Divide by 2 since matrix is symmetric
+    
     # Save system to XML file
     _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
@@ -281,6 +354,38 @@ def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
     np.save(metadata_file, metadata)
     logger.info(f"Saved metadata to {metadata_file}")
     return positions_array, velocities_array, metadata
+
+################################################################################
+### ENM analysis ###
+################################################################################
+
+def enm_analysis(sysdir, sysname):
+    """Calculate ENM-based metrics."""
+    system = MDSystem(sysdir, sysname)
+    in_pdb = system.syspdb
+    u = mda.Universe(in_pdb)
+    ag = u.select_atoms("name CA")
+    # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
+    # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
+    hess = np.load(system.datdir / "md_hess.npy")
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "enm_cov.npy"
+    np.save(outfile, covmat)
+    pertmat = mdm.perturbation_matrix_iso(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
+    dfi = mdm.dfi(pertmat)
+    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
+    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
+
+def get_hessian_from_md(sysdir, sysname):
+    system = MDSystem(sysdir, sysname)
+    covmat = np.load(system.datdir / "covmat_av.npy")
+    hess = mdm.inverse_matrix(covmat, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    hess = hess * 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "md_hess.npy"
+    np.save(outfile, hess)
 
 
 def main(sysdir, sysname, runname):
