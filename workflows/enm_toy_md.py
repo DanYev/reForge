@@ -51,54 +51,6 @@ def _load_system_from_xml(filename):
     return system
 
 
-def load_force_constants_matrix(sysdir, sysname):
-    """Load the saved pairwise force constants matrix"""
-    mdsys = MmSystem(sysdir, sysname)
-    force_constants_file = mdsys.sysdir / "enm_force_constants.npy"
-    if force_constants_file.exists():
-        force_constants_matrix = np.load(force_constants_file)
-        logger.info(f"Loaded force constants matrix from {force_constants_file}")
-        logger.info(f"Matrix shape: {force_constants_matrix.shape}")
-        logger.info(f"Force constant range: {np.min(force_constants_matrix[force_constants_matrix > 0]):.2f} - {np.max(force_constants_matrix):.2f} kJ/mol/nm²")
-        return force_constants_matrix
-    else:
-        logger.warning(f"Force constants file not found: {force_constants_file}")
-        return None
-
-
-def plot_force_constants_matrix(sysdir, sysname, output_dir=None):
-    """Plot the pairwise force constants matrix as a heatmap"""
-    import matplotlib.pyplot as plt
-    
-    force_constants_matrix = load_force_constants_matrix(sysdir, sysname)
-    if force_constants_matrix is None:
-        return
-    
-    if output_dir is None:
-        mdsys = MmSystem(sysdir, sysname)
-        output_dir = mdsys.sysdir
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    im = ax.imshow(force_constants_matrix, cmap='viridis', aspect='auto')
-    
-    ax.set_xlabel('CA Atom Index')
-    ax.set_ylabel('CA Atom Index')
-    ax.set_title('Pairwise ENM Force Constants Matrix')
-    
-    # Add colorbar
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Force Constant (kJ/mol/nm²)')
-    
-    # Save plot
-    output_file = Path(output_dir) / "enm_force_constants_matrix.png"
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    logger.info(f"Saved force constants matrix plot to {output_file}")
-    return output_file
-
-
 def setup(*args):
     """Main setup function for ENM system"""
     print(f"Setup called with args: {args}", file=sys.stderr)
@@ -211,14 +163,12 @@ def setup_enm(sysdir, sysname):
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
     system, force_constants_matrix = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
-    
     # Save pairwise force constants matrix
     force_constants_file = mdsys.datdir / "enm_force_constants.npy"
     np.save(force_constants_file, force_constants_matrix)
     logger.info(f"Saved pairwise force constants matrix to {force_constants_file}")
     logger.info(f"Force constants matrix shape: {force_constants_matrix.shape}")
     logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")  # Divide by 2 since matrix is symmetric
-    
     # Save system to XML file
     _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
@@ -270,7 +220,7 @@ def md_nve(sysdir, sysname, runname):
     simulation.minimizeEnergy(maxIterations=1000)  
     logger.info("Equilibrating...")
     simulation.context.setVelocitiesToTemperature(TEMPERATURE)
-    simulation.step(10000)  # equilibrate 
+    simulation.step(100000)  # equilibrate 
     # --- Run NVE (need to change the integrator and reset simulation) ---
     logger.info("Running NVE production...")
     integrator = mm.VerletIntegrator(TSTEP)
@@ -367,13 +317,13 @@ def enm_analysis(sysdir, sysname):
     ag = u.select_atoms("name CA")
     # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
     # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
-    hess = np.load(system.datdir / "md_hess.npy")
+    hess = np.load(system.datdir / "enm_hess.npy")
     covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
     covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
     outfile = system.datdir / "enm_cov.npy"
     np.save(outfile, covmat)
-    pertmat = mdm.perturbation_matrix_iso(covmat)
-    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
+    pertmat = mdm.perturbation_matrix(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) * 10.0 # (n_atoms,)
     dfi = mdm.dfi(pertmat)
     plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
     plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
@@ -387,6 +337,59 @@ def get_hessian_from_md(sysdir, sysname):
     outfile = system.datdir / "md_hess.npy"
     np.save(outfile, hess)
 
+
+def get_hessian_from_enm(sysdir, sysname):
+    """Calculate Hessian matrix directly from ENM force constants and PDB structure using vectorized operations"""
+    system = MDSystem(sysdir, sysname)
+    # Load force constants matrix
+    force_constants_matrix = np.load(system.datdir / "enm_force_constants.npy")
+    if force_constants_matrix is None:
+        raise ValueError("Force constants matrix not found. Run setup first.")
+    # Load CA positions from PDB
+    mdsys = MmSystem(sysdir, sysname)
+    inpdb = mdsys.sysdir / INPDB
+    ca_atoms, positions = extract_ca_positions(inpdb)
+    n_atoms = len(positions)
+    logger.info(f"Building Hessian matrix for {n_atoms} CA atoms using vectorized operations")
+    # Create pairwise distance vectors: r_ij = r_j - r_i
+    r_ij = positions[np.newaxis, :, :] - positions[:, np.newaxis, :]
+    r_ij_norms = np.linalg.norm(r_ij, axis=2)
+    r_ij_norms_safe = np.where(r_ij_norms == 0, 1.0, r_ij_norms)
+    u_ij = r_ij / r_ij_norms_safe[:, :, np.newaxis]
+    # Zero out diagonal elements (no self-interaction)
+    diagonal_mask = np.eye(n_atoms, dtype=bool)
+    u_ij[diagonal_mask] = 0
+    # Create outer products for all pairs: u_ij ⊗ u_ij
+    u_outer = u_ij[:, :, :, np.newaxis] * u_ij[:, :, np.newaxis, :]
+    # Multiply by force constants: -k_ij * (u_ij ⊗ u_ij)
+    h_blocks = -force_constants_matrix[:, :, np.newaxis, np.newaxis] * u_outer
+    # Initialize full Hessian matrix (3N x 3N)
+    hess = np.zeros((3 * n_atoms, 3 * n_atoms))
+    # Fill off-diagonal blocks using advanced indexing
+    i_indices = np.arange(n_atoms)
+    j_indices = np.arange(n_atoms)
+    i_grid, j_grid = np.meshgrid(i_indices, j_indices, indexing='ij')
+    # Create index arrays for block assignment
+    i_starts = 3 * i_grid
+    j_starts = 3 * j_grid
+    # Vectorized block assignment
+    for di in range(3):
+        for dj in range(3):
+            hess[i_starts + di, j_starts + dj] = h_blocks[:, :, di, dj]
+    # Build diagonal blocks: H_ii = -sum(H_ij for j != i)
+    # This can also be vectorized, but keeping simple loop for clarity
+    for i in range(n_atoms):
+        i_start, i_end = 3 * i, 3 * (i + 1)
+        # Sum all off-diagonal blocks for atom i and negate
+        diagonal_block = -np.sum(h_blocks[i, :, :, :], axis=0)  # Sum over j axis
+        hess[i_start:i_end, i_start:i_end] = diagonal_block
+    logger.info(f"Hessian matrix shape: {hess.shape}")
+    logger.info(f"Hessian matrix range: {np.min(hess):.6f} to {np.max(hess):.6f}")
+    logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")
+    outfile = system.datdir / "enm_hess.npy"
+    np.save(outfile, hess)
+    logger.info(f"Saved ENM Hessian matrix to {outfile}")
+    
 
 def main(sysdir, sysname, runname):
     # sysdir = "/scratch/dyangali/reforge/workflows/systems/"

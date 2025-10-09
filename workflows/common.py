@@ -29,7 +29,7 @@ TRJEXT = 'trr' # 'xtc' or 'trr'
 ################################################################################
 def pca_trajs(sysdir, sysname, selection=SELECTION, step=1):
     mdsys = MDSystem(sysdir, sysname)
-    clean_dir(mdsys.datdir, "*")
+    # clean_dir(mdsys.datdir, "*")
     tops = io.pull_files(mdsys.mddir, "topology.pdb")
     trajs = io.pull_files(mdsys.mddir, f"samples.{TRJEXT}")
     run_ids = [top.split("/")[-2] for top in tops]
@@ -81,7 +81,7 @@ def _filter_outliers(data, u, ag, mdsys):
     logger.info("Filtering outliers")
     pipe = StandardScaler(with_mean=True, with_std=True)
     Xz = pipe.fit_transform(data)
-    ee = EllipticEnvelope(contamination=0.03, support_fraction=0.97,
+    ee = EllipticEnvelope(contamination=0.05, support_fraction=0.90,
         assume_centered=True,  random_state=None)
     pred = ee.fit_predict(Xz)               # +1 = inlier (main Gaussian), -1 = outlier
     scores = -ee.score_samples(Xz)          # larger => more outlier-ish
@@ -153,7 +153,7 @@ def cov_analysis(sysdir, sysname, runname, selection=SELECTION):
     logger.info(f'Selecting atoms for covariance analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     clean_dir(mdrun.covdir, "*npy")
-    mdrun.get_covmats(u, ag, sample_rate=1, b=0, e=1e12, n=2, outtag="covmat") 
+    mdrun.get_covmats(u, ag, sample_rate=1, b=0, e=1e12, n=1, outtag="covmat") 
     mdrun.get_pertmats()
     mdrun.get_dfi(outtag="dfi")
     mdrun.get_dci(outtag="dci", asym=False)
