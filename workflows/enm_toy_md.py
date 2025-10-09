@@ -78,26 +78,18 @@ def create_ca_topology(ca_atoms):
 
 
 def _get_bond_force_constant(atom_i, atom_j, distance, default_force_constant):
-    """Calculate force constant for a specific bond between atoms i and j
-    
-    This function can be customized to return different force constants based on:
-    - Atom types (e.g., different for backbone vs sidechain)
-    - Residue types (e.g., stronger for certain amino acids)
-    - Distance ranges (e.g., weaker for long-range contacts)
-    - Secondary structure (e.g., stronger within helices/sheets)
-    
-    For now, returns the same force constant for all bonds (testing phase)
+    """Calculate force constant for a specific bond between atoms i and j.
+    For now this is for mock testing.
     """
-    # That's just for mock testing
-    force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
-    # Distance-dependent force constants
-    if distance > 0.8:  # Long-range contacts
-        return force_constant * 0.5
-    # Sequential neighbors (would need sequence info)
-    if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
-        return force_constant * 2.0  # Stronger covalent-like
+    # force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
+    # # Distance-dependent force constants
+    # if distance > 0.8:  # Long-range contacts
+    #     return force_constant * 0.5
+    # # Sequential neighbors (would need sequence info)
+    # if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
+    #     return force_constant * 2.0  # Stronger covalent-like
     # # For testing: use the same force constant for all bonds
-    return force_constant
+    return default_force_constant
 
 
 def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORCE_CONSTANT, ca_atoms=None):
@@ -118,7 +110,6 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
     enm_force.addPerBondParameter('k')   # Force constant per bond
     enm_force.addPerBondParameter('r0')  # Equilibrium distance per bond
     bonds_added = 0
-    
     # Add bonds between atoms within cutoff distance
     for i in range(n_atoms):
         for j in range(i + 1, n_atoms):
@@ -221,7 +212,6 @@ def md_nve(sysdir, sysname, runname):
     logger.info("Done!")
 
 
-
 def trjconv(sysdir, sysname, runname):
     system = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
@@ -300,7 +290,7 @@ def main(sysdir, sysname, runname):
     setup(sysdir, sysname)
     md_nve(sysdir, sysname, runname)
     trjconv(sysdir, sysname, runname)
-    # extract_trajectory_data(sysdir, sysname, runname, prefix="md")
+    extract_trajectory_data(sysdir, sysname, runname, prefix="md")
 
 
 if __name__ == "__main__":
