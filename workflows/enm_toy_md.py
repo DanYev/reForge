@@ -6,10 +6,12 @@ import numpy as np
 import MDAnalysis as mda
 import openmm as mm
 from openmm import app, unit
+from reforge import mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import clean_dir, get_logger
+import plots
 
 logger = get_logger(__name__)
 
@@ -281,6 +283,38 @@ def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
     np.save(metadata_file, metadata)
     logger.info(f"Saved metadata to {metadata_file}")
     return positions_array, velocities_array, metadata
+
+################################################################################
+### ENM analysis ###
+################################################################################
+
+def enm_analysis(sysdir, sysname):
+    """Calculate ENM-based metrics."""
+    system = MDSystem(sysdir, sysname)
+    in_pdb = system.syspdb
+    u = mda.Universe(in_pdb)
+    ag = u.select_atoms("name CA")
+    # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
+    # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
+    hess = np.load(system.datdir / "md_hess.npy")
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "enm_cov.npy"
+    np.save(outfile, covmat)
+    pertmat = mdm.perturbation_matrix_iso(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
+    dfi = mdm.dfi(pertmat)
+    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
+    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
+
+def get_hessian_from_md(sysdir, sysname):
+    system = MDSystem(sysdir, sysname)
+    covmat = np.load(system.datdir / "covmat_av.npy")
+    hess = mdm.inverse_matrix(covmat, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    hess = hess * 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "md_hess.npy"
+    np.save(outfile, hess)
 
 
 def main(sysdir, sysname, runname):
