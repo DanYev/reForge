@@ -178,69 +178,10 @@ def trjconv(sysdir, sysname, runname):
     logger.info(f'Input trajectory files: {trajs}')
     # CONVERT
     out_top = mdrun.rundir / "topology.pdb"
-    tmp_traj = mdrun.rundir / f"conv.{TRJEXT}"
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
     logger.info(f'Converting trajectory with selection: {SELECTION}')
-    _trjconv_selection(trajs, top, tmp_traj, out_top, selection=SELECTION, step=1)
-    # FIT + OUTPUT
-    _trjconv_fit(tmp_traj, out_top, out_traj, transform_vels=TRJEXT=='trr')
-    os.remove(tmp_traj)
-
-
-def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
-    u = mda.Universe(input_top, input_traj)
-    selected_atoms = u.select_atoms(selection)
-    n_atoms = selected_atoms.n_atoms
-    selected_atoms.write(output_top)
-    with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
-        for ts in u.trajectory[::step]:
-            writer.write(selected_atoms)
-    logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
-
-
-def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
-    u = mda.Universe(input_top, input_traj)
-    ag = u.atoms
-    ref_u = mda.Universe(input_top) 
-    ref_ag = ref_u.atoms
-    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
-    logger.info("Converting/Writing Trajecory")
-    with mda.Writer(str(output_traj), ag.n_atoms) as W:
-        for ts in u.trajectory:   
-            if transform_vels:
-                transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
-                ag.velocities = transformed_vels
-            W.write(ag)
-            if ts.frame % 1000 == 0:
-                frame = ts.frame
-                time_ns = ts.time / 1000
-                logger.info(f"Current frame: %s at %s ns", frame, time_ns)
+    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=1)
     logger.info("Done!")
-
-
-def _tranform_velocities(vels, poss, ref_poss):
-    R = _kabsch_rotation(poss, ref_poss)
-    vels_aligned = vels @ R
-    return vels_aligned
-    
-
-def _kabsch_rotation(P, Q):
-    """
-    Return the 3x3 rotation matrix R that best aligns P onto Q (both Nx3),
-    after removing centroids (i.e., pure rotation via Kabsch).
-    """
-    # subtract centroids
-    Pc = P - P.mean(axis=0)
-    Qc = Q - Q.mean(axis=0)
-    # covariance and SVD
-    H = Pc.T @ Qc
-    U, S, Vt = np.linalg.svd(H)
-    R = Vt.T @ U.T
-    # right-handed correction
-    if np.linalg.det(R) < 0.0:
-        Vt[-1, :] *= -1.0
-        R = Vt.T @ U.T
-    return R
 
 
 def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
@@ -296,100 +237,14 @@ def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
     return positions_array, velocities_array, metadata
 
 
-def calculate_hessian_gromacs(sysdir, sysname, runname=None):
-    """Calculate Hessian matrix using GROMACS assuming topology files are already prepared
-    
-    Assumes the following files exist in the system directory:
-    - conf.gro: Initial structure (from pdb2gmx)
-    - topol.top: Topology file (from pdb2gmx) 
-    - nm.mdp: MDP file for normal mode analysis
-    """
-    mdsys = GmxSystem(sysdir, sysname)
-    work_dir = mdsys.root
-    logger.info(f"Calculating Hessian in directory: {work_dir}")
-    pdb_file = mdsys.sysdir / INPDB
-    # mdsys.prepare_files()
-    # mdsys.clean_pdb_gmx(pdb_file, clinput="8\n 7\n", ignh="no", renum="yes")
-    # mdsys.gmx('pdb2gmx', clinput="8\n 1\n", f="inpdb.pdb", o="conf.gro", p="topol.top")
-    input_gro = work_dir / "conf.gro"
-    top_file = work_dir / "topol.top" 
-    # Expected .mdp files (should already exist)
-    nm_mdp_file = Path("nm.mdp").resolve()  # Assuming nm.mdp is in the current directory
-    minim_mdp_file = Path("minim.mdp").resolve()  # Minimization MDP file
-    
-    # Output files
-    minim_tpr_file = work_dir / "minim.tpr"
-    minimized_gro = work_dir / "minimized.gro"
-    tpr_file = work_dir / "nm.tpr"
-    hessian_file = work_dir / "hessian.mtx"
-    eigenval_file = work_dir / "eigenval.xvg"
-    eigenvec_file = work_dir / "eigenvec.trr"
-    
-    # Check if required files exist
-    required_files = [input_gro, top_file, nm_mdp_file, minim_mdp_file]
-    for req_file in required_files:
-        if not req_file.exists():
-            logger.error(f"Required file not found: {req_file}")
-            logger.error("Please run pdb2gmx first to generate topology files and ensure nm.mdp and minim.mdp are present.")
-            return None
-    
-    # Step 1: Create large box around protein (simulates infinite dilution)
-    boxed_gro = work_dir / "boxed.gro"
-    logger.info("Creating large box around protein...")
-    mdsys.gmx('editconf', f=str(input_gro), o=str(boxed_gro), c='', d='3.0', bt='dodecahedron')
-    logger.info(f"Created boxed structure: {boxed_gro}")
-    
-    # Step 2: Energy minimization of protein-only system
-    logger.info("Running energy minimization...")
-    mdsys.gmx('grompp', f=str(minim_mdp_file), c=str(boxed_gro), p=str(top_file), o=str(minim_tpr_file))
-    logger.info(f"Created minimization TPR file: {minim_tpr_file}")
-    mdsys.gmx('mdrun', s=str(minim_tpr_file), c=str(minimized_gro))
-    logger.info(f"Energy minimization completed. Minimized structure: {minimized_gro}")
-    # Step 2: Create TPR file for normal mode analysis using minimized structure
-    logger.info("Running grompp for normal mode analysis...")
-    mdsys.gmx('grompp', f=str(nm_mdp_file), c=str(minimized_gro), p=str(top_file), o=str(tpr_file))
-    logger.info(f"Created TPR file for normal modes: {tpr_file}")
-    # Step 3: Calculate Hessian using mdrun with nm integrator
-    logger.info("Calculating Hessian matrix...")
-    mdsys.gmx('mdrun', deffnm='eigenvec', s=str(tpr_file), mtx=str(hessian_file), v='')
-    logger.info(f"Hessian matrix saved to: {hessian_file}")
-    # Step 4: Calculate normal modes (eigenvalues and eigenvectors)
-    logger.info("Calculating normal modes...")
-    mdsys.gmx('nmeig', f=str(hessian_file), s=str(tpr_file), ol=str(eigenval_file), v=str(eigenvec_file), xvg='none')
-    logger.info(f"Eigenvalues saved to: {eigenval_file}")
-    logger.info(f"Eigenvectors saved to: {eigenvec_file}")
-    # Step 4: Convert eigenvalues to numpy array
-    logger.info("Converting eigenvalues to numpy array...")
-    eigenvalues = []
-    with open(eigenval_file, 'r') as f:
-        for line in f:
-            if not line.startswith('#') and not line.startswith('@'):
-                parts = line.strip().split()
-                if len(parts) >= 2:
-                    eigenvalues.append(float(parts[1]))
-    
-    eigenvalues = np.array(eigenvalues)
-    # Save eigenvalues as numpy array
-    eigenval_npy = work_dir / "eigenvalues.npy"
-    np.save(eigenval_npy, eigenvalues)
-    logger.info(f"Eigenvalues saved as numpy array: {eigenval_npy}")
-    # Summary
-    n_modes = len(eigenvalues)
-    logger.info(f"Calculated {n_modes} normal modes")
-    if n_modes > 0:
-        logger.info(f"Frequency range: {np.min(eigenvalues):.3f} to {np.max(eigenvalues):.3f} cm^-1")
-
-
 def main(sysdir, sysname, runname):
     # sysdir = "/scratch/dyangali/reforge/workflows/systems/"
     # sysname = "enm_system"
     # runname = "nve_run"
-
-    # setup(sysdir, sysname)
-    # md_nve(sysdir, sysname, runname)
-    # trjconv(sysdir, sysname, runname)
-    # extract_trajectory_data(sysdir, sysname, runname, prefix="md")
-    calculate_hessian_gromacs(sysdir, sysname, runname)
+    setup(sysdir, sysname)
+    md_nve(sysdir, sysname, runname)
+    trjconv(sysdir, sysname, runname)
+    extract_trajectory_data(sysdir, sysname, runname, prefix="md")
 
 
 if __name__ == "__main__":

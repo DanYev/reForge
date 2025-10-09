@@ -1,13 +1,6 @@
-import os
-from pathlib import Path
-import sys
-import shutil
-import numpy as np
-import cupy as cp
-import MDAnalysis as mda
-from reforge import cli, io, mdm
+from reforge import io
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
-from reforge.utils import clean_dir, get_logger
+from reforge.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -76,7 +69,7 @@ def label_segments(in_pdb, out_pdb):
             return "CT"  # C-terminal tail
         else:
             return "UNK "
-    logger.info("Relabelling Segment IDs")s
+    logger.info("Relabelling Segment IDs")
     atoms = io.pdb2atomlist(in_pdb)
     for atom in atoms:
         label = get_domain_label(atom.resid)

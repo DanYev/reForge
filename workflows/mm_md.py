@@ -7,7 +7,7 @@ import openmm as mm
 from openmm import app, unit
 from reforge.martini import martini_openmm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
+from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.utils import clean_dir, get_logger
 
 logger = get_logger(__name__)
@@ -245,69 +245,10 @@ def trjconv(sysdir, sysname, runname):
     logger.info(f'Input trajectory files: {trajs}')
     # CONVERT
     out_top = mdrun.rundir / "topology.pdb"
-    tmp_traj = mdrun.rundir / f"conv.{TRJEXT}"
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
     logger.info(f'Converting trajectory with selection: {SELECTION}')
-    _trjconv_selection(trajs, top, tmp_traj, out_top, selection=SELECTION, step=1)
-    # FIT + OUTPUT
-    _trjconv_fit(tmp_traj, out_top, out_traj, transform_vels=TRJEXT=='trr')
-    os.remove(tmp_traj)
-
-
-def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
-    u = mda.Universe(input_top, input_traj)
-    selected_atoms = u.select_atoms(selection)
-    n_atoms = selected_atoms.n_atoms
-    selected_atoms.write(output_top)
-    with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
-        for ts in u.trajectory[::step]:
-            writer.write(selected_atoms)
-    logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
-
-
-def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
-    u = mda.Universe(input_top, input_traj)
-    ag = u.atoms
-    ref_u = mda.Universe(input_top) 
-    ref_ag = ref_u.atoms
-    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
-    logger.info("Converting/Writing Trajecory")
-    with mda.Writer(str(output_traj), ag.n_atoms) as W:
-        for ts in u.trajectory:   
-            if transform_vels:
-                transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
-                ag.velocities = transformed_vels
-            W.write(ag)
-            if ts.frame % 1000 == 0:
-                frame = ts.frame
-                time_ns = ts.time / 1000
-                logger.info(f"Current frame: %s at %s ns", frame, time_ns)
+    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=1)
     logger.info("Done!")
-
-
-def _tranform_velocities(vels, poss, ref_poss):
-    R = _kabsch_rotation(poss, ref_poss)
-    vels_aligned = vels @ R
-    return vels_aligned
-    
-
-def _kabsch_rotation(P, Q):
-    """
-    Return the 3x3 rotation matrix R that best aligns P onto Q (both Nx3),
-    after removing centroids (i.e., pure rotation via Kabsch).
-    """
-    # subtract centroids
-    Pc = P - P.mean(axis=0)
-    Qc = Q - Q.mean(axis=0)
-    # covariance and SVD
-    H = Pc.T @ Qc
-    U, S, Vt = np.linalg.svd(H)
-    R = Vt.T @ U.T
-    # right-handed correction
-    if np.linalg.det(R) < 0.0:
-        Vt[-1, :] *= -1.0
-        R = Vt.T @ U.T
-    return R
 
 
 if __name__ == "__main__":

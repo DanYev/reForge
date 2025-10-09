@@ -56,11 +56,11 @@ if __name__ == "__main__":
     sysnames = ['enm_system'] 
     runs = ["nm_run"]
 
-    submit = True
+    submit = False
 
     ##### For MD #####
-    pyscript = str(pdir / 'enm_toy_md.py')
-    run_job('main', submit=submit, G='1', c='1', mem='2G', t='00-00:15:00')
+    pyscript = str(pdir / 'egfr_pipe.py')
+    run_job('main', submit=submit)
     # sys_job('setup', submit=submit)
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
