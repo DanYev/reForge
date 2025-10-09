@@ -2,12 +2,11 @@ import os
 import sys
 import numpy as np
 import MDAnalysis as mda
-from MDAnalysis.transformations import fit_rot_trans
 import openmm as mm
 from openmm import app, unit
 from reforge.martini import martini_openmm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
+from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.utils import clean_dir, get_logger
 
 logger = get_logger(__name__)
@@ -60,6 +59,30 @@ def setup_aa(sysdir, sysname):
     with open(mdsys.syspdb, "w", encoding="utf-8") as file:
         app.PDBFile.writeFile(model.topology, model.positions, file, keepIds=True)    
     logger.info("Saved solvated system to %s", mdsys.syspdb)
+    # Build a system WITHOUT any motion remover/barostat/thermostat. Add them later as needed.
+    logger.info("Generating topology...")
+    system = forcefield.createSystem(
+        model.topology,
+        nonbondedMethod=app.PME,
+        nonbondedCutoff=1.0 * unit.nanometer,
+        constraints=app.HBonds,
+        removeCMMotion=False,     # important for strict NVE
+        ewaldErrorTolerance=1e-5
+    )
+    _save_system_to_xml(system, mdsys.sysxml)
+
+
+def _save_system_to_xml(system, filename):
+    with open(str(filename), "w", encoding="utf-8") as file:
+        file.write(mm.XmlSerializer.serialize(system))
+    logger.info(f"Saved system to {filename}")
+
+
+def _load_system_from_xml(filename):
+    with open(str(filename), 'r') as file:
+        system = mm.XmlSerializer.deserialize(file.read())
+    logger.info(f"Loaded system from {filename}")
+    return system
 
 
 def _add_bb_restraints(system, pdb, bb_aname='CA'):
@@ -97,20 +120,9 @@ def md_nve(sysdir, sysname, runname):
     logger.info(f"WDIR: %s", mdrun.rundir)
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
-    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
-    # --- Build a system WITHOUT any motion remover; no barostat/thermostat added ---
-    logger.info("Generating topology...")
-    system = ff.createSystem(
-        pdb.topology,
-        nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0 * unit.nanometer,
-        constraints=app.HBonds,
-        removeCMMotion=False,     # important for strict NVE
-        ewaldErrorTolerance=1e-5
-    )
-    # --- NVT integrator (for short equilibration) ---
-    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP)
-    simulation = app.Simulation(pdb.topology, system, integrator) #  platform, properties)
+    system = _load_system_from_xml(mdsys.sysxml)
+    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP) # NVT integrator for equilibration
+    simulation = app.Simulation(pdb.topology, system, integrator) 
     # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
     simulation.context.setPositions(pdb.positions)
@@ -139,13 +151,12 @@ def md_npt(sysdir, sysname, runname):
     logger.info(f"WDIR: %s", mdrun.rundir)
     # Prep
     pdb = app.PDBFile(str(mdsys.syspdb))
-    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
-    system = ff.createSystem(
-        pdb.topology,
-        nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0 * unit.nanometer,
-        constraints=app.HBonds,)
-    _add_bb_restraints(system, pdb, bb_aname='CA')
+    system = _load_system_from_xml(mdsys.sysxml)
+    # Add restraints, COM remover
+    _add_bb_restraints(system, pdb, bb_aname='CA')    
+    com_remover = mm.CMMotionRemover()
+    com_remover.setFrequency(100)
+    system.addForce(com_remover)
     integrator = mm.LangevinMiddleIntegrator(0, GAMMA, 0.5*TSTEP)
     simulation = app.Simulation(pdb.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
@@ -212,15 +223,16 @@ def _get_run_prefix(mdrun):
 
 
 def extend(sysdir, sysname, runname):    
+    """ For NPT runs """
+    mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
     pdb = app.PDBFile(str(mdrun.syspdb))
-    ff  = app.ForceField("amber19-all.xml", "amber19/tip3pfb.xml")
-    system = ff.createSystem(
-        pdb.topology,
-        nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0 * unit.nanometer,
-        constraints=app.HBonds,)
+    system = _load_system_from_xml(mdsys.sysxml)
+    # Add COM remover barostat
+    com_remover = mm.CMMotionRemover()
+    com_remover.setFrequency(100)
+    system.addForce(com_remover)
     barostat = mm.MonteCarloBarostat(PRESSURE, TEMPERATURE)
     system.addForce(barostat)
     integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, TSTEP)
@@ -245,69 +257,10 @@ def trjconv(sysdir, sysname, runname):
     logger.info(f'Input trajectory files: {trajs}')
     # CONVERT
     out_top = mdrun.rundir / "topology.pdb"
-    tmp_traj = mdrun.rundir / f"conv.{TRJEXT}"
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
     logger.info(f'Converting trajectory with selection: {SELECTION}')
-    _trjconv_selection(trajs, top, tmp_traj, out_top, selection=SELECTION, step=1)
-    # FIT + OUTPUT
-    _trjconv_fit(tmp_traj, out_top, out_traj, transform_vels=TRJEXT=='trr')
-    os.remove(tmp_traj)
-
-
-def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
-    u = mda.Universe(input_top, input_traj)
-    selected_atoms = u.select_atoms(selection)
-    n_atoms = selected_atoms.n_atoms
-    selected_atoms.write(output_top)
-    with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
-        for ts in u.trajectory[::step]:
-            writer.write(selected_atoms)
-    logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
-
-
-def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
-    u = mda.Universe(input_top, input_traj)
-    ag = u.atoms
-    ref_u = mda.Universe(input_top) 
-    ref_ag = ref_u.atoms
-    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
-    logger.info("Converting/Writing Trajecory")
-    with mda.Writer(str(output_traj), ag.n_atoms) as W:
-        for ts in u.trajectory:   
-            if transform_vels:
-                transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
-                ag.velocities = transformed_vels
-            W.write(ag)
-            if ts.frame % 1000 == 0:
-                frame = ts.frame
-                time_ns = ts.time / 1000
-                logger.info(f"Current frame: %s at %s ns", frame, time_ns)
+    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=1)
     logger.info("Done!")
-
-
-def _tranform_velocities(vels, poss, ref_poss):
-    R = _kabsch_rotation(poss, ref_poss)
-    vels_aligned = vels @ R
-    return vels_aligned
-    
-
-def _kabsch_rotation(P, Q):
-    """
-    Return the 3x3 rotation matrix R that best aligns P onto Q (both Nx3),
-    after removing centroids (i.e., pure rotation via Kabsch).
-    """
-    # subtract centroids
-    Pc = P - P.mean(axis=0)
-    Qc = Q - Q.mean(axis=0)
-    # covariance and SVD
-    H = Pc.T @ Qc
-    U, S, Vt = np.linalg.svd(H)
-    R = Vt.T @ U.T
-    # right-handed correction
-    if np.linalg.det(R) < 0.0:
-        Vt[-1, :] *= -1.0
-        R = Vt.T @ U.T
-    return R
 
 
 if __name__ == "__main__":

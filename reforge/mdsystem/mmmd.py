@@ -19,12 +19,14 @@ Author: DY
 
 import logging
 import os
+from pathlib import Path
 import sys
 import shutil
 import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
+from MDAnalysis.transformations import fit_rot_trans
 import openmm as mm
 from openmm import app, unit
 from pdbfixer.pdbfixer import PDBFixer
@@ -236,6 +238,9 @@ class MmRun(MDRun):
         simulation.saveState(str(out_xml))
         logger.info("Production completed.")
 
+############################################################################################# 
+### Custom OpenMM trajectory reporter for saving velocities along with the coordinates ###
+#############################################################################################
 
 class MmReporter(object):
     """Most of this code is adapted from https://github.com/sef43/openmm-mdanalysis-reporter.
@@ -366,7 +371,100 @@ class MmReporter(object):
         return np.min(np.array([angles, inverted]), axis=0)
 
 
-def _get_platform_info():
+############################################################################################# 
+### Trajectory conversion and fitting ###
+#############################################################################################
+
+def convert_trajectories(topology, trajectories, out_topology, out_trajectory, ref_top=None,
+        selection="name CA", step=1, fit=True):
+    """
+    Convert and fit trajectories using MDAnalysis.
+    
+    Parameters:
+    - topology: str, path to the input topology file (e.g., PDB)
+    - trajectories: list of str, paths to input trajectory files (e.g., XTC, TRR)
+    - out_topology: str, path to the output topology file
+    - out_trajectory: str, path to the output trajectory file
+    - selection: str, atom selection string for MDAnalysis
+    - step: int, step interval for saving frames
+    - fit: bool, whether to fit the trajectory to the reference structure
+    """
+    tmp_traj = Path(out_trajectory).parent / ('temp_traj' + out_trajectory.suffix)
+    logger.info(f'Converting trajectory with selection: {selection}')
+    _trjconv_selection(trajectories, topology, tmp_traj, out_topology, 
+        selection=selection, step=step)
+    if fit:
+        logger.info('Fitting trajectory to reference structure')
+        transform_vels = str(out_trajectory).endswith('.trr') # True for .trr files
+        _trjconv_fit(tmp_traj, out_topology, out_trajectory, 
+            ref_top=ref_top, selection=selection, transform_vels=transform_vels)
+        os.remove(tmp_traj)
+    else:
+        os.rename(tmp_traj, out_trajectory)
+
+
+def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
+    u = mda.Universe(input_top, input_traj)
+    selected_atoms = u.select_atoms(selection)
+    n_atoms = selected_atoms.n_atoms
+    selected_atoms.write(output_top)
+    with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
+        for ts in u.trajectory[::step]:
+            writer.write(selected_atoms)
+    logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
+
+
+def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='name CA', transform_vels=False):
+    u = mda.Universe(input_top, input_traj)
+    ag = u.select_atoms(selection)
+    if not ref_top:
+        ref_top = input_top
+    ref_u = mda.Universe(ref_top) 
+    ref_ag = ref_u.select_atoms(selection)
+    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
+    logger.info("Converting/Writing Trajecory")
+    with mda.Writer(str(output_traj), ag.n_atoms) as W:
+        for ts in u.trajectory:   
+            if transform_vels:
+                transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
+                ag.velocities = transformed_vels
+            W.write(ag)
+            if ts.frame % 1000 == 0:
+                frame = ts.frame
+                time_ns = ts.time / 1000
+                logger.info(f"Current frame: %s at %s ns", frame, time_ns)
+    logger.info("Done!")
+
+
+def _tranform_velocities(vels, poss, ref_poss):
+    R = _kabsch_rotation(poss, ref_poss)
+    vels_aligned = vels @ R
+    return vels_aligned
+    
+
+def _kabsch_rotation(P, Q):
+    """
+    Return the 3x3 rotation matrix R that best aligns P onto Q (both Nx3),
+    after removing centroids (i.e., pure rotation via Kabsch).
+    """
+    # subtract centroids
+    Pc = P - P.mean(axis=0)
+    Qc = Q - Q.mean(axis=0)
+    # covariance and SVD
+    H = Pc.T @ Qc
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T @ U.T
+    # right-handed correction
+    if np.linalg.det(R) < 0.0:
+        Vt[-1, :] *= -1.0
+        R = Vt.T @ U.T
+    return R 
+
+############################################################################################# 
+### Utility functions ###
+#############################################################################################
+
+def get_platform_info():
     """Report OpenMM platform and hardware information."""
     info = {}
     # Get number of available platforms and their names

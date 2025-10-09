@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
-from . import plots
+import plots
 
 logger = get_logger(__name__)
 
@@ -295,6 +295,28 @@ def _process_batch(args, dtype=np.float32):
         local_count += 1
         del arr
     return local_sum, local_count
+
+################################################################################
+### ENM analysis ###
+################################################################################
+
+def enm_analysis(sysdir, sysname):
+    """Calculate ENM-based metrics."""
+    system = MDSystem(sysdir, sysname)
+    in_pdb = system.syspdb
+    u = mda.Universe(in_pdb)
+    ag = u.select_atoms("name CA")
+    vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
+    hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=200, dtype=np.float64)
+    outfile = system.datdir / "enm_cov.npy"
+    np.save(outfile, covmat)
+    pertmat = mdm.perturbation_matrix_iso(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
+    dfi = mdm.dfi(pertmat)
+    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
+    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
 
 ################################################################################
 ### Bioemu ###

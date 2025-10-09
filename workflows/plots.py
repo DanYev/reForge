@@ -233,7 +233,16 @@ def runs_metric(system, metric):
     make_plot(ax, xs, datas, params)
     set_ax_parameters(ax, xlabel='Residue', ylabel='RMSF (Angstrom)')
     plot_figure(fig, ax, figname=system.sysname.upper(), figpath='png/metric.png',)
+    
 
+def simple_residue_plot(system, datas, outtag):
+    xs = [np.arange(len(data)) for data in datas]
+    params = [{'lw':2,} for data in datas]
+    # Plotting
+    fig, ax = init_figure(grid=(1, 1), axsize=(12, 5))
+    make_plot(ax, xs, datas, params)
+    set_ax_parameters(ax, xlabel='Residue', ylabel='Data', loc='upper right')
+    plot_figure(fig, ax, figname=system.sysname.upper(), figpath=system.pngdir / f"{outtag}.png",)
 
 if __name__ == '__main__':
     pass
