@@ -19,12 +19,14 @@ Author: DY
 
 import logging
 import os
+from pathlib import Path
 import sys
 import shutil
 import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
+from MDAnalysis.transformations import fit_rot_trans
 import openmm as mm
 from openmm import app, unit
 from pdbfixer.pdbfixer import PDBFixer
@@ -373,7 +375,7 @@ class MmReporter(object):
 ### Trajectory conversion and fitting ###
 #############################################################################################
 
-def convert_trajectories(topology, trajectories, out_topology, out_trajectory, 
+def convert_trajectories(topology, trajectories, out_topology, out_trajectory, ref_top=None,
         selection="name CA", step=1, fit=True):
     """
     Convert and fit trajectories using MDAnalysis.
@@ -387,15 +389,19 @@ def convert_trajectories(topology, trajectories, out_topology, out_trajectory,
     - step: int, step interval for saving frames
     - fit: bool, whether to fit the trajectory to the reference structure
     """
-    tmp_traj = out_trajectory + ".tmp"
+    tmp_traj = Path(out_trajectory).parent / ('temp_traj' + out_trajectory.suffix)
     logger.info(f'Converting trajectory with selection: {selection}')
-    _trjconv_selection(trajectories, topology, tmp_traj, out_topology, selection=selection, step=step)
+    _trjconv_selection(trajectories, topology, tmp_traj, out_topology, 
+        selection=selection, step=step)
     if fit:
         logger.info('Fitting trajectory to reference structure')
-        _trjconv_fit(tmp_traj, out_topology, out_trajectory, transform_vels=out_trajectory.endswith('.trr'))
+        transform_vels = str(out_trajectory).endswith('.trr') # True for .trr files
+        _trjconv_fit(tmp_traj, out_topology, out_trajectory, 
+            ref_top=ref_top, selection=selection, transform_vels=transform_vels)
         os.remove(tmp_traj)
     else:
         os.rename(tmp_traj, out_trajectory)
+
 
 def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
     u = mda.Universe(input_top, input_traj)
@@ -408,11 +414,13 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
 
 
-def _trjconv_fit(input_traj, input_top, output_traj, transform_vels=False):
+def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='name CA', transform_vels=False):
     u = mda.Universe(input_top, input_traj)
-    ag = u.atoms
-    ref_u = mda.Universe(input_top) 
-    ref_ag = ref_u.atoms
+    ag = u.select_atoms(selection)
+    if not ref_top:
+        ref_top = input_top
+    ref_u = mda.Universe(ref_top) 
+    ref_ag = ref_u.select_atoms(selection)
     u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
     logger.info("Converting/Writing Trajecory")
     with mda.Writer(str(output_traj), ag.n_atoms) as W:
@@ -450,7 +458,7 @@ def _kabsch_rotation(P, Q):
     if np.linalg.det(R) < 0.0:
         Vt[-1, :] *= -1.0
         R = Vt.T @ U.T
-    return 
+    return R 
 
 ############################################################################################# 
 ### Utility functions ###
