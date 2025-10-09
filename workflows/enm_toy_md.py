@@ -51,6 +51,54 @@ def _load_system_from_xml(filename):
     return system
 
 
+def load_force_constants_matrix(sysdir, sysname):
+    """Load the saved pairwise force constants matrix"""
+    mdsys = MmSystem(sysdir, sysname)
+    force_constants_file = mdsys.sysdir / "enm_force_constants.npy"
+    if force_constants_file.exists():
+        force_constants_matrix = np.load(force_constants_file)
+        logger.info(f"Loaded force constants matrix from {force_constants_file}")
+        logger.info(f"Matrix shape: {force_constants_matrix.shape}")
+        logger.info(f"Force constant range: {np.min(force_constants_matrix[force_constants_matrix > 0]):.2f} - {np.max(force_constants_matrix):.2f} kJ/mol/nm²")
+        return force_constants_matrix
+    else:
+        logger.warning(f"Force constants file not found: {force_constants_file}")
+        return None
+
+
+def plot_force_constants_matrix(sysdir, sysname, output_dir=None):
+    """Plot the pairwise force constants matrix as a heatmap"""
+    import matplotlib.pyplot as plt
+    
+    force_constants_matrix = load_force_constants_matrix(sysdir, sysname)
+    if force_constants_matrix is None:
+        return
+    
+    if output_dir is None:
+        mdsys = MmSystem(sysdir, sysname)
+        output_dir = mdsys.sysdir
+    
+    fig, ax = plt.subplots(figsize=(10, 8))
+    im = ax.imshow(force_constants_matrix, cmap='viridis', aspect='auto')
+    
+    ax.set_xlabel('CA Atom Index')
+    ax.set_ylabel('CA Atom Index')
+    ax.set_title('Pairwise ENM Force Constants Matrix')
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label('Force Constant (kJ/mol/nm²)')
+    
+    # Save plot
+    output_file = Path(output_dir) / "enm_force_constants_matrix.png"
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    logger.info(f"Saved force constants matrix plot to {output_file}")
+    return output_file
+
+
 def setup(*args):
     """Main setup function for ENM system"""
     print(f"Setup called with args: {args}", file=sys.stderr)
@@ -103,10 +151,18 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
         cutoff: Distance cutoff for ENM springs
         force_constant: Default force constant for springs
         ca_atoms: MDAnalysis AtomGroup with CA atoms (for future customization)
+    
+    Returns:
+        system: OpenMM system with ENM forces added
+        force_constants_matrix: N x N numpy array with pairwise force constants
     """
     logger.info(f"Adding ENM forces with cutoff {cutoff} and force constant {force_constant}")
     n_atoms = len(positions)
     cutoff_nm = cutoff.value_in_unit(unit.nanometer)
+    
+    # Initialize pairwise force constants matrix
+    force_constants_matrix = np.zeros((n_atoms, n_atoms))
+    
     # Create custom bond force for ENM springs with per-bond force constants
     enm_force = mm.CustomBondForce('k * (r - r0)^2')
     enm_force.addPerBondParameter('k')   # Force constant per bond
@@ -126,11 +182,18 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
             if distance <= cutoff_nm:
                 distance_with_units = distance * unit.nanometer
                 bond_force_constant = _get_bond_force_constant(i, j, distance, force_constant)
+                
+                # Store force constant in matrix (symmetric)
+                force_constant_value = bond_force_constant.value_in_unit(unit.kilojoules_per_mole / (unit.nanometer**2))
+                force_constants_matrix[i, j] = force_constant_value
+                force_constants_matrix[j, i] = force_constant_value
+                
                 enm_force.addBond(i, j, [bond_force_constant, distance_with_units])
                 bonds_added += 1
+    
     logger.info(f"Added {bonds_added} ENM springs")
     system.addForce(enm_force)
-    return system
+    return system, force_constants_matrix
 
 
 def setup_enm(sysdir, sysname):
@@ -147,7 +210,15 @@ def setup_enm(sysdir, sysname):
     carbon_mass = 60.01 * unit.amu # Fake carbons
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
-    system = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
+    system, force_constants_matrix = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
+    
+    # Save pairwise force constants matrix
+    force_constants_file = mdsys.datdir / "enm_force_constants.npy"
+    np.save(force_constants_file, force_constants_matrix)
+    logger.info(f"Saved pairwise force constants matrix to {force_constants_file}")
+    logger.info(f"Force constants matrix shape: {force_constants_matrix.shape}")
+    logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")  # Divide by 2 since matrix is symmetric
+    
     # Save system to XML file
     _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
