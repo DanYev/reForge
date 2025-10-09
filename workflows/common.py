@@ -303,17 +303,20 @@ def _process_batch(args, dtype=np.float32):
 def enm_analysis(sysdir, sysname):
     """Calculate ENM-based metrics."""
     system = MDSystem(sysdir, sysname)
-    in_pdb = system.inpdb
-    atoms = io.pdb2atomlist(in_pdb)
-    backbone_anames = ["CA", "P", "C1'"]
-    bb = atoms.mask(backbone_anames, mode='name')
-    vecs = np.array(bb.vecs)
-    hess = mdm.hessian(vecs, cutoff=27, dd=2)
-    invhess = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=200, dtype=np.float64)
-    pertmat = mdm.perturbation_matrix_iso(invhess.get())
-    # invhess /= np.sqrt(np.average(invhess**2))
-    out_pdb = system.datdir / "enm_cov.npy"
-    np.save(out_pdb, pertmat)
+    in_pdb = system.syspdb
+    u = mda.Universe(in_pdb)
+    ag = u.select_atoms("name CA")
+    vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
+    hess = mdm.hessian(vecs, cutoff=11, dd=0) # cutoff in Angstroms, dd=0 no distance-dependence
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=200, dtype=np.float64)
+    outfile = system.datdir / "enm_cov.npy"
+    np.save(outfile, covmat)
+    pertmat = mdm.perturbation_matrix_iso(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
+    dfi = mdm.dfi(pertmat)
+    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
+    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
 
 ################################################################################
 ### Bioemu ###

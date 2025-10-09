@@ -17,21 +17,24 @@ logger = get_logger(__name__)
 INPDB = '1btl.pdb'
 # ENM parameters
 ENM_CUTOFF = 1.1 * unit.nanometer  # cutoff distance for ENM springs
-ENM_FORCE_CONSTANT = 500.0 * unit.kilojoules_per_mole / (unit.nanometer**2)  # spring constant
+ENM_FORCE_CONSTANT = 500.0 * unit.kilojoules_per_mole / (unit.nanometer**2) 
 # Production parameters
 TEMPERATURE = 300 * unit.kelvin
 GAMMA = 1 / unit.picosecond
 # Either steps or time
 TOTAL_TIME = 100 * unit.picoseconds
 TSTEP = 20 * unit.femtoseconds
-TOTAL_STEPS = 50000
+TOTAL_STEPS = 500000
 # Reporting: save every NOUT steps
-TRJ_NOUT = 100          # Trajectory   
+TRJ_NOUT = 100           # Trajectory   
 LOG_NOUT = 10000         # Log file   
 CHK_NOUT = 100000        # Checkpoint
 OUT_SELECTION = "name CA"
 TRJEXT = 'trr' # trr saves positions, velocities, forces
 
+##########################################################
+### Utils ###
+##########################################################
 
 def _save_system_to_xml(system, filename):
     with open(str(filename), "w", encoding="utf-8") as file:
@@ -51,6 +54,9 @@ def setup(*args):
     print(f"Setup called with args: {args}", file=sys.stderr)
     setup_enm(*args)
 
+##########################################################
+### ENM stuff ###
+##########################################################
 
 def extract_ca_positions(pdb_file):
     """Extract CA positions from PDB file and create a mock CA-only structure"""
@@ -71,16 +77,48 @@ def create_ca_topology(ca_atoms):
     return topology
 
 
-def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORCE_CONSTANT):
-    """Add Elastic Network Model harmonic forces based on cutoff distance"""
+def _get_bond_force_constant(atom_i, atom_j, distance, default_force_constant):
+    """Calculate force constant for a specific bond between atoms i and j
+    
+    This function can be customized to return different force constants based on:
+    - Atom types (e.g., different for backbone vs sidechain)
+    - Residue types (e.g., stronger for certain amino acids)
+    - Distance ranges (e.g., weaker for long-range contacts)
+    - Secondary structure (e.g., stronger within helices/sheets)
+    
+    For now, returns the same force constant for all bonds (testing phase)
+    """
+    # That's just for mock testing
+    force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
+    # Distance-dependent force constants
+    if distance > 0.8:  # Long-range contacts
+        return force_constant * 0.5
+    # Sequential neighbors (would need sequence info)
+    if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
+        return force_constant * 2.0  # Stronger covalent-like
+    # # For testing: use the same force constant for all bonds
+    return force_constant
+
+
+def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORCE_CONSTANT, ca_atoms=None):
+    """Add Elastic Network Model harmonic forces based on cutoff distance
+    
+    Args:
+        system: OpenMM system to add forces to
+        positions: CA atom positions (N x 3 array)
+        cutoff: Distance cutoff for ENM springs
+        force_constant: Default force constant for springs
+        ca_atoms: MDAnalysis AtomGroup with CA atoms (for future customization)
+    """
     logger.info(f"Adding ENM forces with cutoff {cutoff} and force constant {force_constant}")
     n_atoms = len(positions)
     cutoff_nm = cutoff.value_in_unit(unit.nanometer)
-    # Create custom bond force for ENM springs
+    # Create custom bond force for ENM springs with per-bond force constants
     enm_force = mm.CustomBondForce('k * (r - r0)^2')
-    enm_force.addGlobalParameter('k', force_constant)
-    enm_force.addPerBondParameter('r0')
+    enm_force.addPerBondParameter('k')   # Force constant per bond
+    enm_force.addPerBondParameter('r0')  # Equilibrium distance per bond
     bonds_added = 0
+    
     # Add bonds between atoms within cutoff distance
     for i in range(n_atoms):
         for j in range(i + 1, n_atoms):
@@ -94,7 +132,8 @@ def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORC
             # Add spring if within cutoff
             if distance <= cutoff_nm:
                 distance_with_units = distance * unit.nanometer
-                enm_force.addBond(i, j, [distance_with_units])
+                bond_force_constant = _get_bond_force_constant(i, j, distance, force_constant)
+                enm_force.addBond(i, j, [bond_force_constant, distance_with_units])
                 bonds_added += 1
     logger.info(f"Added {bonds_added} ENM springs")
     system.addForce(enm_force)
@@ -115,7 +154,7 @@ def setup_enm(sysdir, sysname):
     carbon_mass = 60.01 * unit.amu # Fake carbons
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
-    system = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT)
+    system = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
     # Save system to XML file
     _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
@@ -126,6 +165,9 @@ def setup_enm(sysdir, sysname):
         app.PDBFile.writeFile(topology, positions_with_units, file)
     logger.info(f"Saved CA-only structure to {mdsys.syspdb}")
 
+###########################################################
+### MD ###
+###########################################################
 
 def _get_reporters(mdrun, append=False, prefix="md"):
     """Get reporters for MD simulation using custom MmReporter for velocities"""
@@ -258,7 +300,7 @@ def main(sysdir, sysname, runname):
     setup(sysdir, sysname)
     md_nve(sysdir, sysname, runname)
     trjconv(sysdir, sysname, runname)
-    extract_trajectory_data(sysdir, sysname, runname, prefix="md")
+    # extract_trajectory_data(sysdir, sysname, runname, prefix="md")
 
 
 if __name__ == "__main__":

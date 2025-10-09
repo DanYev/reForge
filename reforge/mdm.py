@@ -391,11 +391,11 @@ def inverse_matrix(matrix, device="cpu_sparse", k_singular=6, n_modes=100, dtype
                 if device.lower() == "gpu_sparse":
                     return rpymath.inverse_sparse_matrix_gpu(
                         matrix, k_singular=k_singular, n_modes=n_modes, dtype=dtype, **kwargs
-                    )
+                    ).get()
             if device.lower() == "gpu_dense":
                 return rpymath.inverse_matrix_gpu(
                     matrix, k_singular=k_singular, n_modes=n_modes, dtype=dtype, **kwargs
-                )
+                ).get()
             logger.info("Unknown GPU method; falling back to CPU sparse inversion.")
             return rpymath.inverse_sparse_matrix_cpu(
                 matrix, k_singular=k_singular, n_modes=n_modes, dtype=dtype, **kwargs
