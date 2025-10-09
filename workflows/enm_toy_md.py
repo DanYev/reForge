@@ -83,15 +83,15 @@ def _get_bond_force_constant(atom_i, atom_j, distance, default_force_constant):
     """Calculate force constant for a specific bond between atoms i and j.
     For now this is for mock testing.
     """
-    # force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
-    # # Distance-dependent force constants
-    # if distance > 0.8:  # Long-range contacts
-    #     return force_constant * 0.5
-    # # Sequential neighbors (would need sequence info)
-    # if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
-    #     return force_constant * 2.0  # Stronger covalent-like
-    # # For testing: use the same force constant for all bonds
-    return default_force_constant
+    # For testing use the same force constant for all bonds
+    force_constant = np.random.normal(1.0, 0.2)**2 * default_force_constant
+    # Distance-dependent force constants
+    if distance > 0.7:  # Long-range contacts
+        return force_constant * 0.5
+    # Sequential neighbors (would need sequence info)
+    if abs(atom_i - atom_j) == 1:  # Adjacent in sequence
+        return force_constant * 2.0  # Stronger covalent-like
+    return force_constant
 
 
 def add_enm_forces(system, positions, cutoff=ENM_CUTOFF, force_constant=ENM_FORCE_CONSTANT, ca_atoms=None):
