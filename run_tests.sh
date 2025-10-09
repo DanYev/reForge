@@ -65,15 +65,15 @@ else
     
     # Array of test files to run
     TEST_FILES=(
-        # "tests/test_rpymath.py"
-        # "tests/test_rcmath.py" 
-        # "tests/test_mdm.py"
-        # "tests/test_pdbtools.py"
-        # "tests/test_martinize.py"
-        # "tests/test_gmxmd.py"
+        "tests/test_rpymath.py"
+        "tests/test_rcmath.py" 
+        "tests/test_mdm.py"
+        "tests/test_pdbtools.py"
+        "tests/test_martinize.py"
+        "tests/test_gmxmd.py"
         "tests/test_mmmd.py"
-        # "tests/test_common.py"
-        # "tests/test_egfr_setup.py"
+        "tests/test_common.py"
+        "tests/test_egfr_setup.py"
     )
     
     # Run each test and track results
