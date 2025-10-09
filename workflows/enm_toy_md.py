@@ -7,7 +7,7 @@ import MDAnalysis as mda
 import openmm as mm
 from openmm import app, unit
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter
+from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 from reforge.utils import clean_dir, get_logger
 
@@ -27,10 +27,23 @@ TSTEP = 20 * unit.femtoseconds
 TOTAL_STEPS = 50000
 # Reporting: save every NOUT steps
 TRJ_NOUT = 100          # Trajectory   
-LOG_NOUT = 1000         # Log file   
-CHK_NOUT = 10000        # Checkpoint
+LOG_NOUT = 10000         # Log file   
+CHK_NOUT = 100000        # Checkpoint
 OUT_SELECTION = "name CA"
 TRJEXT = 'trr' # trr saves positions, velocities, forces
+
+
+def _save_system_to_xml(system, filename):
+    with open(str(filename), "w", encoding="utf-8") as file:
+        file.write(mm.XmlSerializer.serialize(system))
+    logger.info(f"Saved system to {filename}")
+
+
+def _load_system_from_xml(filename):
+    with open(str(filename), 'r') as file:
+        system = mm.XmlSerializer.deserialize(file.read())
+    logger.info(f"Loaded system from {filename}")
+    return system
 
 
 def setup(*args):
@@ -104,8 +117,7 @@ def setup_enm(sysdir, sysname):
         system.addParticle(carbon_mass)
     system = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT)
     # Save system to XML file
-    with open(mdsys.sysxml, "w", encoding="utf-8") as file:
-        file.write(mm.XmlSerializer.serialize(system))
+    _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
     # Create positions with units for OpenMM PDB writing
     positions_with_units = positions * unit.nanometer
@@ -137,32 +149,35 @@ def _get_reporters(mdrun, append=False, prefix="md"):
 
 
 def md_nve(sysdir, sysname, runname):
-    """Run NVE simulation with ENM forces"""
     mdsys = MmSystem(sysdir, sysname)
     mdrun = MmRun(sysdir, sysname, runname)
     mdrun.rundir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"WDIR: {mdrun.rundir}")
-    # Load system and topology
-    with open(mdsys.sysxml, 'r') as file:
-        system = mm.XmlSerializer.deserialize(file.read())
-    pdb = app.PDBFile(str(mdsys.syspdb)) # Load CA-only structure
-    integrator = mm.VerletIntegrator(TSTEP)
-    simulation = app.Simulation(pdb.topology, system, integrator)
-    simulation.context.setPositions(pdb.positions)
-    # Minimize energy
+    logger.info(f"WDIR: %s", mdrun.rundir)
+    # Prep
+    pdb = app.PDBFile(str(mdsys.syspdb))
+    system = _load_system_from_xml(mdsys.sysxml)
+    integrator = mm.LangevinMiddleIntegrator(TEMPERATURE, GAMMA, 0.5*TSTEP) # NVT integrator for equilibration
+    simulation = app.Simulation(pdb.topology, system, integrator) 
+    # --- Initialize state, minimize, equilibrate ---
     logger.info("Minimizing energy...")
-    simulation.minimizeEnergy(maxIterations=1000)
-    # Set initial velocities
-    logger.info("Setting initial velocities...")
+    simulation.context.setPositions(pdb.positions)
+    simulation.minimizeEnergy(maxIterations=1000)  
+    logger.info("Equilibrating...")
     simulation.context.setVelocitiesToTemperature(TEMPERATURE)
-    # Setup reporters
+    simulation.step(10000)  # equilibrate 
+    # --- Run NVE (need to change the integrator and reset simulation) ---
+    logger.info("Running NVE production...")
+    integrator = mm.VerletIntegrator(TSTEP)
+    state = simulation.context.getState(getPositions=True, getVelocities=True)
+    simulation = app.Simulation(pdb.topology, system, integrator)
+    simulation.context.setState(state)
+    logger.info(f'Saving reference PDB with selection: {OUT_SELECTION}')
+    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb") # SAVE PDB FOR THE SELECTION
     reporters = _get_reporters(mdrun, append=False, prefix="md")
     simulation.reporters.extend(reporters)
-    mda.Universe(mdsys.syspdb).select_atoms(OUT_SELECTION).write(mdrun.rundir / "md.pdb")
-    # Run simulation
-    logger.info(f"Running NVE simulation for {TOTAL_STEPS} steps...")
-    simulation.step(TOTAL_STEPS)
-    logger.info("NVE simulation completed!")
+    simulation.step(TOTAL_STEPS)  
+    logger.info("Done!")
+
 
 
 def trjconv(sysdir, sysname, runname):
@@ -179,8 +194,8 @@ def trjconv(sysdir, sysname, runname):
     # CONVERT
     out_top = mdrun.rundir / "topology.pdb"
     out_traj = mdrun.rundir / f"samples.{TRJEXT}"
-    logger.info(f'Converting trajectory with selection: {SELECTION}')
-    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=1)
+    logger.info(f'Converting trajectory with selection: {OUT_SELECTION}')
+    convert_trajectories(top, trajs, out_top, out_traj, selection=OUT_SELECTION, step=1)
     logger.info("Done!")
 
 
@@ -191,7 +206,6 @@ def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
     # Check if trajectory file exists
     traj_file = mdrun.rundir / f"{prefix}.{TRJEXT}"
     logger.info(f"Extracting trajectory data from {traj_file}")
-
     u = mda.Universe(str(mdsys.syspdb), str(traj_file))
     logger.info(f"Loaded trajectory with {len(u.trajectory)} frames")
     n_frames = len(u.trajectory)

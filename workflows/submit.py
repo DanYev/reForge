@@ -53,25 +53,25 @@ if __name__ == "__main__":
     shscript = str(pdir / 'run.sh')
 
     sysdir = 'systems' 
-    sysnames = ['test_sys'] 
-    runs = ["test_run"]
+    sysnames = ['enm_sys'] 
+    runs = ["mdrun_1"]
 
     submit = False
 
     ##### For MD #####
-    pyscript = str(pdir / 'mm_md.py')
+    pyscript = str(pdir / 'enm_toy_md.py')
     # run_job('main', submit=submit)
     # sys_job('setup', submit=submit)
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
-    run_job('trjconv', submit=submit)
+    # run_job('trjconv', submit=submit)
 
     ##### Analysis #####
-    # pyscript = str(pdir / 'common.py')
-    # sys_job('pca_trajs', submit=submit) # PCA
-    # sys_job('clust_cov', submit=submit) # Clustering
-    # run_job('rms_analysis', submit=submit) # RMSF/RMSD
-    # run_job('cov_analysis', submit=submit) # DFI/DCI
+    pyscript = str(pdir / 'common.py')
+    sys_job('pca_trajs', submit=submit) # PCA
+    sys_job('clust_cov', submit=submit) # Clustering
+    run_job('rms_analysis', submit=submit) # RMSF/RMSD
+    run_job('cov_analysis', submit=submit) # DFI/DCI
     # sys_job('get_means_sems', submit=submit) 
     # run_job('tdlrt_analysis', submit=submit) # TDLRT
     # sys_job('get_averages', submit=submit, c='1', mem='4G') # Big arrays: mem > 2 * c * array size
