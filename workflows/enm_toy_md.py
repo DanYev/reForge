@@ -50,59 +50,38 @@ def _load_system_from_xml(filename):
     logger.info(f"Loaded system from {filename}")
     return system
 
-
-def load_force_constants_matrix(sysdir, sysname):
-    """Load the saved pairwise force constants matrix"""
-    mdsys = MmSystem(sysdir, sysname)
-    force_constants_file = mdsys.sysdir / "enm_force_constants.npy"
-    if force_constants_file.exists():
-        force_constants_matrix = np.load(force_constants_file)
-        logger.info(f"Loaded force constants matrix from {force_constants_file}")
-        logger.info(f"Matrix shape: {force_constants_matrix.shape}")
-        logger.info(f"Force constant range: {np.min(force_constants_matrix[force_constants_matrix > 0]):.2f} - {np.max(force_constants_matrix):.2f} kJ/mol/nm²")
-        return force_constants_matrix
-    else:
-        logger.warning(f"Force constants file not found: {force_constants_file}")
-        return None
-
-
-def plot_force_constants_matrix(sysdir, sysname, output_dir=None):
-    """Plot the pairwise force constants matrix as a heatmap"""
-    import matplotlib.pyplot as plt
-    
-    force_constants_matrix = load_force_constants_matrix(sysdir, sysname)
-    if force_constants_matrix is None:
-        return
-    
-    if output_dir is None:
-        mdsys = MmSystem(sysdir, sysname)
-        output_dir = mdsys.sysdir
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    im = ax.imshow(force_constants_matrix, cmap='viridis', aspect='auto')
-    
-    ax.set_xlabel('CA Atom Index')
-    ax.set_ylabel('CA Atom Index')
-    ax.set_title('Pairwise ENM Force Constants Matrix')
-    
-    # Add colorbar
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Force Constant (kJ/mol/nm²)')
-    
-    # Save plot
-    output_file = Path(output_dir) / "enm_force_constants_matrix.png"
-    plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    logger.info(f"Saved force constants matrix plot to {output_file}")
-    return output_file
-
+##########################################################
+### Setup ###
+##########################################################
 
 def setup(*args):
     """Main setup function for ENM system"""
     print(f"Setup called with args: {args}", file=sys.stderr)
-    setup_enm(*args)
+    # setup_enm(*args)
+    setup_aa(*args)
+
+
+def setup_aa(sysdir, sysname):
+    mdsys = MmSystem(sysdir, sysname)
+    inpdb = mdsys.sysdir / INPDB
+    mdsys.prepare_files()
+    mdsys.clean_pdb(inpdb, add_missing_atoms=True, add_hydrogens=True)
+    pdb = app.PDBFile(str(mdsys.inpdb))
+    forcefield = app.ForceField("amber19-all.xml")
+    with open(mdsys.syspdb, "w", encoding="utf-8") as file:
+        app.PDBFile.writeFile(pdb.topology, pdb.positions, file, keepIds=True)    
+    logger.info("Saved vacuum system to %s", mdsys.syspdb)
+    logger.info("Generating topology...")
+    system = forcefield.createSystem(
+        pdb.topology,
+        nonbondedMethod=app.NoCutoff,  # No cutoff for vacuum
+        constraints=None,              # No constraints for Hessian
+        removeCMMotion=False,          # No COM motion removal
+        hydrogenMass=None              # Keep original hydrogen masses
+    )
+    _save_system_to_xml(system, mdsys.sysxml)
+    logger.info("Setup complete.")
+
 
 ##########################################################
 ### ENM stuff ###
@@ -211,14 +190,12 @@ def setup_enm(sysdir, sysname):
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
     system, force_constants_matrix = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
-    
     # Save pairwise force constants matrix
     force_constants_file = mdsys.datdir / "enm_force_constants.npy"
     np.save(force_constants_file, force_constants_matrix)
     logger.info(f"Saved pairwise force constants matrix to {force_constants_file}")
     logger.info(f"Force constants matrix shape: {force_constants_matrix.shape}")
     logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")  # Divide by 2 since matrix is symmetric
-    
     # Save system to XML file
     _save_system_to_xml(system, mdsys.sysxml)
     logger.info(f"Saved ENM system to {mdsys.sysxml}")
@@ -270,7 +247,7 @@ def md_nve(sysdir, sysname, runname):
     simulation.minimizeEnergy(maxIterations=1000)  
     logger.info("Equilibrating...")
     simulation.context.setVelocitiesToTemperature(TEMPERATURE)
-    simulation.step(10000)  # equilibrate 
+    simulation.step(100000)  # equilibrate 
     # --- Run NVE (need to change the integrator and reset simulation) ---
     logger.info("Running NVE production...")
     integrator = mm.VerletIntegrator(TSTEP)
@@ -359,26 +336,6 @@ def extract_trajectory_data(sysdir, sysname, runname, prefix="md"):
 ### ENM analysis ###
 ################################################################################
 
-def enm_analysis(sysdir, sysname):
-    """Calculate ENM-based metrics."""
-    system = MDSystem(sysdir, sysname)
-    in_pdb = system.syspdb
-    u = mda.Universe(in_pdb)
-    ag = u.select_atoms("name CA")
-    # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
-    # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
-    hess = np.load(system.datdir / "md_hess.npy")
-    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
-    covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
-    outfile = system.datdir / "enm_cov.npy"
-    np.save(outfile, covmat)
-    pertmat = mdm.perturbation_matrix_iso(covmat)
-    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) # (n_atoms,)
-    dfi = mdm.dfi(pertmat)
-    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
-    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
-
-
 def get_hessian_from_md(sysdir, sysname):
     system = MDSystem(sysdir, sysname)
     covmat = np.load(system.datdir / "covmat_av.npy")
@@ -387,6 +344,292 @@ def get_hessian_from_md(sysdir, sysname):
     outfile = system.datdir / "md_hess.npy"
     np.save(outfile, hess)
 
+
+def get_hessian_from_enm(sysdir, sysname):
+    """Calculate Hessian matrix directly from ENM force constants and PDB structure using vectorized operations"""
+    system = MDSystem(sysdir, sysname)
+    # Load force constants matrix
+    force_constants_matrix = np.load(system.datdir / "enm_force_constants.npy")
+    if force_constants_matrix is None:
+        raise ValueError("Force constants matrix not found. Run setup first.")
+    # Load CA positions from PDB
+    mdsys = MmSystem(sysdir, sysname)
+    inpdb = mdsys.sysdir / INPDB
+    ca_atoms, positions = extract_ca_positions(inpdb)
+    n_atoms = len(positions)
+    logger.info(f"Building Hessian matrix for {n_atoms} CA atoms using vectorized operations")
+    # Create pairwise distance vectors: r_ij = r_j - r_i
+    r_ij = positions[np.newaxis, :, :] - positions[:, np.newaxis, :]
+    r_ij_norms = np.linalg.norm(r_ij, axis=2)
+    r_ij_norms_safe = np.where(r_ij_norms == 0, 1.0, r_ij_norms)
+    u_ij = r_ij / r_ij_norms_safe[:, :, np.newaxis]
+    # Zero out diagonal elements (no self-interaction)
+    diagonal_mask = np.eye(n_atoms, dtype=bool)
+    u_ij[diagonal_mask] = 0
+    # Create outer products for all pairs: u_ij ⊗ u_ij
+    u_outer = u_ij[:, :, :, np.newaxis] * u_ij[:, :, np.newaxis, :]
+    # Multiply by force constants: -k_ij * (u_ij ⊗ u_ij)
+    h_blocks = -force_constants_matrix[:, :, np.newaxis, np.newaxis] * u_outer
+    # Initialize full Hessian matrix (3N x 3N)
+    hess = np.zeros((3 * n_atoms, 3 * n_atoms))
+    # Fill off-diagonal blocks using advanced indexing
+    i_indices = np.arange(n_atoms)
+    j_indices = np.arange(n_atoms)
+    i_grid, j_grid = np.meshgrid(i_indices, j_indices, indexing='ij')
+    # Create index arrays for block assignment
+    i_starts = 3 * i_grid
+    j_starts = 3 * j_grid
+    # Vectorized block assignment
+    for di in range(3):
+        for dj in range(3):
+            hess[i_starts + di, j_starts + dj] = h_blocks[:, :, di, dj]
+    # Build diagonal blocks: H_ii = -sum(H_ij for j != i)
+    # This can also be vectorized, but keeping simple loop for clarity
+    for i in range(n_atoms):
+        i_start, i_end = 3 * i, 3 * (i + 1)
+        # Sum all off-diagonal blocks for atom i and negate
+        diagonal_block = -np.sum(h_blocks[i, :, :, :], axis=0)  # Sum over j axis
+        hess[i_start:i_end, i_start:i_end] = diagonal_block
+    logger.info(f"Hessian matrix shape: {hess.shape}")
+    logger.info(f"Hessian matrix range: {np.min(hess):.6f} to {np.max(hess):.6f}")
+    logger.info(f"Number of non-zero connections: {np.count_nonzero(force_constants_matrix) // 2}")
+    outfile = system.datdir / "enm_hess.npy"
+    np.save(outfile, hess)
+    logger.info(f"Saved ENM Hessian matrix to {outfile}")
+
+
+def get_hessian_numerical(sysdir, sysname, delta=0.0001):
+    """Calculate Hessian matrix numerically using finite differences of forces from OpenMM
+    
+    The Hessian H_ij = d²U/dx_i dx_j can be calculated as:
+    H_ij ≈ -(F_i(x_j + δ) - F_i(x_j - δ)) / (2δ)
+    where F_i is the force on coordinate i and δ is a small displacement.
+    
+    Args:
+        sysdir: System directory
+        sysname: System name
+        delta: Finite difference step size in nanometers (default: 0.001 nm = 0.01 Å)
+    
+    Returns:
+        hess: Numerical Hessian matrix (3N x 3N)
+    """
+    mdsys = MmSystem(sysdir, sysname)
+    logger.info(f"Calculating numerical Hessian with finite difference step δ = {delta} nm")
+    # Load system and structure
+    pdb = app.PDBFile(str(mdsys.syspdb))
+    system = _load_system_from_xml(mdsys.sysxml)
+    # Create integrator and simulation (we only need context for energy/force calculations)
+    integrator = mm.VerletIntegrator(0.001 * unit.picosecond)  # Step size doesn't matter for static calculations
+    # Choose CPU platform (always uses double precision)
+    platform = mm.Platform.getPlatformByName('CPU')
+    properties = {}  # CPU platform is always double precision
+    simulation = app.Simulation(pdb.topology, system, integrator, platform, properties)
+    context = simulation.context
+    # Set initial positions and minimize
+    logger.info("Setting positions and minimizing energy...")
+    context.setPositions(pdb.positions)
+    simulation.minimizeEnergy(maxIterations=1000, tolerance=1e-6)
+    # Get minimized positions
+    state = context.getState(getPositions=True)
+    positions = state.getPositions(asNumpy=True).value_in_unit(unit.nanometer)
+    n_atoms = len(positions)
+    n_coords = 3 * n_atoms
+    logger.info(f"Minimized structure with {n_atoms} atoms ({n_coords} coordinates)")
+    # Initialize Hessian matrix
+    hess = np.zeros((n_coords, n_coords))
+    # Convert delta to OpenMM units
+    delta_vec = np.zeros_like(positions)
+    delta_openmm = delta * unit.nanometer
+    logger.info("Calculating finite differences... This may take a while.")
+    # Calculate Hessian using finite differences: H_ij = -dF_i/dx_j
+    for j in range(n_coords):
+        # Get atom and coordinate indices
+        atom_j = j // 3
+        coord_j = j % 3
+        if j % 500 == 0:
+            logger.info(f"Processing coordinate {j+1}/{n_coords}")
+        # Forward displacement: x_j -> x_j + δ
+        delta_vec[atom_j, coord_j] = delta
+        pos_plus = positions + delta_vec
+        context.setPositions(pos_plus * unit.nanometer)
+        state_plus = context.getState(getForces=True)
+        forces_plus = state_plus.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole / unit.nanometer)
+        # Backward displacement: x_j -> x_j - δ
+        pos_minus = positions - delta_vec
+        context.setPositions(pos_minus * unit.nanometer)
+        state_minus = context.getState(getForces=True)
+        forces_minus = state_minus.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole / unit.nanometer)
+        # Calculate finite difference: H_ij = -(F_i(+δ) - F_i(-δ)) / (2δ)
+        force_diff = (forces_plus - forces_minus) / (2 * delta)
+        # Fill Hessian column j
+        for i in range(n_coords):
+            atom_i = i // 3
+            coord_i = i % 3
+            hess[i, j] = -force_diff[atom_i, coord_i]  # Negative because F = -dU/dx
+        # Reset displacement
+        delta_vec[atom_j, coord_j] = 0
+        # Reset to minimized positions for next iteration
+        context.setPositions(positions * unit.nanometer)
+    logger.info(f"Numerical Hessian calculation complete")
+    logger.info(f"Hessian matrix shape: {hess.shape}")
+    logger.info(f"Hessian matrix range: {np.min(hess):.6f} to {np.max(hess):.6f} kJ/mol/nm²")
+    # Check symmetry
+    symmetry_error = np.max(np.abs(hess - hess.T))
+    logger.info(f"Hessian symmetry error: {symmetry_error:.6e} (should be small)")
+    # Symmetrize the matrix (average with transpose to ensure perfect symmetry)
+    hess = 0.5 * (hess + hess.T)
+    # Save numerical Hessian
+    outfile = mdsys.datdir / "num_hess.npy"
+    np.save(outfile, hess)
+    logger.info(f"Saved numerical Hessian matrix to {outfile}")
+
+
+def get_per_residue_hessian(sysdir, sysname):
+    """Calculate per-residue Hessian by averaging 3x3 blocks for each residue
+    
+    Args:
+        sysdir: System directory
+        sysname: System name  
+        
+    Returns:
+        per_res_hess: Per-residue Hessian matrix (N_res x N_res)
+    """
+    mdsys = MmSystem(sysdir, sysname)
+    hessfile = mdsys.datdir / "num_hess.npy"
+    hess = np.load(hessfile)
+    n_coords = hess.shape[0]
+    n_atoms = n_coords // 3
+    logger.info(f"Hessian shape: {hess.shape} ({n_atoms} atoms)")
+    # Load all-atom structure to get residue information
+    u = mda.Universe(str(mdsys.syspdb))
+    atoms = u.atoms
+    logger.info(f"Using all {len(atoms)} atoms for per-residue calculation")
+    if len(atoms) != n_atoms:
+        raise ValueError(f"Atom count mismatch: Hessian has {n_atoms} atoms, structure has {len(atoms)} atoms")
+    # Get residue information
+    residue_atom_indices = {}  # residue_id -> list of atom indices
+    for i, atom in enumerate(atoms):
+        resid = atom.resid
+        if resid not in residue_atom_indices:
+            residue_atom_indices[resid] = []
+        residue_atom_indices[resid].append(i)
+    # Create residue_info list
+    residue_ids = sorted(residue_atom_indices.keys())
+    residue_info = []
+    for resid in residue_ids:
+        atom_indices = residue_atom_indices[resid]
+        resname = atoms[atom_indices[0]].resname  # Get resname from first atom
+        residue_info.append((resname, resid, atom_indices))
+    n_residues = len(residue_info)
+    logger.info(f"Found {n_residues} residues")
+    # Calculate per-residue Hessian (3N_res x 3N_res)
+    per_res_hess = np.zeros((3 * n_residues, 3 * n_residues))
+    logger.info("Calculating per-residue Hessian...")
+    for i, (resname_i, resid_i, atom_indices_i) in enumerate(residue_info):
+        for j, (resname_j, resid_j, atom_indices_j) in enumerate(residue_info):
+            # Collect all 3x3 blocks between residues i and j
+            blocks_3x3 = []
+            for atom_i in atom_indices_i:
+                for atom_j in atom_indices_j:
+                    # Get 3x3 block from full Hessian
+                    i_start, i_end = 3 * atom_i, 3 * (atom_i + 1)
+                    j_start, j_end = 3 * atom_j, 3 * (atom_j + 1)
+                    block_3x3 = hess[i_start:i_end, j_start:j_end]
+                    blocks_3x3.append(block_3x3)
+            # Average all 3x3 blocks between these two residues element-wise
+            if blocks_3x3:
+                avg_block = np.mean(blocks_3x3, axis=0)
+                # Place averaged 3x3 block in per-residue Hessian
+                res_i_start, res_i_end = 3 * i, 3 * (i + 1)
+                res_j_start, res_j_end = 3 * j, 3 * (j + 1)
+                per_res_hess[res_i_start:res_i_end, res_j_start:res_j_end] = avg_block
+    logger.info(f"Per-residue Hessian shape: {per_res_hess.shape}")
+    logger.info(f"Per-residue Hessian range: {np.min(per_res_hess):.6f} to {np.max(per_res_hess):.6f}")
+    # Save per-residue Hessian
+    outfile = mdsys.datdir / "per_residue_hess.npy"
+    np.save(outfile, per_res_hess)
+    logger.info(f"Saved per-residue Hessian to {outfile}")
+    
+
+def get_ca_hessian(sysdir, sysname):
+    """Extract CA-only Hessian from full all-atom Hessian matrix
+    
+    Args:
+        sysdir: System directory
+        sysname: System name  
+        hess: Full all-atom Hessian matrix from get_hessian_numerical()
+        
+    Returns:
+        ca_hess: CA-only Hessian matrix (3N_CA x 3N_CA)
+        ca_info: List of CA atom information (resname, resid, atom_index)
+    """
+    mdsys = MmSystem(sysdir, sysname)
+    hessfile = mdsys.datdir / "num_hess.npy"
+    hess = np.load(hessfile)
+    n_coords = hess.shape[0]
+    n_atoms = n_coords // 3
+    logger.info(f"Full Hessian shape: {hess.shape} ({n_atoms} atoms)")
+    # Load all-atom structure and extract CA atoms
+    u = mda.Universe(str(mdsys.syspdb))
+    all_atoms = u.atoms
+    ca_atoms = u.select_atoms("name CA")
+    logger.info(f"Total atoms: {len(all_atoms)}, CA atoms: {len(ca_atoms)}")
+    if len(all_atoms) != n_atoms:
+        raise ValueError(f"Atom count mismatch: Hessian has {n_atoms} atoms, structure has {len(all_atoms)} atoms")
+    # Get CA atom indices in the full structure
+    ca_indices = []
+    ca_info = []
+    for ca_atom in ca_atoms:
+        # Find the index of this CA atom in the full atom list
+        atom_index = ca_atom.index
+        ca_indices.append(atom_index)
+        ca_info.append((ca_atom.resname, ca_atom.resid, atom_index))
+    n_ca = len(ca_indices)
+    logger.info(f"Found {n_ca} CA atoms")
+    # Extract CA-only Hessian matrix
+    ca_hess = np.zeros((3 * n_ca, 3 * n_ca))
+    logger.info("Extracting CA-only Hessian blocks...")
+    for i, atom_i in enumerate(ca_indices):
+        for j, atom_j in enumerate(ca_indices):
+            # Get 3x3 block from full Hessian
+            full_i_start, full_i_end = 3 * atom_i, 3 * (atom_i + 1)
+            full_j_start, full_j_end = 3 * atom_j, 3 * (atom_j + 1)
+            # Get 3x3 block for CA atoms i and j
+            block_3x3 = hess[full_i_start:full_i_end, full_j_start:full_j_end]
+            # Place in CA-only Hessian
+            ca_i_start, ca_i_end = 3 * i, 3 * (i + 1)
+            ca_j_start, ca_j_end = 3 * j, 3 * (j + 1)
+            ca_hess[ca_i_start:ca_i_end, ca_j_start:ca_j_end] = block_3x3
+    logger.info(f"CA Hessian shape: {ca_hess.shape}")
+    logger.info(f"CA Hessian range: {np.min(ca_hess):.6f} to {np.max(ca_hess):.6f}")
+    # Save CA-only Hessian
+    outfile = mdsys.datdir / "ca_hess.npy"
+    np.save(outfile, ca_hess)
+    logger.info(f"Saved CA Hessian to {outfile}")
+    
+
+def enm_analysis(sysdir, sysname):
+    """Calculate ENM-based metrics."""
+    system = MDSystem(sysdir, sysname)
+    in_pdb = system.syspdb
+    u = mda.Universe(in_pdb)
+    ag = u.select_atoms("name CA")
+    # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
+    # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
+    hess = np.load(system.datdir / "ca_hess.npy")
+    covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
+    covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
+    outfile = system.datdir / "enm_cov.npy"
+    np.save(outfile, covmat)
+    pertmat = mdm.perturbation_matrix(covmat)
+    rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) * 10.0 # (n_atoms,)
+    dfi = mdm.dfi(pertmat)
+    plots.simple_residue_plot(system, [rmsf], outtag="enm_rmsf")
+    plots.simple_residue_plot(system, [dfi], outtag="enm_dfi")
+
+################################################################################
+### Main ###
+################################################################################
 
 def main(sysdir, sysname, runname):
     # sysdir = "/scratch/dyangali/reforge/workflows/systems/"
