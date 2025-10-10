@@ -60,11 +60,11 @@ if __name__ == "__main__":
 
     ##### For MD #####
     pyscript = str(pdir / 'enm_toy_md.py')
-    # run_job('main', submit=submit)
-    # # sys_job('setup', submit=submit)
+    # sys_job('setup', submit=submit)
     # # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     # # run_job('trjconv', submit=submit)
+    # run_job('main', submit=submit)
 
     ##### Analysis #####
     pyscript = str(pdir / 'common.py')
@@ -82,4 +82,6 @@ if __name__ == "__main__":
     # sys_job('get_hessian_from_md', submit=submit, G='1', mem='8G') 
     # sys_job('get_hessian_from_enm', submit=submit, G='1', mem='8G') 
     sys_job('get_hessian_numerical', submit=submit, G='1', mem='8G') 
-    sys_job('enm_analysis', submit=submit, G='1', mem='8G') 
+    # sys_job('get_per_residue_hessian', submit=submit, G='1', mem='8G') 
+    # sys_job('get_ca_hessian', submit=submit, G='1', mem='8G') 
+    # sys_job('enm_analysis', submit=submit, G='1', mem='8G') 
