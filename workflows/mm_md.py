@@ -106,7 +106,7 @@ def setup_martini(sysdir, sysname):
     conf = app.GromacsGroFile(str(mdsys.sysgro))
     box_vectors = conf.getPeriodicBoxVectors()
     top = martini_openmm.MartiniTopFile(top_file, periodicBoxVectors=box_vectors, epsilon_r=15.0)
-    system = top.create_system(nonbonded_cutoff=1.1*nanometer)
+    system = top.create_system(nonbonded_cutoff=1.1*unit.nanometer)
     pdb = app.PDBFile(str(mdsys.syspdb))
     _add_bb_restraints(system, pdb, bb_aname='BB')
     with open(mdsys.sysxml, "w", encoding="utf-8") as file:

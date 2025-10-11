@@ -26,9 +26,9 @@ GAMMA = 1 / unit.picosecond
 # Either steps or time
 TOTAL_TIME = 100 * unit.picoseconds
 TSTEP = 20 * unit.femtoseconds
-TOTAL_STEPS = 500000
+TOTAL_STEPS = 100000
 # Reporting: save every NOUT steps
-TRJ_NOUT = 100           # Trajectory   
+TRJ_NOUT = 1           # Trajectory   
 LOG_NOUT = 10000         # Log file   
 CHK_NOUT = 100000        # Checkpoint
 OUT_SELECTION = "name CA"
@@ -186,7 +186,7 @@ def setup_enm(sysdir, sysname):
     # Create OpenMM system
     system = mm.System()
     # Add particles (CA atoms) - use carbon mass
-    carbon_mass = 60.01 * unit.amu # Fake carbons
+    carbon_mass = 110.0 * unit.amu # Fake carbons
     for i in range(len(positions)):
         system.addParticle(carbon_mass)
     system, force_constants_matrix = add_enm_forces(system, positions, ENM_CUTOFF, ENM_FORCE_CONSTANT, ca_atoms)
@@ -428,13 +428,19 @@ def get_hessian_numerical(sysdir, sysname, delta=0.0001):
     # Set initial positions and minimize
     logger.info("Setting positions and minimizing energy...")
     context.setPositions(pdb.positions)
-    simulation.minimizeEnergy(maxIterations=1000, tolerance=1e-6)
+    simulation.minimizeEnergy(maxIterations=20000, tolerance=1e-6)
     # Get minimized positions
     state = context.getState(getPositions=True)
     positions = state.getPositions(asNumpy=True).value_in_unit(unit.nanometer)
     n_atoms = len(positions)
     n_coords = 3 * n_atoms
     logger.info(f"Minimized structure with {n_atoms} atoms ({n_coords} coordinates)")
+    # Save minimized structure as PDB
+    minimized_positions = state.getPositions()
+    minimized_pdb_file = mdsys.datdir / "minimized_structure.pdb"
+    with open(minimized_pdb_file, 'w') as file:
+        app.PDBFile.writeFile(pdb.topology, minimized_positions, file)
+    logger.info(f"Saved minimized structure to {minimized_pdb_file}")
     # Initialize Hessian matrix
     hess = np.zeros((n_coords, n_coords))
     # Convert delta to OpenMM units
@@ -616,11 +622,30 @@ def enm_analysis(sysdir, sysname):
     ag = u.select_atoms("name CA")
     # vecs = np.array(ag.positions).astype(np.float64) # (n_atoms, 3)
     # hess = mdm.hessian(vecs, spring_constant=5, cutoff=11, dd=0) # distances in Angstroms, dd=0 no distance-dependence
-    hess = np.load(system.datdir / "ca_hess.npy")
+    hess = np.load(system.datdir / "num_hess.npy")
     covmat = mdm.inverse_matrix(hess, device="gpu_dense", k_singular=6, n_modes=1000, dtype=np.float64)
     covmat = covmat * 1.25 # kb*T at 300K in kJ/mol
+    
+    # Select only CA parts of the covariance matrix using numpy indexing
+    ca_indices = [atom.index for atom in ag]  # CA atom indices
+    
+    # Create coordinate indices for CA atoms (3 coords per atom)
+    ca_coord_indices = []
+    for atom_idx in ca_indices:
+        ca_coord_indices.extend([3*atom_idx, 3*atom_idx+1, 3*atom_idx+2])
+    ca_coord_indices = np.array(ca_coord_indices)
+    
+    # Extract CA-only covariance matrix using advanced indexing
+    ca_covmat = covmat[np.ix_(ca_coord_indices, ca_coord_indices)]
+    
+    # Save both full and CA-only covariance matrices
     outfile = system.datdir / "enm_cov.npy"
     np.save(outfile, covmat)
+    ca_outfile = system.datdir / "enm_cov_ca.npy"
+    np.save(ca_outfile, ca_covmat)
+    
+    # Use CA covariance matrix for downstream analysis
+    covmat = ca_covmat
     pertmat = mdm.perturbation_matrix(covmat)
     rmsf = np.sqrt(np.diag(covmat).reshape(-1, 3).sum(axis=1)) * 10.0 # (n_atoms,)
     dfi = mdm.dfi(pertmat)
@@ -635,7 +660,7 @@ def main(sysdir, sysname, runname):
     # sysdir = "/scratch/dyangali/reforge/workflows/systems/"
     # sysname = "enm_system"
     # runname = "nve_run"
-    setup(sysdir, sysname)
+    setup_enm(sysdir, sysname)
     md_nve(sysdir, sysname, runname)
     trjconv(sysdir, sysname, runname)
     extract_trajectory_data(sysdir, sysname, runname, prefix="md")

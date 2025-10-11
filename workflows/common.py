@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
-import plots
+from workflows import plots
 
 logger = get_logger(__name__)
 
@@ -194,9 +194,9 @@ def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
     # Get residue IDs
     residue_ids = np.array([atom.resid for atom in atoms])
     # Save arrays
-    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.rmsd[:, 2])  # RMSD values (in angstroms)
-    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.rmsd[:, 1])   # Time values (in ps)
-    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.rmsf)        # RMSF values (in angstroms)
+    np.save(rmsdir / "rmsd_values.npy", rmsd_analysis.results.rmsd[:, 2])  # RMSD values (in angstroms)
+    np.save(rmsdir / "rmsd_times.npy", rmsd_analysis.results.rmsd[:, 1])   # Time values (in ps)
+    np.save(rmsdir / "rmsf_values.npy", rmsf_analysis.results.rmsf)        # RMSF values (in angstroms)
     np.save(rmsdir / "residue_ids.npy", residue_ids)               # Residue IDs
     logger.info(f"Saved RMSD and RMSF data to {rmsdir}")
     # Plots
@@ -227,10 +227,10 @@ def tdlrt_analysis(sysdir, sysname, runname, selection=SELECTION):
         vs = io.read_velocities(u, ag) # (n_atoms*3, nframes)
     ps = ps - ps[:, 0][..., None]
     # CCF calculations
-    adict = {'pp': (ps, ps), } 
+    adict = {'vv': (vs, vs), } 
     for key, item in adict.items(): # DT = TSTEP * NOUT
         v1, v2 = item
-        corr = mdm.ccf(v1, v2, ntmax=100, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
+        corr = mdm.ccf(v1, v2, ntmax=400, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
         corr_file = mdrun.lrtdir / f'ccfs_{key}.npy'
         np.save(corr_file, corr)    
         logger.info("Saved CCFs to %s", corr_file)
