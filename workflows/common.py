@@ -227,10 +227,10 @@ def tdlrt_analysis(sysdir, sysname, runname, selection=SELECTION):
         vs = io.read_velocities(u, ag) # (n_atoms*3, nframes)
     ps = ps - ps[:, 0][..., None]
     # CCF calculations
-    adict = {'pp': (ps, ps), } 
+    adict = {'vv': (vs, vs), } 
     for key, item in adict.items(): # DT = TSTEP * NOUT
         v1, v2 = item
-        corr = mdm.ccf(v1, v2, ntmax=100, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
+        corr = mdm.ccf(v1, v2, ntmax=400, n=1, mode='gpu', center=False, dtype=np.float32, buffer_c=0.9) # falls back on cpu if no cuda
         corr_file = mdrun.lrtdir / f'ccfs_{key}.npy'
         np.save(corr_file, corr)    
         logger.info("Saved CCFs to %s", corr_file)

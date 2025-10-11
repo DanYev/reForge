@@ -376,7 +376,7 @@ class MmReporter(object):
 #############################################################################################
 
 def convert_trajectories(topology, trajectories, out_topology, out_trajectory, ref_top=None,
-        selection="name CA", step=1, fit=True):
+        selection="name CA", step=1, skip_selection=False, fit=True):
     """
     Convert and fit trajectories using MDAnalysis.
     
@@ -411,6 +411,10 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
             writer.write(selected_atoms)
+            if ts.frame % 1000 == 0:
+                frame = ts.frame
+                time_ns = ts.time / 1000
+                logger.info(f"Current frame: %s at %s ns", frame, time_ns)
     logger.info("Saved selection '%s' to %s and topology to %s", selection, output_traj, output_top)
 
 
