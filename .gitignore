@@ -16,6 +16,7 @@ tests/
 # Workflow outputs
 workflows/systems/
 workflows/png/
+work/
 
 # Data dumps and Slurm logs
 *data*
