@@ -22,7 +22,12 @@ logger = get_logger(__name__)
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
-TRJEXT = 'trr' # 'xtc' or 'trr'
+TRJEXT = 'xtc' # 'xtc' or 'trr'
+
+def workflow(sysdir, sysname, runname):
+    cov_analysis(sysdir, sysname)
+    rms_analysis(sysdir, sysname, runname)
+    get_means_sems(sysdir, sysname)
 
 ################################################################################
 ### PCA/Clustering ###

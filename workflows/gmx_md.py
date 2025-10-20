@@ -6,7 +6,15 @@ from reforge.utils import clean_dir, get_logger
 logger = get_logger()
 
 # Global settings
-INPDB = '1btl.pdb'
+INPDB = 'input.pdb'
+dt = 0.020  # Time step in picoseconds
+total_time = 1000  # Total simulation time in nanoseconds
+NSTEPS = int(total_time * 1e3 / dt)  # Number of MD steps for production run
+
+def workflow(sysdir, sysname, runname):
+    setup_martini(sysdir, sysname)
+    md_npt(sysdir, sysname, runname)
+    trjconv(sysdir, sysname, runname)
 
 
 def setup(*args):
@@ -16,10 +24,10 @@ def setup(*args):
 def setup_martini(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
-    inpdb = mdsys.sysdir / INPDB
+    inpdb = mdsys.root / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.clean_pdb_mm(inpdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0) # Generates Amber ff names in PDB
+    mdsys.clean_pdb_mm(inpdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
     # mdsys.clean_pdb_gmx(inpdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
     mdsys.split_chains()
     
@@ -28,7 +36,7 @@ def setup_martini(sysdir, sysname):
 
     # 1.2. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.1, from_ff='amber', p="backbone", pf=1000, append=False) # Martini + Go-network FF
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
     mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
@@ -55,7 +63,7 @@ def md_npt(sysdir, sysname, runname):
     mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="hu.gro", r="hu.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")
-    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=10000, ) # bonded="gpu")
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu")
     
     
 def extend(sysdir, sysname, runname):    
@@ -79,6 +87,8 @@ def trjconv(sysdir, sysname, runname, **kwargs):
     mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
     mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="samples.xtc", fit="rot+trans")
     clean_dir(mdrun.rundir)
+
+
 
 
 if __name__ == "__main__":
