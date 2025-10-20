@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     ##### For MD #####
     pyscript = str(pdir / 'gmx_md.py')
-    run_job('workflow', submit=submit, G='1', c='8', mem='2G', t='00-02:00:00')
+    run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
     # sys_job('setup', submit=submit)
     # # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # # run_job('extend', submit=submit, G='1', c='4', mem='2G')
