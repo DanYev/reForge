@@ -72,7 +72,7 @@ def extend(sysdir, sysname, runname):
     dt = 0.020 # picoseconds
     t_ext = 10000 # nanoseconds
     nsteps = int(t_ext * 1e3 / dt)
-    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=10000, ) # bonded="gpu") 
+    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu") 
     
     
 def trjconv(sysdir, sysname, runname, **kwargs):
