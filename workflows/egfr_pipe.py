@@ -79,8 +79,43 @@ def label_segments(in_pdb, out_pdb):
             atom.segid = label 
     atoms.write_pdb(out_pdb)
 
+
+def md_npt(sysdir, sysname, runname): 
+    mdrun = GmxRun(sysdir, sysname, runname)
+    mdrun.prepare_files()
+    ntomp = get_ntomp()
+    mdrun.empp(f=mdrun.mdpdir / "em_cgmem.mdp")
+    mdrun.mdrun(deffnm="em", ntomp=ntomp)
+    mdrun.eqpp(f=mdrun.mdpdir / "eq_cgmem.mdp", c="em.gro", r="em.gro", maxwarn="1") 
+    mdrun.mdrun(deffnm="eq", ntomp=ntomp)
+    mdrun.mdpp(f=mdrun.mdpdir / "md_cgmem.mdp", maxwarn="1")
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=-2,) # -2 for MDP options in md_cgmem.mdp
+    
+    
+def extend(sysdir, sysname, runname):    
+    mdrun = GmxRun(sysdir, sysname, runname)
+    ntomp = get_ntomp()
+    dt = 0.020 # picoseconds
+    t_ext = 10000 # nanoseconds
+    nsteps = int(t_ext * 1e3 / dt)
+    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu") 
+    
+    
+def trjconv(sysdir, sysname, runname, **kwargs):
+    kwargs.setdefault("b", 0) # in ps
+    kwargs.setdefault("dt", 200) # in ps
+    kwargs.setdefault("e", 10000000) # in ps
+    mdrun = GmxRun(sysdir, sysname, runname)
+    k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions
+    # mdrun.trjconv(clinput=f"0\n 0\n", s="eq.tpr", f="eq.gro", o="viz.pdb", n=mdrun.sysndx, pbc="atom", ur="compact", e=0)
+    mdrun.convert_tpr(clinput=f"{k}\n", s="md.tpr", n=mdrun.sysndx, o="topology.tpr")
+    mdrun.trjconv(clinput=f"{k}\n {k}\n", s="md.tpr", f="md.xtc", o="conv.xtc", n=mdrun.sysndx, pbc="cluster", ur="compact", **kwargs)
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="samples.xtc", fit="rot+trans")
+    clean_dir(mdrun.rundir)
+
 ################################################################
-### FOR THE MD AND ANALYSIS REFER TO gmx_md.py and common.py ###
+### FOR ANALYSIS REFER TO common.py ###
 ################################################################
         
 if __name__ == '__main__':

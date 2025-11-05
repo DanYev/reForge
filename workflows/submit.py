@@ -50,32 +50,20 @@ def run_job(function, submit=False, **kwargs):
                       J=f'{function}', **kwargs)
 
 
-def prepare_systems():
-    for item in INPUT_DIR.iterdir():
-        if item.is_file() and item.suffix == ".pdb":
-            dest = MDSYS_DIR / item.stem
-            dest.mkdir(exist_ok=True, parents=True)
-            shutil.copy(str(item), str(dest / 'input.pdb'))
-
-
 if __name__ == "__main__":
-    INPUT_DIR = Path("../tests/")
-    MDSYS_DIR = Path("systems")
-    prepare_systems()
-
     pdir = Path(__file__).parent
     shscript = str(pdir / 'run.sh')
 
-    sysdir = str(MDSYS_DIR)
-    sysnames = os.listdir(sysdir)
-    runs = ["mdrun_1"]
+    sysdir = "systems"
+    sysnames = ["wt"]
+    runs = ["mdrun_1", "mdrun_2"]
 
     submit = True
 
     ##### For MD #####
-    pyscript = str(pdir / 'gmx_md.py')
-    run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
-    # sys_job('setup', submit=submit)
+    pyscript = str(pdir / 'egfr_pipe.py')
+    # run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
+    sys_job('setup', submit=submit)
     # # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-02:00:00')
     # # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     # # run_job('trjconv', submit=submit)
