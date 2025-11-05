@@ -5,17 +5,15 @@ from reforge.utils import get_logger
 logger = get_logger(__name__)
 
 
-def setup(*args):
-    setup_cg_protein_membrane(*args)
+INPDB = "egfr_v3.pdb"
 
-
-def setup_cg_protein_membrane(sysdir, sysname):
+def setup(sysdir, sysname):
     ### FOR CG PROTEIN+LIPID BILAYERS ###
     mdsys = GmxSystem(sysdir, sysname)
 
     # 1.1. Need to copy force field and md-parameter files, prepare directories and clean input PDB
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.sort_input_pdb(mdsys.sysdir / "egfr_v3.pdb") # sorts chains in the input file and returns mdsys.inpdb file
+    mdsys.sort_input_pdb(mdsys.sysdir / INPDB) # sorts chains in the input file and returns mdsys.inpdb file
     label_segments(in_pdb=mdsys.inpdb, out_pdb=mdsys.inpdb) # label the segments in the input PDB file
     # mdsys.clean_pdb_mm(mdsys.inpdb, add_missing_atoms=True, add_hydrogens=False, pH=7.0)
     mdsys.clean_pdb_gmx(mdsys.inpdb, clinput='8\n 7\n', ignh='no', renum='yes') # 8 for CHARMM, 6 for AMBER FF
@@ -25,8 +23,8 @@ def setup_cg_protein_membrane(sysdir, sysname):
     # mdsys.get_go_maps(append=True)
 
     # # 1.3. COARSE-GRAINING. Done separately for each chain. If don't want to split some of them, it needs to be done manually. 
-    mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, from_ff='charmm', p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
-    # mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='charmm', p='backbone', pf=500, append=False) # Martini + Go-network FF
+    # mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, from_ff='charmm', p='backbone', pf=500, append=False)  # Martini + Elastic network FF 
+    mdsys.martinize_proteins_go(go_eps=9.414, go_low=0.3, go_up=1.1, from_ff='charmm', p='backbone', pf=500, append=False) # Martini + Go-network FF
     mdsys.make_cg_topology(add_resolved_ions=False, prefix='chain') # CG topology. Returns mdsys.systop ("system.top") file
     mdsys.make_cg_structure() # CG topology. Returns mdsys.solupdb ("solute.pdb") file
     label_segments(in_pdb=mdsys.solupdb, out_pdb=mdsys.solupdb) # label the segments in the CG PDB file 
@@ -79,8 +77,43 @@ def label_segments(in_pdb, out_pdb):
             atom.segid = label 
     atoms.write_pdb(out_pdb)
 
+
+def md_npt(sysdir, sysname, runname): 
+    mdrun = GmxRun(sysdir, sysname, runname)
+    mdrun.prepare_files()
+    ntomp = get_ntomp()
+    mdrun.empp(f=mdrun.mdpdir / "em_cgmem.mdp")
+    mdrun.mdrun(deffnm="em", ntomp=ntomp)
+    mdrun.eqpp(f=mdrun.mdpdir / "eq_cgmem.mdp", c="em.gro", r="em.gro", maxwarn="1") 
+    mdrun.mdrun(deffnm="eq", ntomp=ntomp)
+    mdrun.mdpp(f=mdrun.mdpdir / "md_cgmem.mdp", maxwarn="1")
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=-2,) # -2 for MDP options in md_cgmem.mdp
+    
+    
+def extend(sysdir, sysname, runname):    
+    mdrun = GmxRun(sysdir, sysname, runname)
+    ntomp = get_ntomp()
+    dt = 0.020 # picoseconds
+    t_ext = 10000 # nanoseconds
+    nsteps = int(t_ext * 1e3 / dt)
+    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu") 
+    
+    
+def trjconv(sysdir, sysname, runname, **kwargs):
+    kwargs.setdefault("b", 0) # in ps
+    kwargs.setdefault("dt", 200) # in ps
+    kwargs.setdefault("e", 10000000) # in ps
+    mdrun = GmxRun(sysdir, sysname, runname)
+    k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions
+    # mdrun.trjconv(clinput=f"0\n 0\n", s="eq.tpr", f="eq.gro", o="viz.pdb", n=mdrun.sysndx, pbc="atom", ur="compact", e=0)
+    mdrun.convert_tpr(clinput=f"{k}\n", s="md.tpr", n=mdrun.sysndx, o="topology.tpr")
+    mdrun.trjconv(clinput=f"{k}\n {k}\n", s="md.tpr", f="md.xtc", o="conv.xtc", n=mdrun.sysndx, pbc="cluster", ur="compact", **kwargs)
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
+    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="samples.xtc", fit="rot+trans")
+    clean_dir(mdrun.rundir)
+
 ################################################################
-### FOR THE MD AND ANALYSIS REFER TO gmx_md.py and common.py ###
+### FOR ANALYSIS REFER TO common.py ###
 ################################################################
         
 if __name__ == '__main__':
