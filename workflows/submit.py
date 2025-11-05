@@ -55,10 +55,10 @@ if __name__ == "__main__":
     shscript = str(pdir / 'run.sh')
 
     sysdir = "systems"
-    sysnames = ["wt"]
+    sysnames = ["egfr_v3"]
     runs = ["mdrun_1", "mdrun_2"]
 
-    submit = True
+    submit = False
 
     ##### For MD #####
     pyscript = str(pdir / 'egfr_pipe.py')
