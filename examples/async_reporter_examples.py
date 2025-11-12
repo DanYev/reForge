@@ -1,365 +1,204 @@
 """
-Example usage of AsyncHeavyReporter with OpenMM simulations.
-Demonstrates various use cases and heavy calculation patterns.
+Example usage of AsyncReporter with OpenMM simulations.
+Water box simulation with Mean Square Displacement (MSD) calculation.
 """
 import numpy as np
 from pathlib import Path
 import openmm as mm
+import MDAnalysis as mda
 from openmm import app, unit
 
 # Import the async reporter
-from reforge.mdsystem.async_reporter import AsyncHeavyReporter
-
-
-# ============================================================================
-# Example 1: Distance Matrix Calculation
-# ============================================================================
-
-def distance_matrix_calculation(data):
-    """
-    Calculate pairwise distance matrix between all atoms.
-    This is computationally expensive for large systems.
-    """
-    positions = data['positions']
-    n_atoms = len(positions)
-    
-    # Calculate distance matrix (vectorized)
-    diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
-    distances = np.sqrt(np.sum(diff**2, axis=2))
-    
-    return {
-        'step': data['step'],
-        'distance_matrix': distances,
-        'mean_distance': np.mean(distances[np.triu_indices(n_atoms, k=1)])
-    }
-
-
-def example_distance_matrix():
-    """Example: Track distance matrix evolution during simulation"""
-    print("\n" + "="*70)
-    print("EXAMPLE 1: Distance Matrix Calculation")
-    print("="*70 + "\n")
-    
-    # This would be your actual OpenMM simulation setup
-    # For demonstration, we'll show the reporter setup
-    
-    reporter = AsyncHeavyReporter(
-        'distance_matrices.npz',
-        reportInterval=100,  # Report every 100 steps
-        calculation_func=distance_matrix_calculation,
-        queue_size=20
-    )
-    
-    print("Reporter created for distance matrix calculations")
-    print("Add to simulation: simulation.reporters.append(reporter)")
-    print("After simulation: reporter.finalize()")
-    
-    return reporter
-
+from reforge.mdsystem.mm_reporters import CustomReporter
+from graph_utils import live_plot
+from ring import vector_ring_buffer
 
 # ============================================================================
-# Example 2: Contact Map Calculation
+# Mean Square Displacement (MSD) Calculation
 # ============================================================================
 
-def contact_map_calculation(data, cutoff=0.5):
-    """
-    Calculate contact map (atoms within cutoff distance).
-    
-    Parameters
-    ----------
-    data : dict
-        Frame data with positions
-    cutoff : float
-        Distance cutoff in nm
-    """
-    positions = data['positions']
-    n_atoms = len(positions)
-    
-    # Calculate distance matrix
-    diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
-    distances = np.sqrt(np.sum(diff**2, axis=2))
-    
-    # Contact map: 1 if within cutoff, 0 otherwise
-    contacts = (distances < cutoff).astype(int)
-    
-    # Remove self-contacts
-    np.fill_diagonal(contacts, 0)
-    
-    return {
-        'step': data['step'],
-        'contact_map': contacts,
-        'n_contacts': np.sum(contacts) // 2  # Divide by 2 for symmetry
-    }
+def msd_calculation(data, initial_positions):
+    window_size = 250  # Size of ring buffer (250 x 0.008 ps = 2.0 ps)
+    buffer = vector_ring_buffer(window_size)  # Ring buffer for 250 x 3D vectors
+    ready = False  # Flag to track if ring buffer is full
+    # Correlation time axis
+    dt = data['dt'].value_in_unit(unit.picoseconds)
+    tau_ps = np.arange(0, window_size) * dt
+    # Cumulative sum of MSD values for averaging
+    msd_sum = np.zeros(window_size)
+    n_samples = 0  # Number of MSD samples collected
 
-
-def example_contact_map():
-    """Example: Track contact formation/breaking"""
-    print("\n" + "="*70)
-    print("EXAMPLE 2: Contact Map Calculation")
-    print("="*70 + "\n")
-    
-    reporter = AsyncHeavyReporter(
-        'contact_maps.npz',
-        reportInterval=500,
-        calculation_func=contact_map_calculation,
-        cutoff=0.5,  # Additional parameter passed to calculation
-        queue_size=15
-    )
-    
-    print("Reporter created for contact map tracking")
-    return reporter
-
-
-# ============================================================================
-# Example 3: Radius of Gyration with Subgroups
-# ============================================================================
-
-def radius_of_gyration_calculation(data, selection_indices=None):
-    """
-    Calculate radius of gyration for entire system or selection.
-    
-    Parameters
-    ----------
-    data : dict
-        Frame data
-    selection_indices : list or None
-        Indices of atoms to include (None = all atoms)
-    """
-    positions = data['positions']
-    
-    if selection_indices is not None:
-        positions = positions[selection_indices]
-    
-    # Center of mass
-    com = np.mean(positions, axis=0)
-    
-    # Radius of gyration
-    r_vectors = positions - com
-    rg = np.sqrt(np.mean(np.sum(r_vectors**2, axis=1)))
-    
-    return {
-        'step': data['step'],
-        'rg': rg,
-        'com': com
-    }
-
-
-def example_radius_of_gyration():
-    """Example: Track protein compactness"""
-    print("\n" + "="*70)
-    print("EXAMPLE 3: Radius of Gyration")
-    print("="*70 + "\n")
-    
-    # Assuming CA atoms are indices 0-99
-    ca_indices = list(range(0, 100))
-    
-    reporter = AsyncHeavyReporter(
-        'radius_of_gyration.npz',
-        reportInterval=100,
-        calculation_func=radius_of_gyration_calculation,
-        selection_indices=ca_indices,
-        queue_size=20
-    )
-    
-    print("Reporter created for Rg tracking (CA atoms only)")
-    return reporter
-
-
-# ============================================================================
-# Example 4: Hydrogen Bond Analysis
-# ============================================================================
-
-def hydrogen_bond_calculation(data, donor_indices, acceptor_indices, 
-                              distance_cutoff=0.35, angle_cutoff=150):
-    """
-    Detect hydrogen bonds based on geometric criteria.
-    
-    Parameters
-    ----------
-    data : dict
-        Frame data
-    donor_indices : list
-        Indices of hydrogen bond donors
-    acceptor_indices : list
-        Indices of hydrogen bond acceptors
-    distance_cutoff : float
-        Maximum H...A distance in nm
-    angle_cutoff : float
-        Minimum D-H...A angle in degrees
-    """
-    positions = data['positions']
-    
-    # Simple distance-based detection (full implementation would include angles)
-    hbonds = []
-    
-    for donor_idx in donor_indices:
-        for acceptor_idx in acceptor_indices:
-            if donor_idx == acceptor_idx:
-                continue
+    u = mda.Universe('topology.pdb')
+    sel = u.select_atoms("resid 1")
+    # tStep = 0
+    # # Main analysis loop
+    # for ts in u.trajectory:
+    #     com_position = sel.center_of_mass()
+    #     buffer/.append(com_position)
+    #     if buffer.size == window_size: # Buffer is filled
+    #         ready = True
             
-            distance = np.linalg.norm(positions[donor_idx] - positions[acceptor_idx])
-            
-            if distance < distance_cutoff:
-                hbonds.append((donor_idx, acceptor_idx, distance))
-    
-    return {
-        'step': data['step'],
-        'n_hbonds': len(hbonds),
-        'hbond_list': hbonds
-    }
-
-
-def example_hydrogen_bonds():
-    """Example: Track hydrogen bond dynamics"""
-    print("\n" + "="*70)
-    print("EXAMPLE 4: Hydrogen Bond Analysis")
-    print("="*70 + "\n")
-    
-    # Example indices (would come from topology)
-    donor_indices = [10, 20, 30, 40, 50]
-    acceptor_indices = [15, 25, 35, 45, 55]
-    
-    reporter = AsyncHeavyReporter(
-        'hbonds.npz',
-        reportInterval=200,
-        calculation_func=hydrogen_bond_calculation,
-        donor_indices=donor_indices,
-        acceptor_indices=acceptor_indices,
-        queue_size=25
-    )
-    
-    print("Reporter created for H-bond tracking")
-    return reporter
-
+    #     # Calculate MSD when buffer is filled
+    #     if ready:
+    #         history = buffer.get_values() # All positions in ring buffer (sorted)
+    #         ref = history[0]  # Reference position 
+    #         # Calculate MSD
+    #         displacements = history - ref  # Displacements for all times in history
+    #         msd_values = np.sum(displacements**2, axis=1) # Convert displacements to MSDs
+    #         # Add to cumulative sum
+    #         msd_sum += msd_values
+    #         n_samples += 1
+    #         # Calculate average MSDs 
+    #         msd_avg = msd_sum / n_samples
+    #     tStep += 1
+    #     if tStep % window_size ==0:
+    #         plot['update'](tau_ps, msd_avg)
 
 # ============================================================================
-# Example 5: Full OpenMM Simulation with Async Reporter
+# Water Box Simulation with MSD
 # ============================================================================
 
-def create_simple_system():
-    """Create a simple test system for demonstration"""
-    # Create a simple system (alanine dipeptide)
-    pdb = app.PDBFile('input.pdb')  # Would need actual PDB
+def create_water_box(n_waters=216, box_size=1.86):
+    """
+    Create a water box system using OpenMM.
     
-    forcefield = app.ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
-    
+    Parameters
+    ----------
+    n_waters : int
+        Number of water molecules (default: 216 for ~1.86 nm box)
+    box_size : float
+        Box size in nanometers
+        
+    Returns
+    -------
+    topology : openmm.app.Topology
+        System topology
+    system : openmm.System
+        OpenMM system
+    positions : list
+        Initial positions with units
+    """
+    print(f"\nCreating water box with ~{n_waters} molecules...")
+    print(f"Box size: {box_size} nm")
+    # Create forcefield
+    forcefield = app.ForceField('tip3p.xml')
+    # Use OpenMM's Modeller to create a water box
+    modeller = app.Modeller(app.Topology(), [])
+    # Add solvent (water) to fill the box
+    # boxSize expects values in nm without units
+    modeller.addSolvent(forcefield, model='tip3p', boxSize=[box_size, box_size, box_size]*unit.nanometers)
+    topology = modeller.topology
+    positions = modeller.positions
+    with open('topology.pdb', 'w') as f:
+        app.PDBFile.writeFile(topology, positions, f)
+    # Create system with TIP3P water model
     system = forcefield.createSystem(
-        pdb.topology,
+        topology,
         nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0*unit.nanometer,
-        constraints=app.HBonds
+        nonbondedCutoff=0.9*unit.nanometers,
+        constraints=app.HBonds,
+        rigidWater=True,
+        ewaldErrorTolerance=0.0005
     )
-    
-    integrator = mm.LangevinMiddleIntegrator(
-        300*unit.kelvin,
-        1.0/unit.picosecond,
-        2.0*unit.femtoseconds
-    )
-    
-    simulation = app.Simulation(pdb.topology, system, integrator)
-    simulation.context.setPositions(pdb.positions)
-    
-    return simulation
+    n_atoms = len(positions)
+    n_molecules = n_atoms // 3
+    print(f"Created {n_molecules} water molecules ({n_atoms} atoms)")
+    return topology, system, positions
 
 
-def full_simulation_example():
+def run_water_box_simulation_with_msd(
+    n_waters=216,
+    box_size=1.86,
+    temperature=300*unit.kelvin,
+    timestep=2*unit.femtoseconds,
+    n_steps=50000,
+    report_interval=100,
+    output_dir='water_msd_output'
+):
     """
-    Complete example of running OpenMM simulation with async reporter.
+    Run a water box simulation and calculate MSD using AsyncReporter.
+    
+    Parameters
+    ----------
+    n_waters : int
+        Number of water molecules
+    box_size : float
+        Box size in nanometers
+    temperature : Quantity
+        Simulation temperature
+    timestep : Quantity
+        Integration timestep
+    n_steps : int
+        Number of simulation steps
+    report_interval : int
+        How often to calculate MSD
+    output_dir : str
+        Directory for output files
     """
     print("\n" + "="*70)
-    print("EXAMPLE 5: Full OpenMM Simulation with AsyncHeavyReporter")
-    print("="*70 + "\n")
+    print("Water Box Simulation with Mean Square Displacement")
+    print("="*70)
     
-    print("This is a template for a full simulation. Key steps:\n")
+    # Create output directory
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
     
-    code = """
-# 1. Create your simulation
-simulation = create_simple_system()
-
-# 2. Add standard reporters
-simulation.reporters.append(
-    app.StateDataReporter('log.txt', 1000, step=True, 
-                         potentialEnergy=True, temperature=True)
-)
-
-# 3. Add async heavy reporter
-heavy_reporter = AsyncHeavyReporter(
-    'heavy_analysis.npz',
-    reportInterval=1000,
-    calculation_func=distance_matrix_calculation,
-    queue_size=20
-)
-simulation.reporters.append(heavy_reporter)
-
-# 4. Run simulation
-print("Starting simulation...")
-simulation.step(100000)  # MD engine runs at full speed!
-
-# 5. IMPORTANT: Finalize heavy reporter
-print("Finalizing heavy calculations...")
-heavy_reporter.finalize()  # Wait for all calculations to complete
-
-print("Done! Results saved to heavy_analysis.npz")
-"""
+    # Create water box system
+    topology, system, positions = create_water_box(n_waters, box_size)
     
-    print(code)
-    print("\nKey points:")
-    print("  • MD engine is NOT blocked by heavy calculations")
-    print("  • Calculations happen in parallel background thread")
-    print("  • Must call finalize() after simulation")
-    print("  • Adjust queue_size based on calculation speed")
-
-
-# ============================================================================
-# Example 6: Multiple Reporters
-# ============================================================================
-
-def example_multiple_reporters():
-    """Example: Use multiple async reporters simultaneously"""
-    print("\n" + "="*70)
-    print("EXAMPLE 6: Multiple Async Reporters")
-    print("="*70 + "\n")
+    # Create integrator
+    friction = 1.0 / unit.picoseconds
+    integrator = mm.LangevinMiddleIntegrator(temperature, friction, timestep)
     
-    print("You can use multiple async reporters for different analyses:\n")
+    # Create simulation
+    simulation = app.Simulation(topology, system, integrator)
+    simulation.context.setPositions(positions)
     
-    code = """
-# Reporter 1: Distance matrices (expensive)
-dist_reporter = AsyncHeavyReporter(
-    'distances.npz',
-    reportInterval=1000,
-    calculation_func=distance_matrix_calculation,
-    queue_size=15
-)
-
-# Reporter 2: Contact maps (moderate cost)
-contact_reporter = AsyncHeavyReporter(
-    'contacts.npz',
-    reportInterval=500,
-    calculation_func=contact_map_calculation,
-    queue_size=20
-)
-
-# Reporter 3: Radius of gyration (cheap)
-rg_reporter = AsyncHeavyReporter(
-    'rg.npz',
-    reportInterval=100,
-    calculation_func=radius_of_gyration_calculation,
-    queue_size=30
-)
-
-# Add all to simulation
-simulation.reporters.extend([dist_reporter, contact_reporter, rg_reporter])
-
-# Run simulation
-simulation.step(100000)
-
-# Finalize all
-for reporter in [dist_reporter, contact_reporter, rg_reporter]:
-    reporter.finalize()
-"""
+    # Minimize, equilibrates
+    print("\nMinimizing, equilibrating...")
+    simulation.minimizeEnergy(maxIterations=10)
+    simulation.step(100)
+    # Get initial positions for MSD calculation
+    state = simulation.context.getState(getPositions=True)
+    initial_positions = state.getPositions(asNumpy=True).value_in_unit(unit.nanometers)
+    # Add standard reporters
+    log_file = str(output_path / 'simulation.log')
+    simulation.reporters.append(
+        app.StateDataReporter(
+            log_file,
+            100,
+            step=True,
+            time=True,
+            potentialEnergy=True,
+            kineticEnergy=True,
+            temperature=True,
+            speed=True
+        )
+    )
+    custom_reporter = CustomReporter(
+        'log.txt',
+        reportInterval=10,
+        selection="resid 1"
+    )
+    simulation.reporters.append(custom_reporter)
+    # Run simulation
+    print("\nRunning simulation...")
+    simulation.step(n_steps)
+    exit()
+    # Save final structure
+    final_state = simulation.context.getState(getPositions=True)
+    final_pdb = str(output_path / 'final_structure.pdb')
+    with open(final_pdb, 'w') as f:
+        app.PDBFile.writeFile(topology, final_state.getPositions(), f)
     
-    print(code)
-    print("\nAll reporters run in parallel - no blocking!")
+    print(f"\nSimulation complete!")
+    print(f"Output directory: {output_dir}/")
+    print(f"  • MSD data: msd_data.npz")
+    print(f"  • Simulation log: simulation.log")
+    print(f"  • Final structure: final_structure.pdb")
+    
+    return msd_file
+
 
 
 # ============================================================================
@@ -367,24 +206,23 @@ for reporter in [dist_reporter, contact_reporter, rg_reporter]:
 # ============================================================================
 
 def main():
-    """Run all examples"""
+    """Run water box simulation with MSD calculation"""
     print("\n" + "="*70)
-    print("AsyncHeavyReporter - Usage Examples")
+    print("AsyncReporter Example: Water Box with MSD")
     print("="*70)
     
-    example_distance_matrix()
-    example_contact_map()
-    example_radius_of_gyration()
-    example_hydrogen_bonds()
-    full_simulation_example()
-    example_multiple_reporters()
+    # Run the simulation
+    run_water_box_simulation_with_msd(
+        n_waters=216,           # Small box for quick demo
+        box_size=1.86,          # nm
+        temperature=300*unit.kelvin,
+        timestep=2*unit.femtoseconds,
+        n_steps=500,          # 100 ps total
+        report_interval=10,    # Calculate MSD every 200 fs
+        output_dir='water_msd_output'
+    )
     
-    print("\n" + "="*70)
-    print("For more information, see:")
-    print("  • AsyncHeavyReporter source: reforge/mdsystem/async_reporter.py")
-    print("  • Unit tests: tests/test_async_reporter.py")
-    print("  • Benchmarks: tests/benchmark_async_reporter.py")
-    print("="*70 + "\n")
+
 
 
 if __name__ == "__main__":
