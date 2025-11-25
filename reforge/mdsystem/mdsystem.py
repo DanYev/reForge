@@ -611,7 +611,7 @@ class MDRun(MDSystem):
                 np.save(self.covdir / pert_file, pertmat)
         logger.info("Finished calculating perturbation matrices!")
 
-    def get_dfi(self, intag="pertmat", outtag="dfi"):
+    def get_dfi(self, intag="pertmat", outtag="dfi", old_norm=False):
         """Calculates Dynamic Flexibility Index (DFI) from perturbation matrices.
 
         Parameters
@@ -626,7 +626,7 @@ class MDRun(MDSystem):
                 logger.info("  Processing perturbation matrix %s", pert_file)
                 pertmat = np.load(self.covdir / pert_file)
                 logger.info("  Calculating DFI")
-                dfi_val = mdm.dfi(pertmat)
+                dfi_val = mdm.dfi(pertmat, old_norm=old_norm)
                 dfi_file = pert_file.replace(intag, outtag)
                 dfi_file_path = self.covdir / dfi_file
                 np.save(dfi_file_path, dfi_val)
