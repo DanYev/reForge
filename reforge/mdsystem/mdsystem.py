@@ -438,7 +438,7 @@ class MDSystem:
         with cd(self.root):
             martini_tools.insert_membrane(**kwargs)
 
-    def find_resolved_ions(self, mask=("MG", "ZN", "K")):
+    def find_resolved_ions(self, mask=("MG", "ZN", "CA", "K")):
         """Identifies resolved ions in the input PDB file and writes them to "ions.pdb".
 
         Parameters
@@ -447,13 +447,13 @@ class MDSystem:
         """
         pdbtools.mask_atoms(self.inpdb, "ions.pdb", mask=mask)
 
-    def count_resolved_ions(self, ions=("MG", "ZN", "K")):
+    def count_resolved_ions(self, ions=("MG", "ZN", "CA", "K")):
         """Counts the number of resolved ions in the system PDB file.
 
         Parameters
         ----------
         ions (list, optional): 
-            List of ion names to count (default: ["MG", "ZN", "K"]).
+            List of ion names to count (default: ["MG", "ZN", "CA", "K"]).
 
         Returns
         -------  
@@ -461,9 +461,9 @@ class MDSystem:
             A dictionary mapping ion names to their counts.
         """
         counts = {ion: 0 for ion in ions}
-        with open(self.syspdb, "r", encoding='utf-8') as file:
+        with open(self.inpdb, "r", encoding='utf-8') as file:
             for line in file:
-                if line.startswith("ATOM") or line.startswith("HETATM"):
+                if line.startswith("HETATM"):
                     current_ion = line[12:16].strip()
                     if current_ion in ions:
                         counts[current_ion] += 1

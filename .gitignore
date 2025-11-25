@@ -2,6 +2,7 @@
 tmp/
 build/
 *.egg-info/
+*.log
 
 # Documentation outputs
 docs/examples/__pychache__/

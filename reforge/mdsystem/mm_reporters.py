@@ -98,7 +98,8 @@ class CustomReporter(object):
             self._nextModel += 1
         self.getState(state)
         self.updateUniverse()
-        data = self._atomGroup.positions
+        ag = self._atomGroup
+        data = ag.ts, ag.positions
         print(data)
         self._nextModel += 1
 
