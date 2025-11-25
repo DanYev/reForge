@@ -1,6 +1,7 @@
 # Temporary files and build artifacts
 tmp/
 build/
+examples/
 *.egg-info/
 *.log
 
