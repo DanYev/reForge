@@ -220,7 +220,7 @@ def td_perturbation_matrix(covmat, dtype=np.float64):
     return pertmat
 
 
-def dfi(pert_mat):
+def dfi(pert_mat, old_normi=False):
     """Calculate the Dynamic Flexibility Index (DFI) from a perturbation matrix.
 
     Parameters
@@ -234,6 +234,8 @@ def dfi(pert_mat):
         The DFI values.
     """
     dfi_val = np.average(pert_mat, axis=-1)
+    if old_norm:
+        dfi_val /= len(def_val)
     return dfi_val
 
 
