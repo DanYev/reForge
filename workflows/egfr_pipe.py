@@ -5,10 +5,6 @@ from reforge.utils import clean_dir, get_logger
 
 logger = get_logger()
 
-
-logger = get_logger(__name__)
-
-
 INPDB = "egfr_v3.pdb"
 
 def setup(sysdir, sysname):

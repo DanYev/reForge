@@ -9,7 +9,7 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
 from reforge.utils import clean_dir, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 # Global settings
 INPDB = '1btl.pdb'
