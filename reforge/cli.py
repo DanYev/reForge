@@ -360,6 +360,9 @@ def create_job_script(original_script, function, *args):
     # Copy the original script to preserve the version at submission time
     script_copy = job_dir / f"script_{timestamp}.py"
     shutil.copy2(original_script, script_copy)
+    # Add: get original script's directory
+    original_script_path = Path(original_script).resolve()
+    original_script_dir = original_script_path.parent
     
     # Create a wrapper script that calls the specific function
     wrapper_script = job_dir / f"wrapper_{timestamp}.py"
@@ -377,24 +380,22 @@ import sys
 import os
 from pathlib import Path
 
-# Add the script directory to path
+# Add the original script's directory to path first (for sibling imports)
+original_script_dir = Path(r"{original_script_dir}")
+sys.path.insert(0, str(original_script_dir))
+
+# Add the script directory to path (for the copied script)
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
 # Import the copied script
 import {script_copy.stem} as target_module
 
-# Add the original script's directory to path to import run_command
-original_script_path = Path("{original_script}")
-original_script_dir = original_script_path.parent
-sys.path.insert(0, str(original_script_dir))
-
 if __name__ == "__main__":
     # Set up sys.argv to mimic command line call
     function_name = "{function}"
     args = {list(args)}
     sys.argv = [__file__, function_name] + args
-    
     # Try to use the centralized run_command function
     try:
         from reforge.cli import run_command
