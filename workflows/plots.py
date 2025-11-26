@@ -7,7 +7,7 @@ from reforge import io, mdm
 from reforge.mdsystem import gmxmd
 from reforge.plotting import *
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 def pull_data(datdir, metric):

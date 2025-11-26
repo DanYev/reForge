@@ -18,7 +18,7 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
 from workflows import plots
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
