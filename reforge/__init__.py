@@ -36,7 +36,7 @@ logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
 
 # Make logger available at package level
 __all__ = ["logger"]
-do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py"]
+do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py", "plotting.py"]
 
 package_dir = os.path.dirname(__file__)
 for module in os.listdir(package_dir):
