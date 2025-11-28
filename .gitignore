@@ -4,6 +4,7 @@ build/
 examples/
 *.egg-info/
 *.log
+*.so
 
 # Documentation outputs
 docs/examples/__pychache__/
@@ -41,7 +42,6 @@ __pycache__/
 *.lock
 
 # Source artifacts and intermediate files
-*mycmath.c
-*rcmath.c
+*rcymath*.c
 test.itp
 

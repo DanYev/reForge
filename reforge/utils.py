@@ -51,15 +51,12 @@ def timeit(*args, **kwargs):
     # If called with no args, it's being used as @timeit
     if len(args) == 0:
         return _timeit(**kwargs)
-    
     # If first arg is a function, it's being used as @timeit
     if len(args) == 1 and callable(args[0]):
         return _timeit()(args[0])
-        
     # If first arg is a level, it's being used as @timeit(level=...)
     if len(args) == 1 and isinstance(args[0], int):
         return _timeit(level=args[0])
-    
     # New style with explicit parameters
     return _timeit(*args, **kwargs)
 
@@ -82,7 +79,6 @@ def _timeit(level=logging.DEBUG, unit='s'):
             result = func(*args, **kwargs)
             end_time = time.perf_counter()
             execution_time = end_time - start_time
-            
             # Convert to requested unit
             if unit == 'ms' or (unit == 'auto' and execution_time < 1):
                 display_time = execution_time * 1000
@@ -93,7 +89,6 @@ def _timeit(level=logging.DEBUG, unit='s'):
             else:  # seconds is default
                 display_time = execution_time
                 unit_str = 'seconds'
-            
             logger.log(
                 level,
                 "Function '%s.%s' executed in %.6f %s",
