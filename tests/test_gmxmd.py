@@ -13,6 +13,7 @@ from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 from workflows import gmx_md
+from workflows.gmx_md import INPDB  # Import the constant
 
 # Create a gmxSystem instance for testing.
 sysdir = 'tests'
@@ -20,7 +21,7 @@ sysname = 'gmx_sys'
 runname = 'gmx_run'
 mdsys = GmxSystem(sysdir, sysname)
 mdrun = GmxRun(sysdir, sysname, runname)
-in_pdb = '../dsRNA.pdb'
+in_pdb = Path('tests').resolve() / 'dsRNA.pdb'
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
@@ -32,6 +33,7 @@ def cleanup_test_files():
 
 def test_prepare_files():
     mdsys.prepare_files()
+    shutil.copy(in_pdb, mdsys.root / INPDB)
 
 def test_sort_input_pdb():
     mdsys.sort_input_pdb(in_pdb)
@@ -61,12 +63,12 @@ def test_setup_martini():
     assert pdb_path.exists()
 
 def test_md_npt():
-    gmx_md.md_npt(sysdir, sysname, runname)
+    gmx_md.md_npt(sysdir, sysname, runname, nsteps=1000)
     md_path = mdrun.rundir / "md.xtc"
     assert md_path.exists()
 
 def test_extend():
-    gmx_md.extend(sysdir, sysname, runname)
+    gmx_md.extend(sysdir, sysname, runname, nsteps=1000)
 
 def test_trjconv():
     gmx_md.trjconv(sysdir, sysname, runname)
