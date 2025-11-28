@@ -7,7 +7,7 @@
 
 module purge
 module load mamba/latest
-module load gromacs/2023.4-gpu-mpi
+module load gromacs
 source activate reforge
 
 # Pre-load reforge to speed up interactive usage (optional)
