@@ -312,8 +312,8 @@ def perturbation_matrix(np.ndarray[double, ndim=2] covariance_matrix, bint norma
         f0 = directions[k, 0]
         f1 = directions[k, 1]
         f2 = directions[k, 2]
-        for j in range(n):
-            for i in range(m):
+        for i in range(m):
+            for j in range(n):
                 delta0 = (covariance_matrix[3*i,   3*j]   * f0 +
                           covariance_matrix[3*i,   3*j+1] * f1 +
                           covariance_matrix[3*i,   3*j+2] * f2)
@@ -388,8 +388,8 @@ def perturbation_matrix_par(np.ndarray[double, ndim=2] covariance_matrix, bint n
         f1 = directions_view[k, 1]
         f2 = directions_view[k, 2]
         tid = threadid() # Get thread id to index into the local accumulator.
-        for j in range(n):
-            for i in range(m):
+        for i in range(m):
+            for j in range(n):
                 delta0 = (cov_view[3*i,   3*j]   * f0 +
                           cov_view[3*i,   3*j+1] * f1 +
                           cov_view[3*i,   3*j+2] * f2)
@@ -566,7 +566,7 @@ def td_perturbation_matrix(np.ndarray[double, ndim=3] ccf, bint normalize=True) 
 @memprofit
 def td_perturbation_matrix_par(np.ndarray[double, ndim=3] ccf, bint normalize=True) -> np.ndarray:
     """
-    Calculate the time-dependent perturbation matrix from a td-correlation matrix using block-wise norms.
+    Calculate the time-dependent perturbation matrix from a td-correlation matrix using block-wise norms (parallel version).
 
     The input covariance matrix 'ccf' is expected to have shape (3*m, 3*n, nt). For each block (i,j, it),
     the perturbation value is computed as the square root of the sum of the squares of the corresponding
@@ -589,27 +589,35 @@ def td_perturbation_matrix_par(np.ndarray[double, ndim=3] ccf, bint normalize=Tr
     cdef int n = ccf.shape[1] // 3
     cdef int nt = ccf.shape[2]
     cdef int i, j, it, a, b
-    cdef double temp, sum_val = 0.0
+    cdef double sum_val = 0.0, norm
     cdef np.ndarray[double, ndim=3] perturbation_matrix = np.empty((m, n, nt), dtype=np.float64)
     
-    # Compute the block-wise norm for each (i,j,it) block.
-    for it in range(nt):
+    # Create memoryview for faster access
+    cdef double[:, :, :] ccf_view = ccf
+    cdef double[:, :, :] pert_view = perturbation_matrix
+    
+    # Parallel computation of block-wise norms across time frames
+    for it in prange(nt, nogil=True, schedule='static'):
         for i in range(m):
             for j in range(n):
-                temp = 0.0
+                pert_view[i, j, it] = 0.0
                 for a in range(3):
                     for b in range(3):
-                        temp += ccf[3*i + a, 3*j + b, it] * ccf[3*i + a, 3*j + b, it]
-                perturbation_matrix[i, j, it] = sqrt(temp)
-                if it == 0:
-                    sum_val += perturbation_matrix[i, j, it]
+                        pert_view[i, j, it] += ccf_view[3*i + a, 3*j + b, it] * ccf_view[3*i + a, 3*j + b, it]
+                pert_view[i, j, it] = sqrt(pert_view[i, j, it])
     
-    if normalize and sum_val != 0.0:
-        norm = n * m / sum_val  
+    # Calculate sum from first time frame for normalization
+    if normalize:
         for i in range(m):
             for j in range(n):
-                for it in range(nt):
-                    perturbation_matrix[i, j, it] *= norm
+                sum_val += perturbation_matrix[i, j, 0]
+        
+        if sum_val != 0.0:
+            norm = n * m / sum_val  
+            for it in prange(nt, nogil=True, schedule='static'):
+                for i in range(m):
+                    for j in range(n):
+                        pert_view[i, j, it] *= norm
                 
     return perturbation_matrix    
 
