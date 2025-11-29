@@ -188,15 +188,15 @@ def perturbation_matrix(covmat, dtype=np.float64):
     np.ndarray
         The computed perturbation matrix.
     """
-    covmat = covmat.astype(np.float64)
-    pertmat = rcmath.perturbation_matrix(covmat)
+    covmat = covmat.astype(dtype)
+    pertmat = rcmath.perturbation_matrix_par(covmat)
     return pertmat
 
 
 def perturbation_matrix_iso(covmat, dtype=np.float64):
     """Compute the perturbation matrix from a covariance matrix"""
-    covmat = covmat.astype(np.float64)
-    pertmat = rcmath.perturbation_matrix_iso(covmat)
+    covmat = covmat.astype(dtype)
+    pertmat = rcmath.perturbation_matrix_iso_par(covmat)
     return pertmat    
 
 
@@ -215,8 +215,8 @@ def td_perturbation_matrix(covmat, dtype=np.float64):
     np.ndarray
         The computed block-wise perturbation matrix.
     """
-    covmat = covmat.astype(np.float64)
-    pertmat = rcmath.td_perturbation_matrix(covmat)
+    covmat = covmat.astype(dtype)
+    pertmat = rcmath.td_perturbation_matrix_par(covmat)
     return pertmat
 
 

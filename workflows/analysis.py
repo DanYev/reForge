@@ -22,7 +22,6 @@ logger = get_logger()
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
-TRJEXT = 'xtc' # 'xtc' or 'trr'
 
 def workflow(sysdir, sysname, runname):
     cov_analysis(sysdir, sysname)
@@ -36,7 +35,7 @@ def pca_trajs(sysdir, sysname, selection=SELECTION, step=1):
     mdsys = MDSystem(sysdir, sysname)
     # clean_dir(mdsys.datdir, "*")
     tops = io.pull_files(mdsys.mddir, "topology.pdb")
-    trajs = io.pull_files(mdsys.mddir, f"samples.{TRJEXT}")
+    trajs = io.pull_files(mdsys.mddir, f"samples.*")
     run_ids = [top.split("/")[-2] for top in tops]
     # Reading 
     logger.info("Reading trajectories")
@@ -150,11 +149,12 @@ def clust_cov(sysdir, sysname, selection = SELECTION):
 ################################################################################
 
 def cov_analysis(sysdir, sysname, runname, selection=SELECTION):
+    mdsys = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.covdir.mkdir(exist_ok=True, parents=True)
     top = mdrun.rundir / "topology.pdb"
-    traj = mdrun.rundir / f"samples.{TRJEXT}"
-    u = mda.Universe(top, traj, in_memory=False)
+    trajs = io.pull_files(mdsys.mddir, f"samples.*")
+    u = mda.Universe(top, trajs, in_memory=False)
     logger.info(f'Selecting atoms for covariance analysis: {selection}')
     ag = u.atoms.select_atoms(selection)
     clean_dir(mdrun.covdir, "*npy")
@@ -185,9 +185,9 @@ def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
     rmsdir = mdrun.rmsdir
     rmsdir.mkdir(exist_ok=True)    
     top = mdrun.rundir / "topology.pdb"
-    traj = mdrun.rundir / f"samples.{TRJEXT}"
+    trajs = io.pull_files(mdsys.mddir, f"samples.*")
     # Load trajectory
-    u = mda.Universe(str(top), str(traj))
+    u = mda.Universe(str(top), trajs)
     atoms = u.select_atoms(selection)  
     # Calculate RMSD
     logger.info(f'Calculating RMSD and RMSF for selection: {selection}')
@@ -223,7 +223,7 @@ def tdlrt_analysis(sysdir, sysname, runname, selection=SELECTION):
         ps = np.load(ps_path)
         vs = np.load(vs_path)
     else:
-        traj = mdrun.rundir / f"samples.{TRJEXT}"
+        traj = mdrun.rundir / f"samples.*"
         top = mdrun.rundir / "topology.pdb"
         u = mda.Universe(top, traj)
         ag = u.atoms.select_atoms(selection)

@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # run_job('main', submit=submit)
 
     ##### Analysis #####
-    # pyscript = str(pdir / 'common.py')
+    # pyscript = str(pdir / 'analysis.py')
     # sys_job('pca_trajs', submit=submit) # PCA
     # sys_job('clust_cov', submit=submit) # Clustering
     # run_job('rms_analysis', submit=submit) # RMSF/RMSD

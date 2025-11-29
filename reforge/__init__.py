@@ -36,12 +36,28 @@ logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
 
 # Make logger available at package level
 __all__ = ["logger"]
-do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py"]
+do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py", "plotting.py"]
 
+# Lazy loading: modules are imported on first access
+def __getattr__(name):
+    """Lazy import modules on first access."""
+    package_dir = os.path.dirname(__file__)
+    module_file = f"{name}.py"
+    
+    if module_file in do_not_import:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    
+    module_path = os.path.join(package_dir, module_file)
+    if os.path.exists(module_path):
+        module = importlib.import_module(f".{name}", package=__name__)
+        globals()[name] = module
+        return module
+    
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+# List available modules for introspection
 package_dir = os.path.dirname(__file__)
 for module in os.listdir(package_dir):
     if module.endswith(".py") and module not in do_not_import:
         module_name = module[:-3]
-        imported_module = importlib.import_module(f".{module_name}", package=__name__)
-        globals()[module_name] = imported_module
         __all__.append(module_name)

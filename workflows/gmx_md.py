@@ -7,13 +7,12 @@ logger = get_logger()
 
 # Global settings
 INPDB = 'input.pdb'
-dt = 0.020  # Time step in picoseconds
+DT = 0.020  # Time step in picoseconds
 total_time = 1000  # Total simulation time in nanoseconds
-NSTEPS = int(total_time * 1e3 / dt)  # Number of MD steps for production run
+NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
 
 def workflow(sysdir, sysname, runname):
-    setup_martini(sysdir, sysname)
-    md_npt(sysdir, sysname, runname)
+    md_npt(sysdir, sysname, runname, nsteps=NSTEPS)
     trjconv(sysdir, sysname, runname)
 
 
@@ -52,7 +51,7 @@ def setup_martini(sysdir, sysname):
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
     
     
-def md_npt(sysdir, sysname, runname): 
+def md_npt(sysdir, sysname, runname, nsteps=None): 
     mdrun = GmxRun(sysdir, sysname, runname)
     mdrun.prepare_files()
     ntomp = get_ntomp()
@@ -62,17 +61,19 @@ def md_npt(sysdir, sysname, runname):
     mdrun.mdrun(deffnm="hu", ntomp=ntomp)
     mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="hu.gro", r="hu.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
-    mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")
-    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu")
+    mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
+    if nsteps is None:
+        nsteps = NSTEPS
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=nsteps, ) # bonded="gpu")
     
     
-def extend(sysdir, sysname, runname):    
+def extend(sysdir, sysname, runname, nsteps=None):    
     mdrun = GmxRun(sysdir, sysname, runname)
     ntomp = get_ntomp()
-    dt = 0.020 # picoseconds
-    t_ext = 10000 # nanoseconds
-    nsteps = int(t_ext * 1e3 / dt)
-    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu") 
+    if nsteps is None:
+        t_ext = 10000 # nanoseconds
+        nsteps = int(t_ext * 1e3 / DT)
+    mdrun.mdrun(deffnm="md", cpi="md.cpt", ntomp=ntomp, nsteps=nsteps, ) 
     
     
 def trjconv(sysdir, sysname, runname, **kwargs):

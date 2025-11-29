@@ -1,6 +1,7 @@
 from pathlib import Path
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
+from reforge import io
 from reforge.utils import clean_dir, get_logger
 
 logger = get_logger()

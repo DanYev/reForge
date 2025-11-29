@@ -361,7 +361,6 @@ def perturbation_matrix_par(np.ndarray[double, ndim=2] covariance_matrix, bint n
     cdef np.ndarray[np.double_t, ndim=2] perturbation_matrix = np.zeros((m, n), dtype=np.float64)
     # Allocate a thread-local accumulation array.
     cdef int num_threads = omp_get_max_threads()
-    print(num_threads)
     cdef np.ndarray[np.double_t, ndim=3] local_acc = np.zeros((num_threads, m, n), dtype=np.float64)
     # Create typed memoryviews for fast access.
     cdef double[:, :] cov_view = covariance_matrix
