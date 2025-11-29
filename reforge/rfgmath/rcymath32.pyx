@@ -301,8 +301,8 @@ def perturbation_matrix(np.ndarray[float, ndim=2] covariance_matrix, bint normal
         f0 = directions[k, 0]
         f1 = directions[k, 1]
         f2 = directions[k, 2]
-        for j in range(n):
-            for i in range(m):
+        for i in range(m):
+            for j in range(n):
                 delta0 = (covariance_matrix[3*i,   3*j]   * f0 +
                           covariance_matrix[3*i,   3*j+1] * f1 +
                           covariance_matrix[3*i,   3*j+2] * f2)
@@ -377,8 +377,8 @@ def perturbation_matrix_par(np.ndarray[float, ndim=2] covariance_matrix, bint no
         f1 = directions_view[k, 1]
         f2 = directions_view[k, 2]
         tid = threadid() # Get thread id to index into the local accumulator.
-        for j in range(n):
-            for i in range(m):
+        for i in range(m):
+            for j in range(n):
                 delta0 = (cov_view[3*i,   3*j]   * f0 +
                           cov_view[3*i,   3*j+1] * f1 +
                           cov_view[3*i,   3*j+2] * f2)
