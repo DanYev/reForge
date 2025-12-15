@@ -567,7 +567,7 @@ class MDRun(MDSystem):
             shutil.copy(src, self.rundir)
 
         
-    def get_covmats(self, u, ag, **kwargs):
+    def get_covmats(self, u, ag, dtype=np.float32, **kwargs):
         """Calculates covariance matrices by splitting the trajectory into chunks.
 
         Parameters
@@ -587,10 +587,10 @@ class MDRun(MDSystem):
         outtag = kwargs.pop('outtag', 'covmat')
         logger.info("Calculating covariance matrices...")
         positions = io.read_positions(u, ag, sample_rate=sample_rate, b=b, e=e)
-        mdm.calc_and_save_covmats(positions, outdir=self.covdir, n=n, outtag=outtag)
+        mdm.calc_and_save_covmats(positions, outdir=self.covdir, n=n, outtag=outtag, dtype=dtype)
         logger.info("Finished calculating covariance matrices!")
 
-    def get_pertmats(self, intag="covmat", outtag="pertmat"):
+    def get_pertmats(self, intag="covmat", outtag="pertmat", iso=False, dtype=np.float32):
         """Calculates perturbation matrices from the covariance matrices.
 
         Parameters
@@ -605,7 +605,10 @@ class MDRun(MDSystem):
                 logger.info("  Processing covariance matrix %s", cov_file)
                 covmat = np.load(self.covdir / cov_file)
                 logger.info("  Calculating perturbation matrix")
-                pertmat = mdm.perturbation_matrix(covmat)
+                if iso:
+                    pertmat = mdm.perturbation_matrix_iso(covmat, dtype=dtype)
+                else:
+                    pertmat = mdm.perturbation_matrix(covmat, dtype=dtype)
                 pert_file = cov_file.replace(intag, outtag)
                 logger.info("  Saving perturbation matrix at %s", pert_file)
                 np.save(self.covdir / pert_file, pertmat)

@@ -23,7 +23,7 @@ WORKFLOW:
    - Report final quality metrics
 
 Usage:
-    python backmapping.py -r reference.pdb -c cg.pdb -o final.pdb
+    python backmapping.py -r reference.pdb -s cg.pdb -o final.pdb
 """
 
 import argparse
@@ -738,54 +738,85 @@ class RestraintMinimizer:
         heavy_atom_count = 0
         chain_restraint_counts = {}
         
+        # Group residues by chain for position-based matching
+        aa_chains = {}
+        cg_chains = {}
+        
         for aa_res in self.aa_structure.topology.residues:
-            cg_res = None
-            for cg_r in self.cg_structure.topology.residues:
-                if cg_r.resSeq == aa_res.resSeq and cg_r.chain.index == aa_res.chain.index:
-                    cg_res = cg_r
-                    break
-            
-            if not cg_res:
-                logger.debug(f"No matching CG residue for AA residue {aa_res.name}{aa_res.resSeq}")
+            chain_id = aa_res.chain.index
+            if chain_id not in aa_chains:
+                aa_chains[chain_id] = []
+            aa_chains[chain_id].append(aa_res)
+        
+        for cg_res in self.cg_structure.topology.residues:
+            chain_id = cg_res.chain.index
+            if chain_id not in cg_chains:
+                cg_chains[chain_id] = []
+            cg_chains[chain_id].append(cg_res)
+        
+        logger.info(f"AA chains: {list(aa_chains.keys())}, CG chains: {list(cg_chains.keys())}")
+        
+        # Match residues by position in chain (sequence order) instead of residue number
+        for chain_id in aa_chains:
+            if chain_id not in cg_chains:
+                logger.warning(f"Chain {chain_id} not found in CG structure")
                 continue
             
-            atom_to_bead = self.mapping_parser.get_atom_to_bead_mapping(aa_res.name)
-            if not atom_to_bead:
-                logger.debug(f"No mapping available for residue type {aa_res.name}")
-                continue
+            aa_chain_residues = aa_chains[chain_id]
+            cg_chain_residues = cg_chains[chain_id]
             
-            cg_bead_positions = {}
-            for cg_atom in cg_res.atoms:
-                bead_pos = self.cg_structure.xyz[0, cg_atom.index] * 10
-                cg_bead_positions[cg_atom.name] = bead_pos
+            if len(aa_chain_residues) != len(cg_chain_residues):
+                logger.warning(f"Chain {chain_id}: Residue count mismatch (AA: {len(aa_chain_residues)}, CG: {len(cg_chain_residues)})")
+                # Use the minimum length to avoid index errors
+                match_length = min(len(aa_chain_residues), len(cg_chain_residues))
+            else:
+                match_length = len(aa_chain_residues)
+                logger.info(f"Chain {chain_id}: Matching {match_length} residues by sequence position")
             
-            for aa_atom in aa_res.atoms:
-                # Skip hydrogen atoms (check both element and atom name starting with H)
-                if aa_atom.element.symbol == 'H' or aa_atom.name.startswith('H'):
+            # Match residues by their position in the sequence
+            for pos in range(match_length):
+                aa_res = aa_chain_residues[pos]
+                cg_res = cg_chain_residues[pos]
+                
+                # Log the matching for debugging
+                logger.debug(f"Matching position {pos}: AA {aa_res.name}{aa_res.resSeq} <-> CG {cg_res.name}{cg_res.resSeq}")
+                
+                atom_to_bead = self.mapping_parser.get_atom_to_bead_mapping(aa_res.name)
+                if not atom_to_bead:
+                    logger.debug(f"No mapping available for residue type {aa_res.name}")
                     continue
-                    
-                if aa_atom.name in atom_to_bead:
-                    bead_name = atom_to_bead[aa_atom.name]
-                    
-                    if bead_name in cg_bead_positions:
-                        self.restraint_positions[aa_atom.index] = {
-                            'position': cg_bead_positions[bead_name],
-                            'atom_name': aa_atom.name,
-                            'residue': aa_res.name,
-                            'resid': aa_res.resSeq,
-                            'chain': aa_res.chain.index,
-                            'bead_name': bead_name
-                        }
-                        restraint_count += 1
-                        heavy_atom_count += 1
+                
+                cg_bead_positions = {}
+                for cg_atom in cg_res.atoms:
+                    bead_pos = self.cg_structure.xyz[0, cg_atom.index] * 10
+                    cg_bead_positions[cg_atom.name] = bead_pos
+                
+                for aa_atom in aa_res.atoms:
+                    # Skip hydrogen atoms (check both element and atom name starting with H)
+                    if aa_atom.element.symbol == 'H' or aa_atom.name.startswith('H'):
+                        continue
                         
-                        # Track restraints per chain
-                        chain_id = aa_res.chain.index
-                        if chain_id not in chain_restraint_counts:
-                            chain_restraint_counts[chain_id] = 0
-                        chain_restraint_counts[chain_id] += 1
+                    if aa_atom.name in atom_to_bead:
+                        bead_name = atom_to_bead[aa_atom.name]
                         
-                        logger.debug(f"Mapped Chain{aa_res.chain.index} {aa_res.name}{aa_res.resSeq}:{aa_atom.name} -> {bead_name}")
+                        if bead_name in cg_bead_positions:
+                            self.restraint_positions[aa_atom.index] = {
+                                'position': cg_bead_positions[bead_name],
+                                'atom_name': aa_atom.name,
+                                'residue': aa_res.name,
+                                'resid': aa_res.resSeq,
+                                'chain': aa_res.chain.index,
+                                'bead_name': bead_name
+                            }
+                            restraint_count += 1
+                            heavy_atom_count += 1
+                            
+                            # Track restraints per chain
+                            if chain_id not in chain_restraint_counts:
+                                chain_restraint_counts[chain_id] = 0
+                            chain_restraint_counts[chain_id] += 1
+                            
+                            logger.debug(f"Mapped Chain{aa_res.chain.index} {aa_res.name}{aa_res.resSeq}:{aa_atom.name} -> {bead_name}")
         
         logger.info(f"Created {restraint_count} restraints ({heavy_atom_count} heavy atoms)")
         for chain_id, count in chain_restraint_counts.items():
