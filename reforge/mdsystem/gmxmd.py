@@ -108,20 +108,6 @@ class GmxSystem(MDSystem):
             all_atoms.renumber()
             all_atoms.write_pdb(self.solupdb)
 
-    def make_box(self, **kwargs):
-        """Sets up simulation box with GROMACS editconf command.
-
-        Parameters
-        ----------
-            kwargs: Additional keyword arguments for the GROMACS editconf command. Defaults:
-                - d: Distance parameter (default: 1.0)
-                - bt: Box type (default: "dodecahedron").
-        """
-        kwargs.setdefault("d", 1.0)
-        kwargs.setdefault("bt", "dodecahedron")
-        with cd(self.root):
-            cli.gmx("editconf", f=self.solupdb, o=self.solupdb, **kwargs)
-
     def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
         """Creates the system topology file by including all relevant ITP files and
         defining the system and molecule sections.
@@ -167,6 +153,20 @@ class GmxSystem(MDSystem):
                 for ion, count in ions.items():
                     if count > 0:
                         f.write(f"{ion}    {count}\n")
+
+    def make_box(self, **kwargs):
+        """Sets up simulation box with GROMACS editconf command.
+
+        Parameters
+        ----------
+            kwargs: Additional keyword arguments for the GROMACS editconf command. Defaults:
+                - d: Distance parameter (default: 1.0)
+                - bt: Box type (default: "dodecahedron").
+        """
+        kwargs.setdefault("d", 1.0)
+        kwargs.setdefault("bt", "dodecahedron")
+        with cd(self.root):
+            cli.gmx("editconf", f=self.solupdb, o=self.solupdb, **kwargs)
 
     def make_gro_file(self, d=1.25, bt="dodecahedron"):
         """Generates the final GROMACS GRO file from coarse-grained PDB files.

@@ -138,7 +138,12 @@ class MDSystem:
         with cd(self.root):
             pdbtools.sort_pdb(in_pdb, self.inpdb)
 
-    def clean_pdb_mm(self, pdb_file, add_missing_atoms=False, add_hydrogens=False, pH=7.0, **kwargs):
+    def clean_pdb_mm(self, pdb_file, 
+                    add_missing_atoms=False, 
+                    add_hydrogens=False, 
+                    remove_heterogens=True, 
+                    keep_water=False,
+                    pH=7.0, **kwargs):
         """Clean the starting PDB file using PDBfixer by OpenMM.
 
         Parameters
@@ -158,7 +163,8 @@ class MDSystem:
         logger.info(f"Processing {pdb_file}")
         pdb = PDBFixer(filename=str(pdb_file))
         logger.info("Removing heterogens and checking for missing residues...")
-        pdb.removeHeterogens(False)
+        if remove_heterogens:
+            pdb.removeHeterogens(keep_water)
         pdb.findMissingResidues()
         logger.info("Replacing non-standard residues...")
         pdb.findNonstandardResidues()
@@ -433,19 +439,54 @@ class MDSystem:
             martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
 
+    def make_ions_pdb(self, inpdb=None, outpdb=None, ions=["MG", "ZN", "CA", "K"], resname="ION"):
+        """Creates a PDB file for the ion species with custom residue name.
+        
+        Parameters
+        ----------
+        inpdb : str or Path, optional
+            Input PDB file to read ions from (default: self.inpdb)
+        outpdb : str or Path, optional
+            Output PDB file to write ions to (default: self.ionpdb)
+        ions : list, optional
+            List of ion names to extract (default: ["MG", "ZN", "CA", "K"])
+        resname : str, optional
+            Residue name to assign to all ions in output (default: "ION")
+        """
+        logger.info("Creating ion PDB file...")
+        if inpdb is None:
+            inpdb = self.inpdb
+        if outpdb is None:
+            outpdb = self.ionpdb
+        # ensure ion directory exists
+        Path.mkdir(self.iondir, exist_ok=True, parents=True)
+
+        ions_set = set(ions)
+        written = 0
+        # Ensure resname is exactly 3 characters (right-padded with spaces if shorter)
+        resname_formatted = f"{resname:<3}"[:3]
+        
+        with open(inpdb, 'r', encoding='utf-8') as rin, open(outpdb, 'w', encoding='utf-8') as wout:
+            for line in rin:
+                # Only consider HETATM records which commonly hold resolved ions
+                if line.startswith('HETATM'):
+                    # atom name/resname typically in cols 13-16 (1-based) and 17-20 for resname
+                    # using same slicing as elsewhere in the file (0-based indices)
+                    atom_name = line[12:16].strip()
+                    original_resname = line[17:20].strip()
+                    # Check either atom name or residue name matches ion list
+                    if original_resname in ions_set or atom_name in ions_set:
+                        # convert record type to ATOM and replace residue name
+                        # PDB format: cols 1-6 record, 7-11 serial, 12-16 atom, 17 altLoc, 18-20 resname, 22 chain...
+                        new_line = 'ATOM  ' + line[6:17] + resname_formatted + line[20:]
+                        wout.write(new_line)
+                        written += 1
+        logger.info(f"Ion PDB file created: {outpdb} (wrote {written} ions with resname '{resname_formatted.strip()}')")
+
     def insert_membrane(self, **kwargs):
         """Insert CG lipid membrane using INSANE."""
         with cd(self.root):
             martini_tools.insert_membrane(**kwargs)
-
-    def find_resolved_ions(self, mask=("MG", "ZN", "CA", "K")):
-        """Identifies resolved ions in the input PDB file and writes them to "ions.pdb".
-
-        Parameters
-        ----------
-            mask (list, optional): List of ion identifiers to look for (default: ["MG", "ZN", "K"]).
-        """
-        pdbtools.mask_atoms(self.inpdb, "ions.pdb", mask=mask)
 
     def count_resolved_ions(self, ions=("MG", "ZN", "CA", "K")):
         """Counts the number of resolved ions in the system PDB file.
