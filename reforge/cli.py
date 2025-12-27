@@ -34,6 +34,7 @@ Date: YYYY-MM-DD
 
 import datetime
 import inspect
+import logging
 import os
 import shutil
 import subprocess as sp
@@ -42,6 +43,8 @@ import traceback
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 ##############################################################
@@ -183,11 +186,29 @@ def gmx(command, gmx_callable="gmx_mpi", **kwargs):
     Returns
     -------
     None
+    
+    Raises
+    ------
+    RuntimeError
+        If the GROMACS command fails (with a simplified error message).
+        In DEBUG mode (DEBUG=1), shows full traceback.
     """
     clinput = kwargs.pop("clinput", None)
     cltext = kwargs.pop("cltext", True)
     command = gmx_callable + " " + command + " " + kwargs_to_str(**kwargs)
-    sp.run(command.split(), input=clinput, text=cltext, check=True)
+    try:
+        sp.run(command.split(), input=clinput, text=cltext, check=True)
+    except sp.CalledProcessError as e:
+        # Check if we're in debug mode
+        debug_mode = os.environ.get("DEBUG", "0") == "1"
+        if debug_mode:
+            # In debug mode, show full traceback
+            raise RuntimeError(f"GROMACS command failed with exit code {e.returncode}") from e
+        else:
+            # In normal mode, log clean error and exit without traceback
+            logger.error(f"GROMACS command failed with exit code {e.returncode}")
+            logger.info("Set DEBUG=1 environment variable to see full traceback.")
+            sys.exit(1)
 
 
 ##############################################################

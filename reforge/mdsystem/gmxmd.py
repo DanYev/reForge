@@ -93,20 +93,40 @@ class GmxSystem(MDSystem):
                 outpath = self.mdpdir / file.name
                 shutil.copy(file, outpath)
 
-    def make_cg_structure(self, **kwargs):
-        """Merges coarse-grained PDB files into a single solute PDB file."""
+    def make_cg_structure(self, add_resolved_ions=False, **kwargs):
+        """Merges coarse-grained PDB files into a single solute PDB file.
+        
+        Parameters
+        ----------
+        add_resolved_ions : bool, optional
+            If True, adds resolved ions from ionpdb to the structure (default: False)
+        **kwargs : dict
+            Additional keyword arguments (currently unused)
+        """
         logger.info("Merging CG PDB files into a single solute PDB...")
-        with cd(self.root):
-            cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
-            # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
-            cg_pdb_files = sort_for_gmx(cg_pdb_files)
-            cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
-            all_atoms = AtomList()
-            for file in cg_pdb_files:
-                atoms = pdbtools.pdb2atomlist(file)
-                all_atoms.extend(atoms)
-            all_atoms.renumber()
-            all_atoms.write_pdb(self.solupdb)
+        cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
+        # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
+        cg_pdb_files = sort_for_gmx(cg_pdb_files)
+        cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
+        all_atoms = AtomList()
+        for file in cg_pdb_files:
+            atoms = pdbtools.pdb2atomlist(file)
+            all_atoms.extend(atoms)
+        # Add resolved ions if requested (already sorted by type in ionpdb)
+        if add_resolved_ions:
+            logger.info("Adding resolved ions to structure...")
+            if self.ionpdb.exists():
+                ion_atoms = pdbtools.pdb2atomlist(self.ionpdb)
+                # Convert HETATM to ATOM records
+                for atom in ion_atoms:
+                    atom.record = 'ATOM'
+                all_atoms.extend(ion_atoms)
+                logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
+            else:
+                logger.warning(f"Ion PDB file not found: {self.ionpdb}")
+        
+        all_atoms.renumber()
+        all_atoms.write_pdb(self.solupdb)
 
     def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
         """Creates the system topology file by including all relevant ITP files and
@@ -152,7 +172,7 @@ class GmxSystem(MDSystem):
                 ions = self.count_resolved_ions()
                 for ion, count in ions.items():
                     if count > 0:
-                        f.write(f"{ion}    {count}\n")
+                        f.write(f"{ion}          {count}\n")
 
     def make_box(self, **kwargs):
         """Sets up simulation box with GROMACS editconf command.

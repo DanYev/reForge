@@ -442,6 +442,9 @@ class MDSystem:
     def make_ions_pdb(self, inpdb=None, outpdb=None, ions=["MG", "ZN", "CA", "K"], resname="ION"):
         """Creates a PDB file for the ion species with custom residue name.
         
+        Ions are written to the output file grouped by type in the order specified
+        in the ions parameter.
+        
         Parameters
         ----------
         inpdb : str or Path, optional
@@ -460,13 +463,11 @@ class MDSystem:
             outpdb = self.ionpdb
         # ensure ion directory exists
         Path.mkdir(self.iondir, exist_ok=True, parents=True)
-
-        ions_set = set(ions)
-        written = 0
         # Ensure resname is exactly 3 characters (right-padded with spaces if shorter)
         resname_formatted = f"{resname:<3}"[:3]
-        
-        with open(inpdb, 'r', encoding='utf-8') as rin, open(outpdb, 'w', encoding='utf-8') as wout:
+        # Collect ions grouped by type to maintain order
+        ions_by_type = {ion: [] for ion in ions}
+        with open(inpdb, 'r', encoding='utf-8') as rin:
             for line in rin:
                 # Only consider HETATM records which commonly hold resolved ions
                 if line.startswith('HETATM'):
@@ -475,12 +476,20 @@ class MDSystem:
                     atom_name = line[12:16].strip()
                     original_resname = line[17:20].strip()
                     # Check either atom name or residue name matches ion list
-                    if original_resname in ions_set or atom_name in ions_set:
-                        # convert record type to ATOM and replace residue name
-                        # PDB format: cols 1-6 record, 7-11 serial, 12-16 atom, 17 altLoc, 18-20 resname, 22 chain...
-                        new_line = 'ATOM  ' + line[6:17] + resname_formatted + line[20:]
-                        wout.write(new_line)
-                        written += 1
+                    for ion in ions:
+                        if original_resname == ion or atom_name == ion:
+                            # convert record type to ATOM and replace residue name
+                            # PDB format: cols 1-6 record, 7-11 serial, 12-16 atom, 17 altLoc, 18-20 resname, 22 chain...
+                            new_line = 'HETATM' + line[6:17] + resname_formatted + line[20:]
+                            ions_by_type[ion].append(new_line)
+                            break
+        # Write ions in order: all of first type, then all of second type, etc.
+        written = 0
+        with open(outpdb, 'w', encoding='utf-8') as wout:
+            for ion in ions:
+                for line in ions_by_type[ion]:
+                    wout.write(line)
+                    written += 1
         logger.info(f"Ion PDB file created: {outpdb} (wrote {written} ions with resname '{resname_formatted.strip()}')")
 
     def insert_membrane(self, **kwargs):
@@ -502,12 +511,21 @@ class MDSystem:
             A dictionary mapping ion names to their counts.
         """
         counts = {ion: 0 for ion in ions}
-        with open(self.inpdb, "r", encoding='utf-8') as file:
+        with open(self.ionpdb, "r", encoding='utf-8') as file:
             for line in file:
                 if line.startswith("HETATM"):
                     current_ion = line[12:16].strip()
                     if current_ion in ions:
                         counts[current_ion] += 1
+        # Log the ion counts
+        total_ions = sum(counts.values())
+        if total_ions > 0:
+            logger.info(f"Found {total_ions} resolved ions in {self.ionpdb}:")
+            for ion, count in counts.items():
+                if count > 0:
+                    logger.info(f"  {ion}: {count}")
+        else:
+            logger.info(f"No resolved ions found in {self.ionpdb}")
         return counts
 
     def get_mean_sem(self, pattern="dfi*.npy"):
