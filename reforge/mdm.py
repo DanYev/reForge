@@ -43,50 +43,13 @@ from reforge.rfgmath import rcmath, rpymath
 logger = logging.getLogger(__name__)
 
 
-def fft_ccf(*args, mode="serial", **kwargs):
-    """
-    Unified wrapper for FFT-based correlation functions.
-
-    This function dispatches to one of the internal FFT correlation routines
-    based on the specified mode:
-
-        - 'serial' for sfft_ccf,
-        - 'parallel' for pfft_ccf, or
-        - 'gpu' for gfft_ccf.
-
-    Parameters
-    ----------
-    *args :
-        Positional arguments for the chosen correlation function.
-    mode : str, optional
-        Mode to use ('serial', 'parallel', or 'gpu'). Default is 'serial'.
-    **kwargs :
-        Additional keyword arguments for the internal routines.
-
-    Returns
-    -------
-    np.ndarray
-        The computed correlation function.
-
-    Raises
-    ------
-    ValueError
-        If an unsupported mode is specified.
-    """
-    if mode == "serial":
-        return rpymath.sfft_ccf(*args, **kwargs)
-    if mode == "parallel":
-        return rpymath.pfft_ccf(*args, **kwargs)
-    if mode == "gpu":
-        result = rpymath.gfft_ccf(*args, **kwargs)
-        # Use .get() only if available (e.g. for CuPy arrays)
-        return result.get() if hasattr(result, "get") else result
-    raise ValueError("Mode must be 'serial', 'parallel' or 'gpu'.")
-
-
 def ccf(*args, **kwargs):
-    """Similar to the previous. Unified wrapper for calculating cross-correlations."""
     corr = rpymath.ccf(*args, **kwargs)
+    return corr
+
+
+def cpsd(*args, **kwargs):
+    corr = rpymath.cpsd(*args, **kwargs)
     return corr
 
 

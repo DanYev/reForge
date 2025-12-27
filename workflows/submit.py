@@ -58,12 +58,12 @@ if __name__ == "__main__":
     sysnames = ["egfr_v3"]
     runs = ["mdrun_1", "mdrun_2"]
 
-    submit = True
+    submit = False
 
     ##### For MD #####
     pyscript = str(pdir / 'egfr_pipe.py')
     # run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
-    sys_job('setup', submit=submit)
+    sys_job('setup', submit=submit, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='02-00:00:00', p='general', q='public')
     # # run_job('extend', submit=submit, G='1', c='4', mem='2G')
     # # run_job('trjconv', submit=submit)

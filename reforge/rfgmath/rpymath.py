@@ -50,21 +50,26 @@ logger = logging.getLogger(__name__)
 
 @memprofit
 @timeit
-def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None, **kwargs):
+def sfft_ccf(x, y, **kwargs):
     """Compute the correlation function between two signals using a serial FFT-based method.
     
     Parameters:
         x (np.ndarray): First input signal of shape (n_coords, n_samples).
         y (np.ndarray): Second input signal of shape (n_coords, n_samples).
-        ntmax (int, optional): Maximum number of time samples to retain.
-        center (bool, optional): If True, subtract the mean from each signal.
-        loop (bool, optional): If True, compute the correlation in a loop.
+        ntmax (int, optional): Maximum number of time samples to retain (default: None).
+        center (bool, optional): If True, subtract the mean from each signal (default: False).
+        loop (bool, optional): If True, compute the correlation in a loop (default: True).
         dtype (data-type, optional): Desired data type (default: x.dtype).
     
     Returns:
         np.ndarray: Correlation function array of shape (n_coords, n_coords, ntmax).
     """
     logger.info("Computing CCFs serially.")
+    ntmax = kwargs.get('ntmax', None)
+    center = kwargs.get('center', False)
+    loop = kwargs.get('loop', True)
+    dtype = kwargs.get('dtype', None)
+    
     if dtype is None:
         dtype = x.dtype
     nt = x.shape[-1]
@@ -82,8 +87,8 @@ def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None, **kwargs):
 
     # Define a local helper that only takes i and j by capturing outer variables.
     def compute_correlation(i, j):
-        corr = ifft(x_f[i] * np.conj(y_f[j]), axis=-1)[:ntmax].real
-        return corr * counts
+        corr = ifft(x_f[i] * np.conj(y_f[j]), axis=-1)[:ntmax].real * counts
+        return corr 
 
     if loop:
         corr = np.zeros((nx, ny, ntmax), dtype=dtype)
@@ -96,22 +101,66 @@ def sfft_ccf(x, y, ntmax=None, center=False, loop=True, dtype=None, **kwargs):
     return corr
 
 
+def sfft_cpsd(x, y, **kwargs):
+    """Compute the cross-power spectral density using a serial FFT-based method.
+    
+    Parameters:
+        x (np.ndarray): First input signal of shape (n_coords, n_samples).
+        y (np.ndarray): Second input signal of shape (n_coords, n_samples).
+        center (bool, optional): If True, subtract the mean from each signal (default: False).
+        dtype (data-type, optional): Desired data type (default: x.dtype).
+    
+    Returns:
+        np.ndarray: Cross-power spectral density of shape (n_coords, n_coords, n_freqs).
+                    Only positive frequencies are returned (0 to Nyquist).
+    """
+    logger.info("Computing CPSD serially.")
+    center = kwargs.get('center', False)
+    dtype = kwargs.get('dtype', None)
+    
+    if dtype is None:
+        dtype = x.dtype
+    nt = x.shape[-1]
+    nx = x.shape[0]
+    ny = y.shape[0]
+    
+    if center:
+        x = x - np.mean(x, axis=-1, keepdims=True)
+        y = y - np.mean(y, axis=-1, keepdims=True)
+    
+    # Use rfft for real signals - only returns positive frequencies
+    x_f = np.fft.rfft(x, n=2 * nt, axis=-1)
+    y_f = np.fft.rfft(y, n=2 * nt, axis=-1)
+    n_freqs = x_f.shape[-1]  # nt + 1 frequencies
+    
+    cpsd = np.zeros((nx, ny, n_freqs), dtype=np.complex128 if dtype == np.float64 else np.complex64)
+    for i in range(nx):
+        for j in range(ny):
+            cpsd[i, j] = (x_f[i] * np.conj(y_f[j])) / (2 * nt)
+    
+    return cpsd
+
+
 @memprofit
 @timeit
-def pfft_ccf(x, y, ntmax=None, center=False, dtype=None, **kwargs):
+def pfft_ccf(x, y, **kwargs):
     """Compute the correlation function using a parallel FFT-based method.
     
     Parameters:
         x (np.ndarray): First input signal of shape (n_coords, n_samples).
         y (np.ndarray): Second input signal of shape (n_coords, n_samples).
-        ntmax (int, optional): Maximum number of time samples to retain.
-        center (bool, optional): If True, subtract the mean.
-        dtype (data-type, optional): Desired data type.
+        ntmax (int, optional): Maximum number of time samples to retain (default: None).
+        center (bool, optional): If True, subtract the mean (default: False).
+        dtype (data-type, optional): Desired data type (default: x.dtype).
     
     Returns:
         np.ndarray: Correlation function array with shape (n_coords, n_coords, ntmax).
     """
     logger.info("Computing CCFs in parallel.")
+    ntmax = kwargs.get('ntmax', None)
+    center = kwargs.get('center', False)
+    dtype = kwargs.get('dtype', None)
+    
     if dtype is None:
         dtype = x.dtype
     nt = x.shape[-1]
@@ -144,20 +193,73 @@ def pfft_ccf(x, y, ntmax=None, center=False, dtype=None, **kwargs):
 
 @memprofit
 @timeit
-def gfft_ccf(x, y, ntmax=None, center=True, dtype=None, **kwargs):
+def pfft_cpsd(x, y, **kwargs):
+    """Compute the cross-power spectral density using a parallel FFT-based method.
+    
+    Parameters:
+        x (np.ndarray): First input signal of shape (n_coords, n_samples).
+        y (np.ndarray): Second input signal of shape (n_coords, n_samples).
+        center (bool, optional): If True, subtract the mean (default: False).
+        dtype (data-type, optional): Desired data type (default: x.dtype).
+    
+    Returns:
+        np.ndarray: Cross-power spectral density of shape (n_coords, n_coords, n_freqs).
+                    Only positive frequencies are returned (0 to Nyquist).
+    """
+    logger.info("Computing CPSD in parallel.")
+    center = kwargs.get('center', False)
+    dtype = kwargs.get('dtype', None)
+    
+    if dtype is None:
+        dtype = x.dtype
+    nt = x.shape[-1]
+    nx = x.shape[0]
+    ny = y.shape[0]
+    
+    if center:
+        x = x - np.mean(x, axis=-1, keepdims=True)
+        y = y - np.mean(y, axis=-1, keepdims=True)
+    
+    # Use rfft for real signals - only returns positive frequencies
+    x_f = np.fft.rfft(x, n=2 * nt, axis=-1)
+    y_f = np.fft.rfft(y, n=2 * nt, axis=-1)
+    n_freqs = x_f.shape[-1]  # nt + 1 frequencies
+    
+    def compute_cpsd(i, j):
+        return (x_f[i] * np.conj(y_f[j])) / (2 * nt)
+    
+    def parallel_cpsd():
+        results = Parallel(n_jobs=-1)(
+            delayed(compute_cpsd)(i, j)
+            for i in range(nx)
+            for j in range(ny)
+        )
+        return np.array(results).reshape(nx, ny, n_freqs)
+    
+    cpsd = parallel_cpsd()
+    return cpsd
+
+
+@memprofit
+@timeit
+def gfft_ccf(x, y, **kwargs):
     """Compute the correlation function on the GPU using FFT.
     
     Parameters:
         x (np.ndarray): first input signal of shape (n_coords, n_samples).
         y (np.ndarray): second input signal of shape (n_coords, n_samples).
-        ntmax (int, optional): Maximum number of time samples to retain.
-        center (bool, optional): If True, subtract the mean.
+        ntmax (int, optional): Maximum number of time samples to retain (default: None).
+        center (bool, optional): If True, subtract the mean (default: True).
         dtype (data-type, optional): Desired CuPy data type (default: inferred from x).
     
     Returns:
         cp.ndarray: The computed correlation function as a CuPy array.
     """
     logger.info("Computing CCFs on GPU.")
+    ntmax = kwargs.get('ntmax', None)
+    center = kwargs.get('center', True)
+    dtype = kwargs.get('dtype', None)
+    
     if dtype is None:
         dtype = x.dtype
     nt = x.shape[-1]
@@ -183,9 +285,70 @@ def gfft_ccf(x, y, ntmax=None, center=True, dtype=None, **kwargs):
 
 @memprofit
 @timeit
-def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None, **kwargs):
-    """Same as "gfft_ccf" but regulates GPU to CPU I/O based on the available GPU memory"""
+def gfft_cpsd(x, y, **kwargs):
+    """Compute the cross-power spectral density on the GPU using FFT.
+    
+    Parameters:
+        x (np.ndarray): first input signal of shape (n_coords, n_samples).
+        y (np.ndarray): second input signal of shape (n_coords, n_samples).
+        center (bool, optional): If True, subtract the mean (default: True).
+        dtype (data-type, optional): Desired CuPy data type (default: inferred from x).
+    
+    Returns:
+        cp.ndarray: Cross-power spectral density of shape (n_coords, n_coords, n_freqs).
+                    Only positive frequencies are returned (0 to Nyquist).
+    """
+    logger.info("Computing CPSD on GPU.")
+    center = kwargs.get('center', True)
+    dtype = kwargs.get('dtype', None)
+    
+    if dtype is None:
+        dtype = x.dtype
+    nt = x.shape[-1]
+    nx = x.shape[0]
+    ny = y.shape[0]
+    
+    if center:
+        x = x - np.mean(x, axis=-1, keepdims=True)
+        y = y - np.mean(y, axis=-1, keepdims=True)
+    
+    x = cp.asarray(x, dtype=dtype)
+    y = cp.asarray(y, dtype=dtype)
+    
+    # Use rfft for real signals - only returns positive frequencies
+    x_f = cp.fft.rfft(x, n=2 * nt, axis=-1)
+    y_f = cp.fft.rfft(y, n=2 * nt, axis=-1)
+    n_freqs = x_f.shape[-1]  # nt + 1 frequencies
+    
+    cpsd = cp.zeros((nx, ny, n_freqs), dtype=cp.complex128 if dtype == np.float64 else cp.complex64)
+    for i in range(nx):
+        cpsd[i] = x_f[i, None, :] * cp.conj(y_f) / (2 * nt)
+    
+    return cpsd
+
+
+@memprofit
+@timeit
+def gfft_ccf_auto(x, y, **kwargs):
+    """Same as "gfft_ccf" but regulates GPU to CPU I/O based on the available GPU memory
+    
+    Parameters:
+        x (np.ndarray): first input signal of shape (n_coords, n_samples).
+        y (np.ndarray): second input signal of shape (n_coords, n_samples).
+        ntmax (int, optional): Maximum number of time samples to retain (default: None).
+        center (bool, optional): If True, subtract the mean (default: True).
+        buffer_c (float, optional): GPU memory buffer coefficient (default: 0.94).
+        dtype (data-type, optional): Desired CuPy data type (default: inferred from x).
+    
+    Returns:
+        np.ndarray: The computed correlation function.
+    """
     logger.info("Computing CCFs on GPU.")
+    ntmax = kwargs.get('ntmax', None)
+    center = kwargs.get('center', True)
+    buffer_c = kwargs.get('buffer_c', 0.94)
+    dtype = kwargs.get('dtype', None)
+    
     if dtype is None:
         dtype = x.dtype
     nt = x.shape[-1]
@@ -245,6 +408,96 @@ def gfft_ccf_auto(x, y, ntmax=None, center=True, buffer_c=0.94, dtype=None, **kw
     return corr.reshape(nx, ny, ntmax)
 
 
+@memprofit
+@timeit
+def gfft_cpsd_auto(x, y, **kwargs):
+    """Same as "gfft_cpsd" but regulates GPU to CPU I/O based on the available GPU memory
+    
+    Parameters:
+        x (np.ndarray): first input signal of shape (n_coords, n_samples).
+        y (np.ndarray): second input signal of shape (n_coords, n_samples).
+        center (bool, optional): If True, subtract the mean (default: True).
+        buffer_c (float, optional): GPU memory buffer coefficient (default: 0.94).
+        dtype (data-type, optional): Desired CuPy data type (default: inferred from x).
+    
+    Returns:
+        np.ndarray: Cross-power spectral density of shape (n_coords, n_coords, n_freqs).
+                    Only positive frequencies are returned (0 to Nyquist).
+    """
+    logger.info("Computing CPSD on GPU.")
+    center = kwargs.get('center', True)
+    buffer_c = kwargs.get('buffer_c', 0.94)
+    dtype = kwargs.get('dtype', None)
+    
+    if dtype is None:
+        dtype = x.dtype
+    nt = x.shape[-1]
+    nx = x.shape[0]
+    ny = y.shape[0]
+    
+    if center:
+        x = x - np.mean(x, axis=-1, keepdims=True)
+        y = y - np.mean(y, axis=-1, keepdims=True)
+    
+    logger.debug("GPU memory: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
+    x = cp.asarray(x, dtype=dtype)
+    y = cp.asarray(y, dtype=dtype)
+    logger.debug("GPU memory, allocated input: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
+    
+    # Use rfft for real signals - only returns positive frequencies
+    x_f = cp.fft.rfft(x, n=2*nt, axis=-1)
+    y_f = cp.fft.rfft(y, n=2*nt, axis=-1)
+    n_freqs = x_f.shape[-1]  # nt + 1 frequencies
+    fft_cache_bytes = cp.get_default_memory_pool().used_bytes()
+    logger.debug("GPU memory after FFTs: %.1f GB", fft_cache_bytes / 1e9)
+    
+    cpsd = np.empty(nx * ny * n_freqs, dtype=np.complex128 if dtype == np.float64 else np.complex64)
+    
+    # Calculate memory management for frequency domain
+    free_bytes, total_bytes = cp.cuda.runtime.memGetInfo()
+    req_bytes = cpsd.nbytes + fft_cache_bytes + x_f.nbytes
+    mem_free = free_bytes >> 20
+    mem_total = total_bytes >> 20
+    mem_req = req_bytes >> 20
+    logger.debug("Free: %s Mb, Total: %s Mb, required~ %s Mb", mem_free, mem_total, mem_req)
+    
+    if mem_req != 0:
+        nxmax = int(buffer_c * mem_total / mem_req * nx)
+    else:
+        nxmax = nx
+    if nxmax > nx:
+        nxmax = nx
+    logger.debug("nxmax %s", nxmax)
+    n_sweeps = nx // nxmax
+    n_remain = nx % nxmax
+    logger.debug("Sweeps needed %s, remainder: %s", n_sweeps, n_remain)
+    
+    arr_gpu = cp.empty(nxmax * ny * n_freqs, dtype=cp.complex128 if dtype == np.float64 else cp.complex64)
+    logger.debug("GPU memory, allocated OUTPUT: %.1f GB", cp.get_default_memory_pool().used_bytes() / 1e9)
+    
+    # Calculating CPSD for full sweeps:
+    for sw in range(n_sweeps):
+        logger.debug("Sweep number %s", sw)
+        for i in range(nxmax):
+            temp_res = (x_f[i, None, :] * cp.conj(y_f)) / (2 * nt)  # shape (ny, n_freqs)
+            offset = i * (ny * n_freqs)
+            arr_gpu[offset: offset + (ny * n_freqs)] = temp_res.reshape(-1)
+        cpsd[n_freqs * ny * nxmax * sw : n_freqs * ny * nxmax * (sw + 1)] = arr_gpu.get()
+    
+    # Handling remaining elements:
+    for i in range(n_remain):
+        result = (x_f[i, None, :] * cp.conj(y_f)) / (2 * nt)
+        offset = i * (ny * n_freqs)
+        arr_gpu[offset: offset + (ny * n_freqs)] = result.reshape(-1)
+    
+    if n_remain > 0:
+        cpsd[nxmax * ny * n_freqs * n_sweeps: ] = arr_gpu.get()[: n_remain * ny * n_freqs]
+    
+    used_bytes = cp.get_default_memory_pool().used_bytes() >> 20
+    logger.debug("Used: %s Mb", used_bytes)
+    return cpsd.reshape(nx, ny, n_freqs)
+
+
 def fft_ccf(*args, mode="serial", **kwargs):
     """Unified wrapper for FFT-based correlation functions.
     
@@ -280,22 +533,28 @@ def fft_ccf(*args, mode="serial", **kwargs):
 
 @memprofit
 @timeit
-def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None, **kwargs):
+def ccf(xs, ys, **kwargs):
     """Compute the average cross-correlation function of two signals by segmenting them.
     
     Parameters:
         xs (np.ndarray): First input signal of shape (n_coords, n_samples).
         ys (np.ndarray): Second input signal of shape (n_coords, n_samples).
-        ntmax (int, optional): Maximum number of time samples per segment.
-        n (int, optional): Number of segments.
-        mode (str, optional): Mode ('parallel', 'serial', or 'gpu').
-        center (bool, optional): If True, mean-center the signals.
-        dtype (data-type, optional): Desired data type.
+        ntmax (int, optional): Maximum number of time samples per segment (default: None).
+        n (int, optional): Number of segments (default: 1).
+        mode (str, optional): Mode ('parallel', 'serial', or 'gpu') (default: 'parallel').
+        center (bool, optional): If True, mean-center the signals (default: True).
+        dtype (data-type, optional): Desired data type (default: xs.dtype).
     
     Returns:
         np.ndarray: The averaged cross-correlation function.
     """
     logger.info("Calculating cross-correlation.")
+    ntmax = kwargs.get('ntmax', None)
+    n = kwargs.get('n', 1)
+    mode = kwargs.get('mode', 'parallel')
+    center = kwargs.get('center', True)
+    dtype = kwargs.get('dtype', None)
+    
     if dtype is None:
         dtype = xs.dtype
     xs_segments = np.array_split(xs, n, axis=-1)
@@ -306,11 +565,12 @@ def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None, **kwa
     logger.info("Splitting trajectory into %d parts", n)
     if ntmax is None or ntmax > (nt + 1) // 2:
         ntmax = (nt + 1) // 2
+    
     corr = np.zeros((nx, ny, ntmax), dtype=dtype)
     counter = 1
     for seg_x, seg_y in zip(xs_segments, ys_segments):
         logger.info("Processing part %s", counter)
-        corr_seg = fft_ccf(seg_x, seg_y, ntmax=ntmax, mode=mode, center=center, dtype=dtype, **kwargs)
+        corr_seg = fft_ccf(seg_x, seg_y, **kwargs)
         logger.debug("Segment correlation shape: %s", corr_seg.shape)
         corr += corr_seg
         counter += 1
@@ -318,6 +578,75 @@ def ccf(xs, ys, ntmax=None, n=1, mode="parallel", center=True, dtype=None, **kwa
     logger.debug("RMS of correlation: %.6f", np.sqrt(np.average(corr**2)))
     logger.info("Finished calculating cross-correlation.")
     return corr
+
+
+@memprofit
+@timeit
+def cpsd(xs, ys, **kwargs):
+    """Compute the average cross-power spectral density of two signals by segmenting them.
+    
+    Parameters:
+        xs (np.ndarray): First input signal of shape (n_coords, n_samples).
+        ys (np.ndarray): Second input signal of shape (n_coords, n_samples).
+        n (int, optional): Number of segments (default: 1).
+        mode (str, optional): Mode ('parallel', 'serial', or 'gpu') (default: 'parallel').
+        center (bool, optional): If True, mean-center the signals (default: True).
+        dtype (data-type, optional): Desired data type (default: xs.dtype).
+    
+    Returns:
+        np.ndarray: The averaged cross-power spectral density. Only positive frequencies.
+    """
+    logger.info("Calculating cross-power spectral density.")
+    n = kwargs.get('n', 1)
+    mode = kwargs.get('mode', 'parallel')
+    center = kwargs.get('center', True)
+    dtype = kwargs.get('dtype', None)
+    
+    if dtype is None:
+        dtype = xs.dtype
+    
+    xs_segments = np.array_split(xs, n, axis=-1)
+    ys_segments = np.array_split(ys, n, axis=-1)
+    nx = xs_segments[0].shape[0]
+    ny = ys_segments[0].shape[0]
+    nt = xs_segments[-1].shape[1]
+    n_freqs = nt + 1  # rfft returns nt+1 frequencies for 2*nt input
+    
+    logger.info("Splitting trajectory into %d parts", n)
+    
+    cpsd_dtype = np.complex128 if dtype == np.float64 else np.complex64
+    cpsd_result = np.zeros((nx, ny, n_freqs), dtype=cpsd_dtype)
+    counter = 1
+    
+    for seg_x, seg_y in zip(xs_segments, ys_segments):
+        logger.info("Processing part %s", counter)
+        
+        if mode == "serial":
+            cpsd_seg = sfft_cpsd(seg_x, seg_y, center=center, dtype=dtype)
+        elif mode == "parallel":
+            cpsd_seg = pfft_cpsd(seg_x, seg_y, center=center, dtype=dtype)
+        elif mode == "gpu":
+            try:
+                has_cuda = cp.is_available()
+            except Exception as e:
+                logger.warning(f"CuPy is not available: {e}")
+                has_cuda = False
+            if has_cuda:
+                cpsd_seg = gfft_cpsd_auto(seg_x, seg_y, **kwargs)
+            else:
+                logger.warning("No CUDA device detected, falling back on CPU")
+                cpsd_seg = sfft_cpsd(seg_x, seg_y, center=center, dtype=dtype)
+        else:
+            raise ValueError("Currently 'mode' should be 'serial', 'parallel' or 'gpu'.")
+        
+        logger.debug("Segment CPSD shape: %s", cpsd_seg.shape)
+        cpsd_result += cpsd_seg
+        counter += 1
+    
+    cpsd_result /= n
+    logger.debug("RMS of CPSD: %.6f", np.sqrt(np.average(np.abs(cpsd_result)**2)))
+    logger.info("Finished calculating cross-power spectral density.")
+    return cpsd_result
 
 
 @memprofit
@@ -356,48 +685,6 @@ def gfft_conv(x, y, loop=False, dtype=None):
         conv = cp.fft.ifft(x_f * cp.conj(y_f), axis=-1).real[:, :, :nt] * counts
         conv = conv.get()
     return conv
-
-
-@memprofit
-@timeit
-def sfft_cpsd(x, y, ntmax=None, center=True, loop=True, dtype=np.float64):
-    """Compute the Cross-Power Spectral Density (CPSD) between two signals using FFT.
-    
-    Parameters:
-        xs (np.ndarray): First input signal of shape (n_coords, n_samples).
-        ys (np.ndarray): Second input signal of shape (n_coords, n_samples).
-        ntmax (int, optional): Number of frequency bins to retain.
-        center (bool, optional): If True, mean-center the signals.
-        loop (bool, optional): If True, use loop-based computation.
-        dtype (data-type, optional): Desired data type.
-    
-    Returns:
-        np.ndarray: The computed CPSD.
-    """
-    def compute_cpsd(i, j):
-        cpsd_ij = x_f[i] * np.conj(y_f[j])
-        cpsd_ij = np.abs(cpsd_ij) / nt
-        return np.average(cpsd_ij)
-
-    nt = x.shape[-1]
-    nx = x.shape[0]
-    ny = y.shape[0]
-    if ntmax is None:
-        ntmax = nt
-    if center:
-        x = x - np.mean(x, axis=-1, keepdims=True)
-        y = y - np.mean(y, axis=-1, keepdims=True)
-    x_f = fft(x, axis=-1)
-    y_f = fft(y, axis=-1)
-    if loop:
-        cpsd = np.zeros((nx, ny), dtype=dtype)
-        for i in range(nx):
-            for j in range(ny):
-                cpsd[i, j] = compute_cpsd(i, j)
-    else:
-        cpsd = np.einsum("it,jt->ijt", x_f, np.conj(y_f))[:, :, :ntmax]
-    cpsd = np.abs(cpsd)
-    return cpsd
 
 
 @memprofit
