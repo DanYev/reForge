@@ -347,24 +347,23 @@ class MmReporter(object):
             self._mdaUniverse.atoms.velocities = velocities
         # update box vectors
         boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.angstrom)
-        self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
-        self._mdaUniverse.dimensions[:3] = _sanitize_box_angles(self._mdaUniverse.dimensions[:3])
-        # Also set timestep dimensions explicitly
-        self._mdaUniverse.trajectory.ts.dimensions = self._mdaUniverse.dimensions
+        box_dimensions = triclinic_box(*boxVectors)
+        box_dimensions[3:] = _sanitize_box_angles(box_dimensions[3:])
+        self._mdaUniverse.dimensions = box_dimensions
         # Set simulation time on the universe's trajectory timestep
         sim_time = state.getTime().value_in_unit(unit.picosecond)
         # Update the universe's timestep attributes
+        # Also set timestep dimensions explicitly
         self._mdaUniverse.trajectory.ts.time = sim_time
         self._mdaUniverse.trajectory.ts.frame = self._nextModel - 1
-        # write to the trajectory file
+        self._mdaUniverse.trajectory.ts.dimensions = box_dimensions
+        # write to the trajectory file with box dimensions
         self._mdaWriter.write(self._atomGroup)
         self._nextModel += 1
 
     def __del__(self):
         if self._mdaWriter:
             self._mdaWriter.close()
-
-
 
 
 ############################################################################################# 
@@ -400,10 +399,15 @@ def convert_trajectories(topology, trajectories, out_topology, out_trajectory, r
 
 
 def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
+    # Load topology separately to get dimensions
+    top_u = mda.Universe(input_top)
+    top_dims = top_u.dimensions
+    selected_atoms = top_u.select_atoms(selection)
+    selected_atoms.write(output_top)
+    # Load trajectory
     u = mda.Universe(input_top, input_traj)
     selected_atoms = u.select_atoms(selection)
     n_atoms = selected_atoms.n_atoms
-    selected_atoms.write(output_top)
     logger.info(f"First frame dimensions: {u.trajectory.ts.dimensions}")
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
@@ -423,20 +427,9 @@ def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='na
     if not ref_top:
         ref_top = input_top
     ref_u = mda.Universe(ref_top) 
-    # # Box angles shenanigans - handle None dimensions
-    # if u.dimensions is not None and u.dimensions[:3] is not None:
-    #     u.dimensions[:3] = _sanitize_box_angles(u.dimensions[:3])
-    # else:
-    #     logger.warning("Trajectory has no box information, box angles not sanitized")
-    # 
     ref_ag = ref_u.select_atoms(selection)
     # Add transformations: fit to reference, optionally center in box if dimensions exist
     workflow = [fit_rot_trans(ag, ref_ag)]
-    if u.dimensions is not None:
-        logger.info("Adding transformations: fit to reference and center in box")
-        workflow.append(center_in_box(ag, wrap=True))
-    else:
-        logger.info("Adding transformations: fit to reference only (no box information)")
     u.trajectory.add_transformations(*workflow)
     logger.info("Converting/Writing Trajecory")
     with mda.Writer(str(output_traj), ag.n_atoms) as W:
