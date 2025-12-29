@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir, get_logger
-from workflows import plots
+import plots
 
 logger = get_logger()
 

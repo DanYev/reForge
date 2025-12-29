@@ -493,12 +493,12 @@ def get_platform_info():
         if info['platform'] in ['CUDA', 'OpenCL']:
             info['properties']['device_index'] = platform.getPropertyDefaultValue('DeviceIndex')
             info['properties']['precision'] = platform.getPropertyDefaultValue('Precision')
-            if info['platform'] == 'CUDA':
+            if info['platform'] == 'CUDA' and hasattr(mm.version, 'cuda'):
                 info['properties']['cuda_version'] = mm.version.cuda
             info['properties']['gpu_name'] = platform.getPropertyValue(platform.createContext(), 'DeviceName')
         info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
     except Exception as e:
-        logger.warning(f"Could not get some platform properties: {str(e)}")
+        logger.warning(f"Could not get some platform properties: {str(e)} in get_platform_info")
     # Get OpenMM version
     info['openmm_version'] = mm.version.full_version
     # Log the information
