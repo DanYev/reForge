@@ -26,7 +26,7 @@ import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
-from MDAnalysis.transformations import fit_rot_trans
+from MDAnalysis.transformations import fit_rot_trans, unwrap, center_in_box, wrap
 import openmm as mm
 from openmm import app, unit
 from pdbfixer.pdbfixer import PDBFixer
@@ -348,7 +348,9 @@ class MmReporter(object):
         # update box vectors
         boxVectors = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.angstrom)
         self._mdaUniverse.dimensions = triclinic_box(*boxVectors)
-        self._mdaUniverse.dimensions[:3] = self._sanitize_box_angles(self._mdaUniverse.dimensions[:3])
+        self._mdaUniverse.dimensions[:3] = _sanitize_box_angles(self._mdaUniverse.dimensions[:3])
+        # Also set timestep dimensions explicitly
+        self._mdaUniverse.trajectory.ts.dimensions = self._mdaUniverse.dimensions
         # Set simulation time on the universe's trajectory timestep
         sim_time = state.getTime().value_in_unit(unit.picosecond)
         # Update the universe's timestep attributes
@@ -362,13 +364,7 @@ class MmReporter(object):
         if self._mdaWriter:
             self._mdaWriter.close()
 
-    @staticmethod
-    def _sanitize_box_angles(angles):
-        """ Ensure box angles correspond to first quadrant
-        See `discussion on unitcell angles <https://github.com/MDAnalysis/mdanalysis/pull/2917/files#r620558575>`_
-        """
-        inverted = 180 - angles
-        return np.min(np.array([angles, inverted]), axis=0)
+
 
 
 ############################################################################################# 
@@ -408,6 +404,7 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms = u.select_atoms(selection)
     n_atoms = selected_atoms.n_atoms
     selected_atoms.write(output_top)
+    logger.info(f"First frame dimensions: {u.trajectory.ts.dimensions}")
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
             writer.write(selected_atoms)
@@ -420,12 +417,27 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
 
 def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='name CA', transform_vels=False):
     u = mda.Universe(input_top, input_traj)
+    logger.info(f"Loaded universe - dimensions: {u.dimensions}")
+    logger.info(f"First frame dimensions: {u.trajectory.ts.dimensions}")
     ag = u.select_atoms(selection)
     if not ref_top:
         ref_top = input_top
     ref_u = mda.Universe(ref_top) 
+    # # Box angles shenanigans - handle None dimensions
+    # if u.dimensions is not None and u.dimensions[:3] is not None:
+    #     u.dimensions[:3] = _sanitize_box_angles(u.dimensions[:3])
+    # else:
+    #     logger.warning("Trajectory has no box information, box angles not sanitized")
+    # 
     ref_ag = ref_u.select_atoms(selection)
-    u.trajectory.add_transformations(fit_rot_trans(ag, ref_ag,))
+    # Add transformations: fit to reference, optionally center in box if dimensions exist
+    workflow = [fit_rot_trans(ag, ref_ag)]
+    if u.dimensions is not None:
+        logger.info("Adding transformations: fit to reference and center in box")
+        workflow.append(center_in_box(ag, wrap=True))
+    else:
+        logger.info("Adding transformations: fit to reference only (no box information)")
+    u.trajectory.add_transformations(*workflow)
     logger.info("Converting/Writing Trajecory")
     with mda.Writer(str(output_traj), ag.n_atoms) as W:
         for ts in u.trajectory:   
@@ -467,6 +479,14 @@ def _kabsch_rotation(P, Q):
 ############################################################################################# 
 ### Utility functions ###
 #############################################################################################
+
+def _sanitize_box_angles(angles):
+    """ Ensure box angles correspond to first quadrant
+    See `discussion on unitcell angles <https://github.com/MDAnalysis/mdanalysis/pull/2917/files#r620558575>`_
+    """
+    inverted = 180 - angles
+    return np.min(np.array([angles, inverted]), axis=0)
+
 
 def get_platform_info():
     """Report OpenMM platform and hardware information."""
