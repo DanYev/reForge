@@ -26,7 +26,7 @@ import numpy as np
 import MDAnalysis as mda
 from MDAnalysis.lib.util import get_ext
 from MDAnalysis.lib.mdamath import triclinic_box
-from MDAnalysis.transformations import fit_rot_trans, unwrap, center_in_box, wrap
+from MDAnalysis.transformations import fit_rot_trans, unwrap, center_in_box, wrap, nojump
 import openmm as mm
 from openmm import app, unit
 from pdbfixer.pdbfixer import PDBFixer
@@ -408,7 +408,6 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     u = mda.Universe(input_top, input_traj)
     selected_atoms = u.select_atoms(selection)
     n_atoms = selected_atoms.n_atoms
-    logger.info(f"First frame dimensions: {u.trajectory.ts.dimensions}")
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
         for ts in u.trajectory[::step]:
             writer.write(selected_atoms)
@@ -420,18 +419,21 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
 
 
 def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='name CA', transform_vels=False):
+    logger.info("Loading the universe...")
     u = mda.Universe(input_top, input_traj)
-    logger.info(f"Loaded universe - dimensions: {u.dimensions}")
-    logger.info(f"First frame dimensions: {u.trajectory.ts.dimensions}")
+    protein = u.select_atoms('protein')
     ag = u.select_atoms(selection)
     if not ref_top:
         ref_top = input_top
     ref_u = mda.Universe(ref_top) 
     ref_ag = ref_u.select_atoms(selection)
-    # Add transformations: fit to reference, optionally center in box if dimensions exist
-    workflow = [fit_rot_trans(ag, ref_ag)]
+    workflow = [
+            nojump.NoJump(protein),
+            # center_in_box(protein, center='geometry', wrap=False),
+            fit_rot_trans(ag, ref_ag),
+    ]
     u.trajectory.add_transformations(*workflow)
-    logger.info("Converting/Writing Trajecory")
+    logger.info("Converting/Writing Trajectory...")
     with mda.Writer(str(output_traj), ag.n_atoms) as W:
         for ts in u.trajectory:   
             if transform_vels:
@@ -502,16 +504,22 @@ def get_platform_info():
         info['platform'] = platform.getName()
     # Get platform properties
     info['properties'] = {}
+    # Prefer supported API: list property names and query defaults.
+    # Note: some properties (e.g., DeviceName) are only available via
+    # getPropertyValue(Context, name), which we intentionally avoid here.
     try:
-        if info['platform'] in ['CUDA', 'OpenCL']:
-            info['properties']['device_index'] = platform.getPropertyDefaultValue('DeviceIndex')
-            info['properties']['precision'] = platform.getPropertyDefaultValue('Precision')
-            if info['platform'] == 'CUDA' and hasattr(mm.version, 'cuda'):
-                info['properties']['cuda_version'] = mm.version.cuda
-            info['properties']['gpu_name'] = platform.getPropertyValue(platform.createContext(), 'DeviceName')
-        info['properties']['cpu_threads'] = platform.getPropertyDefaultValue('Threads')
-    except Exception as e:
-        logger.warning(f"Could not get some platform properties: {str(e)} in get_platform_info")
+        prop_names = list(platform.getPropertyNames())
+    except Exception:
+        prop_names = []
+    for name in prop_names:
+        try:
+            info['properties'][name] = platform.getPropertyDefaultValue(name)
+        except Exception:
+            # Some platforms expose names that don't have defaults.
+            continue
+    # Optional extra: record CUDA runtime version when available.
+    if info['platform'] == 'CUDA' and hasattr(mm.version, 'cuda'):
+        info['properties'].setdefault('cuda_version', mm.version.cuda)
     # Get OpenMM version
     info['openmm_version'] = mm.version.full_version
     # Log the information
