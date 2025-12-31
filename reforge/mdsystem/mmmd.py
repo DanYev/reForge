@@ -427,8 +427,29 @@ def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='na
         ref_top = input_top
     ref_u = mda.Universe(ref_top) 
     ref_ag = ref_u.select_atoms(selection)
+
+    def _has_valid_box(ts):
+        """Return True if timestep has usable periodic box dimensions."""
+        dims = getattr(ts, 'dimensions', None)
+        if dims is None:
+            return False
+        try:
+            dims = np.asarray(dims, dtype=float)
+        except Exception:
+            return False
+        if dims.shape[0] < 3:
+            return False
+        # MDAnalysis typically uses [lx, ly, lz, alpha, beta, gamma]
+        # Consider missing if any length is 0/NaN.
+        lengths = dims[:3]
+        return np.all(np.isfinite(lengths)) and np.all(lengths > 0)
+
+    ref_dims = getattr(ref_u, 'dimensions', None)
+    if ref_dims is None or not np.all(np.isfinite(np.asarray(ref_dims, dtype=float)[:3])) or np.any(np.asarray(ref_dims, dtype=float)[:3] <= 0):
+        logger.warning('Reference universe has no valid box dimensions; PBC-dependent transforms may be incorrect.')
+        ref_dims = None
     workflow = [
-            nojump.NoJump(protein),
+            # nojump.NoJump(protein),
             # center_in_box(protein, center='geometry', wrap=False),
             fit_rot_trans(ag, ref_ag),
     ]
@@ -436,6 +457,10 @@ def _trjconv_fit(input_traj, input_top, output_traj, ref_top=None, selection='na
     logger.info("Converting/Writing Trajectory...")
     with mda.Writer(str(output_traj), ag.n_atoms) as W:
         for ts in u.trajectory:   
+            # Some trajectories (or some readers) don't carry unit cell info.
+            # If so, we copy it from the reference so PBC-aware transforms work.
+            if (not _has_valid_box(ts)) and ref_dims is not None:
+                ts.dimensions = ref_dims
             if transform_vels:
                 transformed_vels = _tranform_velocities(ts.velocities, ts.positions, ref_ag.positions)
                 ag.velocities = transformed_vels
@@ -483,25 +508,32 @@ def _sanitize_box_angles(angles):
     return np.min(np.array([angles, inverted]), axis=0)
 
 
-def get_platform_info():
+def get_platform_info(platform=None):
     """Report OpenMM platform and hardware information."""
     info = {}
     # Get number of available platforms and their names
     num_platforms = mm.Platform.getNumPlatforms()
     info['available_platforms'] = [mm.Platform.getPlatform(i).getName() 
                                  for i in range(num_platforms)]
-    # Try to get the fastest platform (usually CUDA or OpenCL)
-    platform = None
-    for platform_name in ['CUDA', 'OpenCL', 'CPU']:
+    # Pick platform.
+    # If caller provided an OpenMM Platform, respect it.
+    if platform is not None:
         try:
-            platform = mm.Platform.getPlatformByName(platform_name)
-            info['platform'] = platform_name
-            break
+            info['platform'] = platform.getName()
         except Exception:
-            continue 
-    if platform is None:
-        platform = mm.Platform.getPlatform(0)
-        info['platform'] = platform.getName()
+            info['platform'] = str(platform)
+    else:
+        # Try to get the fastest platform (usually CUDA or OpenCL)
+        for platform_name in ['CUDA', 'OpenCL', 'CPU']:
+            try:
+                platform = mm.Platform.getPlatformByName(platform_name)
+                info['platform'] = platform_name
+                break
+            except Exception:
+                continue
+        if platform is None:
+            platform = mm.Platform.getPlatform(0)
+            info['platform'] = platform.getName()
     # Get platform properties
     info['properties'] = {}
     # Prefer supported API: list property names and query defaults.
