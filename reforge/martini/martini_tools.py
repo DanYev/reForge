@@ -115,7 +115,7 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
 
 @cli.from_wdir
 def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
-                 go_low=0.3, go_up=1.1, go_res_dist=3, from_ff='amber', **kwargs):
+                 go_low=0.3, go_up=1.1, go_res_dist=3, from_ff='amber', extra_text="",**kwargs):
     """Run virtual site-based GoMartini via martinize2.
 
     Parameters
@@ -168,8 +168,8 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
         logger.info(f"Created directory: {go_write_path.parent}")
         relative_go_path = go_write_path.relative_to(wdir_path)
         line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
-                "-go-write-file {} -dssp").format(
-                    name, go_eps, go_low, go_up, go_res_dist, relative_go_path)
+                "-go-write-file {} -dssp {}").format(
+                    name, go_eps, go_low, go_up, go_res_dist, relative_go_path, extra_text)
         logger.info(f"Running martinize2 with command: {line}")
         cli.run("martinize2", line, **kwargs)
         logger.info("martinize2 execution completed")
