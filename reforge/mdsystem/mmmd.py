@@ -371,7 +371,7 @@ class MmReporter(object):
 #############################################################################################
 
 def convert_trajectories(topology, trajectories, out_topology, out_trajectory, ref_top=None,
-        selection="name CA", step=1, skip_selection=False, fit=True):
+        selection="name CA", start=None, stop=None, step=1, skip_selection=False, fit=True):
     """
     Convert and fit trajectories using MDAnalysis.
     
@@ -387,7 +387,7 @@ def convert_trajectories(topology, trajectories, out_topology, out_trajectory, r
     tmp_traj = Path(out_trajectory).parent / ('temp_traj' + out_trajectory.suffix)
     logger.info(f'Converting trajectory with selection: {selection}')
     _trjconv_selection(trajectories, topology, tmp_traj, out_topology, 
-        selection=selection, step=step)
+        selection=selection, start=start, stop=stop, step=step)
     if fit:
         logger.info('Fitting trajectory to reference structure')
         transform_vels = str(out_trajectory).endswith('.trr') # True for .trr files
@@ -398,7 +398,7 @@ def convert_trajectories(topology, trajectories, out_topology, out_trajectory, r
         os.rename(tmp_traj, out_trajectory)
 
 
-def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", step=1):
+def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection="name CA", start=None, stop=None, step=1):
     # Load topology separately to get dimensions
     top_u = mda.Universe(input_top)
     top_dims = top_u.dimensions
@@ -409,7 +409,7 @@ def _trjconv_selection(input_traj, input_top, output_traj, output_top, selection
     selected_atoms = u.select_atoms(selection)
     n_atoms = selected_atoms.n_atoms
     with mda.Writer(str(output_traj), n_atoms=n_atoms) as writer:
-        for ts in u.trajectory[::step]:
+        for ts in u.trajectory[start:stop:step]:
             writer.write(selected_atoms)
             if ts.frame % 1000 == 0:
                 frame = ts.frame

@@ -639,9 +639,9 @@ class MDRun(MDSystem):
             n (int, optional): Number of covariance matrices to calculate.
             outtag (str, optional): Tag prefix for output files.
         """
-        b = kwargs.pop('b', 50000)
-        e = kwargs.pop('e', 1000000)
-        n = kwargs.pop('n', 10)
+        b = kwargs.pop('b', None)
+        e = kwargs.pop('e', None)
+        n = kwargs.pop('n', 1)
         sample_rate = kwargs.pop('sample_rate', 1)
         outtag = kwargs.pop('outtag', 'covmat')
         logger.info("Calculating covariance matrices...")
