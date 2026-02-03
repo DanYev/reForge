@@ -33,6 +33,7 @@ from pathlib import Path
 import shutil
 import subprocess as sp
 from reforge import cli, pdbtools, io
+from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.mdsystem.mdsystem import MDSystem, MDRun, MartiniMixin
 

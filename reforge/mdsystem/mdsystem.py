@@ -505,8 +505,13 @@ class MartiniMixin:
         if not pdb_files:
             logger.warning(f"No PDB files found in protein directory: {self.prodir}")
             return
+        # For topology book keeping
+        for f in pdb_files:
+            mol_name = f.split(".")[0]
+            self.molecules[mol_name] = int(1)
         logger.info(f"Found {len(pdb_files)} protein PDB files to process")
         itp_files = [f.replace("pdb", "itp") for f in pdb_files]
+        # Filter unprocessed files
         if append:
             pdb_files = [pdb for pdb, itp in zip(pdb_files, itp_files) if not (self.topdir / itp).exists()]
             if not pdb_files:
@@ -553,8 +558,13 @@ class MartiniMixin:
         if not pdb_files:
             logger.warning(f"No PDB files found in protein directory: {self.prodir}")
             return
+        # For topology book keeping
+        for f in pdb_files:
+            mol_name = f.split(".")[0]
+            self.molecules[mol_name] = int(1)
         logger.info(f"Found {len(pdb_files)} protein PDB files to process")
         itp_files = [f.replace("pdb", "itp") for f in pdb_files]
+        # Filter unprocessed files
         if append:
             pdb_files = [pdb for pdb, itp in zip(pdb_files, itp_files) if not (self.topdir / itp).exists()]
             if not pdb_files:
@@ -622,7 +632,12 @@ class MartiniMixin:
         if not pdb_files:
             logger.warning(f"No PDB files found in nucleotide directory: {self.nucdir}")
             return
+        # For topology book keeping
+        for f in pdb_files:
+            mol_name = f.split(".")[0]
+            self.molecules[mol_name] = int(1)
         logger.info(f"Found {len(pdb_files)} RNA PDB files to process")
+        # Filter unprocessed files
         if append:
             pdb_files = [f for f in pdb_files if not (self.topdir / f.replace("pdb", "itp")).exists()]
             if not pdb_files:
@@ -702,7 +717,7 @@ class MartiniMixin:
         self.cgdir.mkdir(parents=True, exist_ok=True)
         resname = str(ligand_residue.resname)
         resid = int(ligand_residue.resid)
-        outpdb = self.cgdir / f"{resname}_{resid}.pdb"
+        outpdb = self.cgdir / f"ligand_{resname}_{resid}.pdb"
         # PDB formatting: keep it simple and GROMACS-friendly.
         # Use one residue, chain A, one atom per bead.
         with outpdb.open("w", encoding="utf-8") as w:
@@ -729,10 +744,10 @@ class MartiniMixin:
             if not ligand_residues:
                 logger.warning(f"No residues found for ligand: {ligand}")
                 continue
-            self.molecules[ligand] = len(ligand_residues)
+            self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
-                shutil.copy(itp_file, self.topdir)
+                shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.
@@ -765,7 +780,6 @@ class MartiniMixin:
                 logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
             else:
                 logger.warning(f"Ion PDB file not found: {self.ionpdb}")
-        
         all_atoms.renumber()
         all_atoms.write_pdb(self.solupdb)
 
@@ -781,9 +795,9 @@ class MartiniMixin:
         Writes the topology file (self.systop) with include directives and molecule counts.
         """
         logger.info("Writing system topology...")
-        itp_files = [p.name for p in self.topdir.glob(f'{prefix}*itp')]
-        # itp_files = pdbtools.sort_uld(itp_files)
-        itp_files = sort_for_gmx(itp_files)
+        molecules = sort_for_gmx(self.molecules.keys())
+        itp_files = [f"{molecule}.itp" for molecule in molecules]
+        # itp_files = [p.name for p in self.topdir.glob(f'{prefix}*itp')]
         with self.systop.open("w") as f:
             # Include section
             f.write('#define GO_VIRT"\n')
@@ -799,15 +813,20 @@ class MartiniMixin:
             f.write('#include "topol/martini_v3.0.0_ions_v1.itp"\n')
             f.write("\n")
             for filename in itp_files:
+                print(filename)
                 f.write(f'#include "topol/{filename}"\n')
             # System name and molecule count
             f.write("\n[ system ]\n")
             f.write(f"Martini system for {self.sysname}\n")
             f.write("\n[molecules]\n")
             f.write("; name\t\tnumber\n")
-            for filename in itp_files:
-                molecule_name = Path(filename).stem
-                f.write(f"{molecule_name}\t\t1\n")
+            for molecule, count in self.molecules.items():
+                if molecule.startswith("ligand_"):
+                    molecule = molecule.replace("ligand_", "")
+                f.write(f"{molecule}\t\t{count}\n")
+            # for filename in itp_files:
+            #     molecule_name = Path(filename).stem
+            #     f.write(f"{molecule_name}\t\t1\n")
             # Add resolved ions if requested.
             if add_resolved_ions:
                 ions = self.count_resolved_ions()
