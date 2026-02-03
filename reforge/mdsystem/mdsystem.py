@@ -31,6 +31,7 @@ from collections import defaultdict
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
+from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
 
@@ -676,10 +677,8 @@ class MartiniMixin:
                 bead_to_atomnames[bead_name].append(atom_name)
         if not bead_to_atomnames:
             raise ValueError(f"No [ atoms ] mapping entries found in {map_file}")
-        print(bead_to_atomnames)        # --- compute bead positions as center-of-geometry of mapped atoms
         # Use MDAnalysis atom names (atom.name), and average positions equally.
         aa_atoms = ligand_residue.atoms
-        print(aa_atoms)
         aa_by_name: dict[str, list] = defaultdict(list)
         for idx, a in enumerate(aa_atoms):
             aa_by_name[f"{a.type}{idx+1}"].append(a)
@@ -694,7 +693,6 @@ class MartiniMixin:
             coords = np.array([a.position for a in bead_atoms], dtype=float)
             xyz = coords.mean(axis=0)
             beads.append((bead_name, xyz))
-
         if not beads:
             raise ValueError(
                 f"Mapping produced no beads for residue {ligand_residue.resname} {ligand_residue.resid}. "
@@ -734,7 +732,7 @@ class MartiniMixin:
             self.molecules[ligand] = len(ligand_residues)
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
-        print(self.molecules)
+                shutil.copy(itp_file, self.topdir)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.
@@ -1027,3 +1025,9 @@ class MDRun(MDSystem):
                 logger.info("  Saved group-group DCI at %s", ch_dci_file_path)
         logger.info("Finished calculating group DCIs!")
 
+
+def sort_for_gmx(data):
+    return sorted(data, key=lambda x: (
+    0 if x.split('_')[1][0].isupper() else 1 if x.split('_')[1][0].islower() else 2,
+    x.split('_')[1]
+))    

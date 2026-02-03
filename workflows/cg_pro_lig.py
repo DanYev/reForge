@@ -27,21 +27,20 @@ def setup_martini(sysdir, sysname):
     input_pdb = Path(sysdir) / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
     mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
+    mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
     # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
-    # mdsys.split_chains()
+    mdsys.split_chains()
     
     # # 1.2.2 Looks like we don't need this anymore
     # mdsys.get_go_maps(append=True)
 
     # 1.2. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
-    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
     # mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["FTA", ])
-    exit()
-    mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
+    mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
     # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
     mdsys.make_box(d="1.2", bt="dodecahedron")
