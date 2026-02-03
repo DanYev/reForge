@@ -35,7 +35,7 @@ import subprocess as sp
 from reforge import cli, pdbtools, io
 from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
-from reforge.mdsystem.mdsystem import MDSystem, MDRun
+from reforge.mdsystem.mdsystem import MDSystem, MDRun, MartiniMixin
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # GMX system class
 ################################################################################
 
-class GmxSystem(MDSystem):
+class GmxSystem(MDSystem, MartiniMixin):
     """Class to set up and analyze protein-nucleotide-lipid systems for MD
     simulations using GROMACS.
 
@@ -93,87 +93,6 @@ class GmxSystem(MDSystem):
                 outpath = self.mdpdir / file.name
                 shutil.copy(file, outpath)
 
-    def make_cg_structure(self, add_resolved_ions=False, **kwargs):
-        """Merges coarse-grained PDB files into a single solute PDB file.
-        
-        Parameters
-        ----------
-        add_resolved_ions : bool, optional
-            If True, adds resolved ions from ionpdb to the structure (default: False)
-        **kwargs : dict
-            Additional keyword arguments (currently unused)
-        """
-        logger.info("Merging CG PDB files into a single solute PDB...")
-        cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
-        # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
-        cg_pdb_files = sort_for_gmx(cg_pdb_files)
-        cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
-        all_atoms = AtomList()
-        for file in cg_pdb_files:
-            atoms = pdbtools.pdb2atomlist(file)
-            all_atoms.extend(atoms)
-        # Add resolved ions if requested (already sorted by type in ionpdb)
-        if add_resolved_ions:
-            logger.info("Adding resolved ions to structure...")
-            if self.ionpdb.exists():
-                ion_atoms = pdbtools.pdb2atomlist(self.ionpdb)
-                # Convert HETATM to ATOM records
-                for atom in ion_atoms:
-                    atom.record = 'ATOM'
-                all_atoms.extend(ion_atoms)
-                logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
-            else:
-                logger.warning(f"Ion PDB file not found: {self.ionpdb}")
-        
-        all_atoms.renumber()
-        all_atoms.write_pdb(self.solupdb)
-
-    def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
-        """Creates the system topology file by including all relevant ITP files and
-        defining the system and molecule sections.
-
-        Parameters
-        ----------
-            add_resolved_ions (bool, optional): If True, counts and includes resolved ions.
-            prefix (str, optional): Prefix for ITP files to include (default: "chain").
-
-        Writes the topology file (self.systop) with include directives and molecule counts.
-        """
-        logger.info("Writing system topology...")
-        itp_files = [p.name for p in self.topdir.glob(f'{prefix}*itp')]
-        # itp_files = pdbtools.sort_uld(itp_files)
-        itp_files = sort_for_gmx(itp_files)
-        with self.systop.open("w") as f:
-            # Include section
-            f.write('#define GO_VIRT"\n')
-            f.write("#define RUBBER_BANDS\n")
-            f.write('#include "topol/martini_v3.0.0.itp"\n')
-            f.write('#include "topol/martini_v3.0.0_rna.itp"\n')
-            f.write('#include "topol/martini_ions.itp"\n')
-            if any(p.name == "go_atomtypes.itp" for p in self.topdir.iterdir()):
-                f.write('#include "topol/go_atomtypes.itp"\n')
-                f.write('#include "topol/go_nbparams.itp"\n')
-            f.write('#include "topol/martini_v3.0.0_solvents_v1.itp"\n')
-            f.write('#include "topol/martini_v3.0.0_phospholipids_v1.itp"\n')
-            f.write('#include "topol/martini_v3.0.0_ions_v1.itp"\n')
-            f.write("\n")
-            for filename in itp_files:
-                f.write(f'#include "topol/{filename}"\n')
-            # System name and molecule count
-            f.write("\n[ system ]\n")
-            f.write(f"Martini system for {self.sysname}\n")
-            f.write("\n[molecules]\n")
-            f.write("; name\t\tnumber\n")
-            for filename in itp_files:
-                molecule_name = Path(filename).stem
-                f.write(f"{molecule_name}\t\t1\n")
-            # Add resolved ions if requested.
-            if add_resolved_ions:
-                ions = self.count_resolved_ions()
-                for ion, count in ions.items():
-                    if count > 0:
-                        f.write(f"{ion}          {count}\n")
-
     def make_box(self, **kwargs):
         """Sets up simulation box with GROMACS editconf command.
 
@@ -187,50 +106,6 @@ class GmxSystem(MDSystem):
         kwargs.setdefault("bt", "dodecahedron")
         with cd(self.root):
             cli.gmx("editconf", f=self.solupdb, o=self.solupdb, **kwargs)
-
-    def make_gro_file(self, d=1.25, bt="dodecahedron"):
-        """Generates the final GROMACS GRO file from coarse-grained PDB files.
-
-        Parameters
-        ----------
-            d (float, optional): Distance parameter for the editconf command (default: 1.25).
-            bt (str, optional): Box type for the editconf command (default: "dodecahedron").
-
-        Converts PDB files to GRO files, merges them, and adjusts the system box.
-        """
-        with cd(self.root):
-            cg_pdb_files = pdbtools.sort_uld([p.name for p in self.cgdir.iterdir()])
-            for file in cg_pdb_files:
-                if file.endswith(".pdb"):
-                    pdb_file = self.cgdir / file
-                    # Replace suffix and directory component as in the original string manipulation
-                    gro_file_str = str(pdb_file).replace(".pdb", ".gro").replace("cgpdb", "gro")
-                    gro_file = Path(gro_file_str)
-                    command = f"gmx_mpi editconf -f {pdb_file} -o {gro_file}"
-                    sp.run(command.split(), check=True)
-            # Merge all .gro files.
-            gro_files = sorted([p.name for p in self.grodir.iterdir()])
-            total_count = 0
-            for filename in gro_files:
-                if filename.endswith(".gro"):
-                    filepath = self.grodir / filename
-                    with filepath.open("r") as in_f:
-                        lines = in_f.readlines()
-                        atom_count = int(lines[1].strip())
-                        total_count += atom_count
-            with self.sysgro.open("w") as out_f:
-                out_f.write(f"{self.sysname} \n")
-                out_f.write(f"  {total_count}\n")
-                for filename in gro_files:
-                    if filename.endswith(".gro"):
-                        filepath = self.grodir / filename
-                        with filepath.open("r") as in_f:
-                            lines = in_f.readlines()[2:-1]
-                            for line in lines:
-                                out_f.write(line)
-                out_f.write("10.00000   10.00000   10.00000\n")
-            command = f"gmx_mpi editconf -f {self.sysgro} -d {d} -bt {bt}  -o {self.sysgro}"
-            sp.run(command.split(), check=True)
 
     def solvate(self, **kwargs):
         """Solvates the system using GROMACS solvate command.

@@ -24,8 +24,9 @@ import sys
 import shutil
 import subprocess as sp
 import tempfile
-import numpy as np
 import logging
+import MDAnalysis as mda
+import numpy as np
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
@@ -67,10 +68,9 @@ class MDSystem:
         self.prodir = self.root / "proteins"
         self.nucdir = self.root / "nucleotides"
         self.iondir = self.root / "ions"
+        self.ligdir = self.root / "ligands"
         self.ionpdb = self.iondir / "ions.pdb"
         self.topdir = self.root / "topol"
-        self.mapdir = self.root / "maps"
-        self.cgdir = self.root / "cgpdb"
         self.mddir = self.root / "mdruns"
         self.datdir = self.root / "data"
         self.pngdir = self.root / "png"
@@ -268,6 +268,175 @@ class MDSystem:
         clean_dir(self.root, "topol*")
         clean_dir(self.root, "posre*")
 
+    def make_ions_pdb(self, inpdb=None, outpdb=None, ions=["MG", "ZN", "CA", "K"], resname="ION"):
+        """Creates a PDB file for the ion species with custom residue name.
+        
+        Ions are written to the output file grouped by type in the order specified
+        in the ions parameter.
+        
+        Parameters
+        ----------
+        inpdb : str or Path, optional
+            Input PDB file to read ions from (default: self.inpdb)
+        outpdb : str or Path, optional
+            Output PDB file to write ions to (default: self.ionpdb)
+        ions : list, optional
+            List of ion names to extract (default: ["MG", "ZN", "CA", "K"])
+        resname : str, optional
+            Residue name to assign to all ions in output (default: "ION")
+        """
+        logger.info("Creating ion PDB file...")
+        if inpdb is None:
+            inpdb = self.inpdb
+        if outpdb is None:
+            outpdb = self.ionpdb
+        # ensure ion directory exists
+        Path.mkdir(self.iondir, exist_ok=True, parents=True)
+        # Ensure resname is exactly 3 characters (right-padded with spaces if shorter)
+        resname_formatted = f"{resname:<3}"[:3]
+        # Collect ions grouped by type to maintain order
+        ions_by_type = {ion: [] for ion in ions}
+        with open(inpdb, 'r', encoding='utf-8') as rin:
+            for line in rin:
+                # Only consider HETATM records which commonly hold resolved ions
+                if line.startswith('HETATM'):
+                    # atom name/resname typically in cols 13-16 (1-based) and 17-20 for resname
+                    # using same slicing as elsewhere in the file (0-based indices)
+                    atom_name = line[12:16].strip()
+                    original_resname = line[17:20].strip()
+                    # Check either atom name or residue name matches ion list
+                    for ion in ions:
+                        if original_resname == ion or atom_name == ion:
+                            # convert record type to ATOM and replace residue name
+                            # PDB format: cols 1-6 record, 7-11 serial, 12-16 atom, 17 altLoc, 18-20 resname, 22 chain...
+                            new_line = 'HETATM' + line[6:17] + resname_formatted + line[20:]
+                            ions_by_type[ion].append(new_line)
+                            break
+        # Write ions in order: all of first type, then all of second type, etc.
+        written = 0
+        with open(outpdb, 'w', encoding='utf-8') as wout:
+            for ion in ions:
+                for line in ions_by_type[ion]:
+                    wout.write(line)
+                    written += 1
+        logger.info(f"Ion PDB file created: {outpdb} (wrote {written} ions with resname '{resname_formatted.strip()}')")
+
+
+
+    def count_resolved_ions(self, ions=("MG", "ZN", "CA", "K")):
+        """Counts the number of resolved ions in the system PDB file.
+
+        Parameters
+        ----------
+        ions (list, optional): 
+            List of ion names to count (default: ["MG", "ZN", "CA", "K"]).
+
+        Returns
+        -------  
+        dict: 
+            A dictionary mapping ion names to their counts.
+        """
+        counts = {ion: 0 for ion in ions}
+        with open(self.ionpdb, "r", encoding='utf-8') as file:
+            for line in file:
+                if line.startswith("HETATM"):
+                    current_ion = line[12:16].strip()
+                    if current_ion in ions:
+                        counts[current_ion] += 1
+        # Log the ion counts
+        total_ions = sum(counts.values())
+        if total_ions > 0:
+            logger.info(f"Found {total_ions} resolved ions in {self.ionpdb}:")
+            for ion, count in counts.items():
+                if count > 0:
+                    logger.info(f"  {ion}: {count}")
+        else:
+            logger.info(f"No resolved ions found in {self.ionpdb}")
+        return counts
+
+    def get_mean_sem(self, pattern="dfi*.npy"):
+        """Calculates the mean and standard error of the mean (SEM) from numpy files.
+
+        Parameters
+        ----------
+            pattern (str, optional): Filename pattern to search for (default: "dfi*.npy").
+
+        Saves the calculated averages and errors as numpy files in the data directory.
+        """
+        logger.info("Calculating averages and errors from %s", pattern)
+        files = io.pull_files(self.mddir, pattern)
+        datas = [np.load(file) for file in files]
+        mean = np.average(datas, axis=0)
+        sem = np.std(datas, axis=0) / np.sqrt(len(datas))
+        file_mean = self.datdir / f"{pattern.split('*')[0]}_av.npy"
+        file_err = self.datdir / f"{pattern.split('*')[0]}_err.npy"
+        np.save(file_mean, mean)
+        np.save(file_err, sem)
+
+    def get_td_averages(self, pattern):
+        """Calculates time-dependent averages from a set of numpy files.
+        
+        Parameters
+        ----------
+        fname : str
+            Filename pattern to pull files from the MD runs directory.
+        loop : bool, optional
+            If True, processes files sequentially (default: True).
+            
+        Returns
+        -------
+        numpy.ndarray
+            The time-dependent average.
+        """
+        def slicer(shape): # Slice object to crop arrays to min_shape
+            return tuple(slice(0, s) for s in shape)
+        logger.info("Getting time-dependent averages")
+        files = io.pull_files(self.mddir, pattern)
+        if files:
+            logger.info("Processing %s", files[0])
+            average = np.load(files[0])
+            min_shape = average.shape
+            count = 1
+            if len(files) > 1:
+                for f in files[1:]:
+                    logger.info("Processing %s", f)
+                    arr = np.load(f)
+                    min_shape = tuple(min(s1, s2) for s1, s2 in zip(min_shape, arr.shape))
+                    s = slicer(min_shape)
+                    average[s] += arr[s]  # ← in-place addition
+                    count += 1
+                average = average[s] 
+                average /= count
+            out_file = self.datdir / f"{pattern.split('*')[0]}_av.npy"     
+            np.save(out_file, average)
+            logger.info("Done!")
+            return average
+        else:
+            logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
+
+
+class MartiniMixin:
+    """Martini coarse-grained helpers.
+
+    This is intended to be used as a *mixin* alongside :class:`MDSystem`.
+    Methods in this class may assume the host class defines core MDSystem
+    attributes like ``self.root`` and ``self.prodir``.
+    """
+
+    @property
+    def mapdir(self):
+        """Directory for GO/contact maps (Martini workflows)."""
+        return self.root / "maps"
+
+    @property
+    def cgdir(self):
+        """Directory for coarse-grained PDBs (Martini workflows)."""
+        return self.root / "cgpdb"
+
+    def __init__(self, *args, **kwargs):
+        # Keep this cooperative so the mixin doesn't constrain the host class.
+        super().__init__(*args, **kwargs)
+
     def get_go_maps(self, append=False):
         """Retrieves GO contact maps for proteins using the RCSU server.
         
@@ -439,155 +608,149 @@ class MDSystem:
             martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
 
-    def make_ions_pdb(self, inpdb=None, outpdb=None, ions=["MG", "ZN", "CA", "K"], resname="ION"):
-        """Creates a PDB file for the ion species with custom residue name.
-        
-        Ions are written to the output file grouped by type in the order specified
-        in the ions parameter.
+    def martinize_ligands(self, input_pdb=None, ligands=None):
+        logger.info("Working on ligands...")
+        if not input_pdb:
+            input_pdb = self.inpdb
+        u = mda.Universe(input_pdb)
+        for ligand in ligands:
+            ligand_residues = u.select_atoms(f"resname {ligand}").residues
+            if not ligand_residues:
+                logger.warning(f"No residues found for ligand: {ligand}")
+                continue
+            for ligand_residue in ligand_residues:
+                ligand_residue_id = ligand_residue.resid
+                logger.info(f"Found ligand residue:{ligand_residue_id}")
+
+    def make_cg_structure(self, add_resolved_ions=False, **kwargs):
+        """Merges coarse-grained PDB files into a single solute PDB file.
         
         Parameters
         ----------
-        inpdb : str or Path, optional
-            Input PDB file to read ions from (default: self.inpdb)
-        outpdb : str or Path, optional
-            Output PDB file to write ions to (default: self.ionpdb)
-        ions : list, optional
-            List of ion names to extract (default: ["MG", "ZN", "CA", "K"])
-        resname : str, optional
-            Residue name to assign to all ions in output (default: "ION")
+        add_resolved_ions : bool, optional
+            If True, adds resolved ions from ionpdb to the structure (default: False)
+        **kwargs : dict
+            Additional keyword arguments (currently unused)
         """
-        logger.info("Creating ion PDB file...")
-        if inpdb is None:
-            inpdb = self.inpdb
-        if outpdb is None:
-            outpdb = self.ionpdb
-        # ensure ion directory exists
-        Path.mkdir(self.iondir, exist_ok=True, parents=True)
-        # Ensure resname is exactly 3 characters (right-padded with spaces if shorter)
-        resname_formatted = f"{resname:<3}"[:3]
-        # Collect ions grouped by type to maintain order
-        ions_by_type = {ion: [] for ion in ions}
-        with open(inpdb, 'r', encoding='utf-8') as rin:
-            for line in rin:
-                # Only consider HETATM records which commonly hold resolved ions
-                if line.startswith('HETATM'):
-                    # atom name/resname typically in cols 13-16 (1-based) and 17-20 for resname
-                    # using same slicing as elsewhere in the file (0-based indices)
-                    atom_name = line[12:16].strip()
-                    original_resname = line[17:20].strip()
-                    # Check either atom name or residue name matches ion list
-                    for ion in ions:
-                        if original_resname == ion or atom_name == ion:
-                            # convert record type to ATOM and replace residue name
-                            # PDB format: cols 1-6 record, 7-11 serial, 12-16 atom, 17 altLoc, 18-20 resname, 22 chain...
-                            new_line = 'HETATM' + line[6:17] + resname_formatted + line[20:]
-                            ions_by_type[ion].append(new_line)
-                            break
-        # Write ions in order: all of first type, then all of second type, etc.
-        written = 0
-        with open(outpdb, 'w', encoding='utf-8') as wout:
-            for ion in ions:
-                for line in ions_by_type[ion]:
-                    wout.write(line)
-                    written += 1
-        logger.info(f"Ion PDB file created: {outpdb} (wrote {written} ions with resname '{resname_formatted.strip()}')")
+        logger.info("Merging CG PDB files into a single solute PDB...")
+        cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
+        # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
+        cg_pdb_files = sort_for_gmx(cg_pdb_files)
+        cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
+        all_atoms = AtomList()
+        for file in cg_pdb_files:
+            atoms = pdbtools.pdb2atomlist(file)
+            all_atoms.extend(atoms)
+        # Add resolved ions if requested (already sorted by type in ionpdb)
+        if add_resolved_ions:
+            logger.info("Adding resolved ions to structure...")
+            if self.ionpdb.exists():
+                ion_atoms = pdbtools.pdb2atomlist(self.ionpdb)
+                # Convert HETATM to ATOM records
+                for atom in ion_atoms:
+                    atom.record = 'ATOM'
+                all_atoms.extend(ion_atoms)
+                logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
+            else:
+                logger.warning(f"Ion PDB file not found: {self.ionpdb}")
+        
+        all_atoms.renumber()
+        all_atoms.write_pdb(self.solupdb)
+
+    def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
+        """Creates the system topology file by including all relevant ITP files and
+        defining the system and molecule sections.
+
+        Parameters
+        ----------
+            add_resolved_ions (bool, optional): If True, counts and includes resolved ions.
+            prefix (str, optional): Prefix for ITP files to include (default: "chain").
+
+        Writes the topology file (self.systop) with include directives and molecule counts.
+        """
+        logger.info("Writing system topology...")
+        itp_files = [p.name for p in self.topdir.glob(f'{prefix}*itp')]
+        # itp_files = pdbtools.sort_uld(itp_files)
+        itp_files = sort_for_gmx(itp_files)
+        with self.systop.open("w") as f:
+            # Include section
+            f.write('#define GO_VIRT"\n')
+            f.write("#define RUBBER_BANDS\n")
+            f.write('#include "topol/martini_v3.0.0.itp"\n')
+            f.write('#include "topol/martini_v3.0.0_rna.itp"\n')
+            f.write('#include "topol/martini_ions.itp"\n')
+            if any(p.name == "go_atomtypes.itp" for p in self.topdir.iterdir()):
+                f.write('#include "topol/go_atomtypes.itp"\n')
+                f.write('#include "topol/go_nbparams.itp"\n')
+            f.write('#include "topol/martini_v3.0.0_solvents_v1.itp"\n')
+            f.write('#include "topol/martini_v3.0.0_phospholipids_v1.itp"\n')
+            f.write('#include "topol/martini_v3.0.0_ions_v1.itp"\n')
+            f.write("\n")
+            for filename in itp_files:
+                f.write(f'#include "topol/{filename}"\n')
+            # System name and molecule count
+            f.write("\n[ system ]\n")
+            f.write(f"Martini system for {self.sysname}\n")
+            f.write("\n[molecules]\n")
+            f.write("; name\t\tnumber\n")
+            for filename in itp_files:
+                molecule_name = Path(filename).stem
+                f.write(f"{molecule_name}\t\t1\n")
+            # Add resolved ions if requested.
+            if add_resolved_ions:
+                ions = self.count_resolved_ions()
+                for ion, count in ions.items():
+                    if count > 0:
+                        f.write(f"{ion}          {count}\n")
 
     def insert_membrane(self, **kwargs):
         """Insert CG lipid membrane using INSANE."""
         with cd(self.root):
             martini_tools.insert_membrane(**kwargs)
 
-    def count_resolved_ions(self, ions=("MG", "ZN", "CA", "K")):
-        """Counts the number of resolved ions in the system PDB file.
+    def make_gro_file(self, d=1.25, bt="dodecahedron"):
+        """Generates the final GROMACS GRO file from coarse-grained PDB files.
 
         Parameters
         ----------
-        ions (list, optional): 
-            List of ion names to count (default: ["MG", "ZN", "CA", "K"]).
+            d (float, optional): Distance parameter for the editconf command (default: 1.25).
+            bt (str, optional): Box type for the editconf command (default: "dodecahedron").
 
-        Returns
-        -------  
-        dict: 
-            A dictionary mapping ion names to their counts.
+        Converts PDB files to GRO files, merges them, and adjusts the system box.
         """
-        counts = {ion: 0 for ion in ions}
-        with open(self.ionpdb, "r", encoding='utf-8') as file:
-            for line in file:
-                if line.startswith("HETATM"):
-                    current_ion = line[12:16].strip()
-                    if current_ion in ions:
-                        counts[current_ion] += 1
-        # Log the ion counts
-        total_ions = sum(counts.values())
-        if total_ions > 0:
-            logger.info(f"Found {total_ions} resolved ions in {self.ionpdb}:")
-            for ion, count in counts.items():
-                if count > 0:
-                    logger.info(f"  {ion}: {count}")
-        else:
-            logger.info(f"No resolved ions found in {self.ionpdb}")
-        return counts
-
-    def get_mean_sem(self, pattern="dfi*.npy"):
-        """Calculates the mean and standard error of the mean (SEM) from numpy files.
-
-        Parameters
-        ----------
-            pattern (str, optional): Filename pattern to search for (default: "dfi*.npy").
-
-        Saves the calculated averages and errors as numpy files in the data directory.
-        """
-        logger.info("Calculating averages and errors from %s", pattern)
-        files = io.pull_files(self.mddir, pattern)
-        datas = [np.load(file) for file in files]
-        mean = np.average(datas, axis=0)
-        sem = np.std(datas, axis=0) / np.sqrt(len(datas))
-        file_mean = self.datdir / f"{pattern.split('*')[0]}_av.npy"
-        file_err = self.datdir / f"{pattern.split('*')[0]}_err.npy"
-        np.save(file_mean, mean)
-        np.save(file_err, sem)
-
-    def get_td_averages(self, pattern):
-        """Calculates time-dependent averages from a set of numpy files.
-        
-        Parameters
-        ----------
-        fname : str
-            Filename pattern to pull files from the MD runs directory.
-        loop : bool, optional
-            If True, processes files sequentially (default: True).
-            
-        Returns
-        -------
-        numpy.ndarray
-            The time-dependent average.
-        """
-        def slicer(shape): # Slice object to crop arrays to min_shape
-            return tuple(slice(0, s) for s in shape)
-        logger.info("Getting time-dependent averages")
-        files = io.pull_files(self.mddir, pattern)
-        if files:
-            logger.info("Processing %s", files[0])
-            average = np.load(files[0])
-            min_shape = average.shape
-            count = 1
-            if len(files) > 1:
-                for f in files[1:]:
-                    logger.info("Processing %s", f)
-                    arr = np.load(f)
-                    min_shape = tuple(min(s1, s2) for s1, s2 in zip(min_shape, arr.shape))
-                    s = slicer(min_shape)
-                    average[s] += arr[s]  # ← in-place addition
-                    count += 1
-                average = average[s] 
-                average /= count
-            out_file = self.datdir / f"{pattern.split('*')[0]}_av.npy"     
-            np.save(out_file, average)
-            logger.info("Done!")
-            return average
-        else:
-            logger.info('Could not find files matching given pattern: %s. Maybe you forgot "*"?', pattern)
-
+        with cd(self.root):
+            cg_pdb_files = pdbtools.sort_uld([p.name for p in self.cgdir.iterdir()])
+            for file in cg_pdb_files:
+                if file.endswith(".pdb"):
+                    pdb_file = self.cgdir / file
+                    # Replace suffix and directory component as in the original string manipulation
+                    gro_file_str = str(pdb_file).replace(".pdb", ".gro").replace("cgpdb", "gro")
+                    gro_file = Path(gro_file_str)
+                    command = f"gmx_mpi editconf -f {pdb_file} -o {gro_file}"
+                    sp.run(command.split(), check=True)
+            # Merge all .gro files.
+            gro_files = sorted([p.name for p in self.grodir.iterdir()])
+            total_count = 0
+            for filename in gro_files:
+                if filename.endswith(".gro"):
+                    filepath = self.grodir / filename
+                    with filepath.open("r") as in_f:
+                        lines = in_f.readlines()
+                        atom_count = int(lines[1].strip())
+                        total_count += atom_count
+            with self.sysgro.open("w") as out_f:
+                out_f.write(f"{self.sysname} \n")
+                out_f.write(f"  {total_count}\n")
+                for filename in gro_files:
+                    if filename.endswith(".gro"):
+                        filepath = self.grodir / filename
+                        with filepath.open("r") as in_f:
+                            lines = in_f.readlines()[2:-1]
+                            for line in lines:
+                                out_f.write(line)
+                out_f.write("10.00000   10.00000   10.00000\n")
+            command = f"gmx_mpi editconf -f {self.sysgro} -d {d} -bt {bt}  -o {self.sysgro}"
+            sp.run(command.split(), check=True)
 
 class MDRun(MDSystem):
     """Subclass of MDSystem for executing molecular dynamics (MD) simulations
