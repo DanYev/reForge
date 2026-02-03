@@ -44,8 +44,6 @@ class MDSystem:
     Most attributes are paths to files and directories needed to set up
     and run the MD simulation.
     """
-    MDATDIR = importlib.resources.files("reforge") / "martini" / "datdir"
-    MITPDIR = importlib.resources.files("reforge") / "martini" / "itp"
     NUC_RESNAMES = ["A", "C", "G", "U",
                     "RA3", "RA5", "RC3", "RC5", 
                     "RG3", "RG5", "RU3", "RU5",]
@@ -114,17 +112,17 @@ class MDSystem:
         self.datdir.mkdir(parents=True, exist_ok=True)
         self.pngdir.mkdir(parents=True, exist_ok=True)
         if pour_martini:
-            self.cgdir.mkdir(parents=True, exist_ok=True)
-            self.mapdir.mkdir(parents=True, exist_ok=True)
-            self.topdir.mkdir(parents=True, exist_ok=True)
-            # Copy water.gro and atommass.dat from master data directory
-            shutil.copy(self.MDATDIR / "water.gro", self.root)
-            shutil.copy(self.MDATDIR / "atommass.dat", self.root)
-            # Copy .itp files from master ITP directory
-            for file in self.MITPDIR.iterdir():
-                if file.name.endswith(".itp"):
-                    outpath = self.topdir / file.name
-                    shutil.copy(file, outpath)
+            # Delegate Martini-specific setup to the Martini mixin if present.
+            # This keeps MDSystem generic while still supporting the legacy
+            # `pour_martini=True` flag.
+            prepare_martini = getattr(self, "prepare_martini_files", None)
+            if callable(prepare_martini):
+                prepare_martini()
+            else:
+                raise AttributeError(
+                    "pour_martini=True requires a class providing Martini behavior "
+                    "(e.g., inherit from MartiniMixin which defines prepare_martini_files())."
+                )
 
     def sort_input_pdb(self, in_pdb="inpdb.pdb"):
         """Sorts and renames atoms and chains in the input PDB file.
@@ -416,6 +414,9 @@ class MDSystem:
 
 
 class MartiniMixin:
+    MDATDIR = importlib.resources.files("reforge") / "martini" / "datdir"
+    MITPDIR = importlib.resources.files("reforge") / "martini" / "itp"
+
     """Martini coarse-grained helpers.
 
     This is intended to be used as a *mixin* alongside :class:`MDSystem`.
@@ -436,6 +437,24 @@ class MartiniMixin:
     def __init__(self, *args, **kwargs):
         # Keep this cooperative so the mixin doesn't constrain the host class.
         super().__init__(*args, **kwargs)
+
+    def prepare_martini_files(self):
+        """Prepare Martini-specific folders and copy shared Martini data.
+
+        This is called by :meth:`MDSystem.prepare_files` when invoked with
+        ``pour_martini=True``.
+        """
+        self.cgdir.mkdir(parents=True, exist_ok=True)
+        self.mapdir.mkdir(parents=True, exist_ok=True)
+        self.topdir.mkdir(parents=True, exist_ok=True)
+        # Copy water.gro and atommass.dat from master data directory
+        shutil.copy(self.MDATDIR / "water.gro", self.root)
+        shutil.copy(self.MDATDIR / "atommass.dat", self.root)
+        # Copy .itp files from the master ITP directory to the system topology directory
+        for file in self.MITPDIR.iterdir():
+            if file.name.endswith(".itp"):
+                outpath = self.topdir / file.name
+                shutil.copy(file, outpath)
 
     def get_go_maps(self, append=False):
         """Retrieves GO contact maps for proteins using the RCSU server.
