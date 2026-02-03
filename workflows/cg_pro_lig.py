@@ -38,7 +38,7 @@ def setup_martini(sysdir, sysname):
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
     # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
     # mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["FTA", "HOH"])
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["FTA", ])
     exit()
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file

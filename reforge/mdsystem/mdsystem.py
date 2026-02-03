@@ -27,6 +27,7 @@ import tempfile
 import logging
 import MDAnalysis as mda
 import numpy as np
+from collections import defaultdict
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
@@ -434,6 +435,13 @@ class MartiniMixin:
         """Directory for coarse-grained PDBs (Martini workflows)."""
         return self.root / "cgpdb"
 
+    @property
+    def molecules(self):
+        """Directory for coarse-grained molecules (Martini workflows)."""
+        if not hasattr(self, "_molecules"):
+            self._molecules = {}
+        return self._molecules
+
     def __init__(self, *args, **kwargs):
         # Keep this cooperative so the mixin doesn't constrain the host class.
         super().__init__(*args, **kwargs)
@@ -627,6 +635,90 @@ class MartiniMixin:
             martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
 
+    def _map_ligand(self, map_file, ligand_residue):
+        """Map an all-atom ligand residue to Martini beads using a `.map` file.
+
+        Parameters
+        ----------
+        map_file : str | pathlib.Path
+            Path to a martini mapping file with an `[ atoms ]` section.
+        ligand_residue : MDAnalysis.core.groups.Residue
+            Ligand residue to map.
+
+        Writes
+        ------
+        A PDB file to `self.cgdir / f"{resname}_{resid}.pdb"` containing one ATOM
+        per bead at the center-of-geometry of the mapped atoms.
+        """
+        map_file = Path(map_file)
+        if not map_file.exists():
+            raise FileNotFoundError(f"Mapping file not found: {map_file}")
+        # --- parse mapping file (only need the [ atoms ] section)
+        bead_to_atomnames: dict[str, list[str]] = defaultdict(list)
+        in_atoms = False
+        with map_file.open("r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith(";") or line.startswith("#"):
+                    continue
+                lower = line.lower()
+                if lower.startswith("[") and lower.endswith("]"):
+                    in_atoms = (lower == "[ atoms ]")
+                    continue
+                if not in_atoms:
+                    continue
+                # Expected format: idx  atomName  beadName
+                parts = line.split()
+                if len(parts) < 3:
+                    continue
+                atom_name = parts[1]
+                bead_name = parts[2]
+                bead_to_atomnames[bead_name].append(atom_name)
+        if not bead_to_atomnames:
+            raise ValueError(f"No [ atoms ] mapping entries found in {map_file}")
+        print(bead_to_atomnames)        # --- compute bead positions as center-of-geometry of mapped atoms
+        # Use MDAnalysis atom names (atom.name), and average positions equally.
+        aa_atoms = ligand_residue.atoms
+        print(aa_atoms)
+        aa_by_name: dict[str, list] = defaultdict(list)
+        for idx, a in enumerate(aa_atoms):
+            aa_by_name[f"{a.type}{idx+1}"].append(a)
+        beads = []  # list of (bead_name, xyz)
+        for bead_name, atom_names in bead_to_atomnames.items():
+            bead_atoms = []
+            for aname in atom_names:
+                bead_atoms.extend(aa_by_name.get(aname, []))
+            if not bead_atoms:
+                # Mapping references atoms not present in this residue; skip silently.
+                continue
+            coords = np.array([a.position for a in bead_atoms], dtype=float)
+            xyz = coords.mean(axis=0)
+            beads.append((bead_name, xyz))
+
+        if not beads:
+            raise ValueError(
+                f"Mapping produced no beads for residue {ligand_residue.resname} {ligand_residue.resid}. "
+                f"Check atom names in {map_file}."
+            )
+        # --- write CG PDB
+        self.cgdir.mkdir(parents=True, exist_ok=True)
+        resname = str(ligand_residue.resname)
+        resid = int(ligand_residue.resid)
+        outpdb = self.cgdir / f"{resname}_{resid}.pdb"
+        # PDB formatting: keep it simple and GROMACS-friendly.
+        # Use one residue, chain A, one atom per bead.
+        with outpdb.open("w", encoding="utf-8") as w:
+            for i, (bead_name, xyz) in enumerate(beads, start=1):
+                x, y, z = xyz
+                # atom name field is 4 chars, right/left aligned depends; simplest: right align
+                atom_name = f"{bead_name:>4}"[:4]
+                w.write(
+                    f"ATOM  {i:5d} {atom_name} {resname:>3} A{resid:4d}    "
+                    f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00\n"
+                )
+            w.write("END\n")
+        logger.info("Wrote mapped ligand CG PDB: %s", outpdb)
+
     def martinize_ligands(self, input_pdb=None, ligands=None):
         logger.info("Working on ligands...")
         if not input_pdb:
@@ -634,12 +726,15 @@ class MartiniMixin:
         u = mda.Universe(input_pdb)
         for ligand in ligands:
             ligand_residues = u.select_atoms(f"resname {ligand}").residues
+            map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
+            itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
             if not ligand_residues:
                 logger.warning(f"No residues found for ligand: {ligand}")
                 continue
+            self.molecules[ligand] = len(ligand_residues)
             for ligand_residue in ligand_residues:
-                ligand_residue_id = ligand_residue.resid
-                logger.info(f"Found ligand residue:{ligand_residue_id}")
+                self._map_ligand(map_file, ligand_residue)
+        print(self.molecules)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.
