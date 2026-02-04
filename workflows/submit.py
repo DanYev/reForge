@@ -61,7 +61,7 @@ if __name__ == "__main__":
     submit = True
 
     ##### For MD #####
-    pyscript = str(pdir / 'egfr_pipe.py')
+    pyscript = str(pdir / 'cg_pro_lig.py')
     # run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
     # sys_job('setup', submit=submit, mem='16G')
     run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
