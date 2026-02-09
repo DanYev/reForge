@@ -7,7 +7,7 @@ from reforge.utils import clean_dir, get_logger
 logger = get_logger()
 
 # Global settings
-INPDB = '1PZP.pdb'
+INPDB = 'KDA.pdb'
 DT = 0.020  # Time step in picoseconds
 total_time = 1000  # Total simulation time in nanoseconds
 NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
@@ -26,19 +26,19 @@ def setup_martini(sysdir, sysname):
     mdsys = GmxSystem(sysdir, sysname)
     input_pdb = Path(sysdir) / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
-    # mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
-    # # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
-    # mdsys.split_chains()
+    mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
+    mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
+    # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
+    mdsys.split_chains()
     
     # # 1.2.2 Looks like we don't need this anymore
     # mdsys.get_go_maps(append=True)
 
     # 1.2. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
-    mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=False)  # Martini + Elastic network FF 
+    mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=True)  # Martini + Elastic network FF 
     # # # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
     # # # mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["FTA", ])
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["MG", "ANP", ])
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     

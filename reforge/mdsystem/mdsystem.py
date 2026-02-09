@@ -711,7 +711,7 @@ class MartiniMixin:
         if not beads:
             raise ValueError(
                 f"Mapping produced no beads for residue {ligand_residue.resname} {ligand_residue.resid}. "
-                f"Check atom names in {map_file}."
+                f"Atom names {list(aa_by_name.keys())} should be in the {map_file}."
             )
         # --- write CG PDB
         self.cgdir.mkdir(parents=True, exist_ok=True)
@@ -742,8 +742,7 @@ class MartiniMixin:
             map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
             itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
             if not ligand_residues:
-                logger.warning(f"No residues found for ligand: {ligand}")
-                continue
+                raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
             self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
@@ -813,14 +812,14 @@ class MartiniMixin:
             f.write('#include "topol/martini_v3.0.0_ions_v1.itp"\n')
             f.write("\n")
             for filename in itp_files:
-                print(filename)
                 f.write(f'#include "topol/{filename}"\n')
             # System name and molecule count
             f.write("\n[ system ]\n")
             f.write(f"Martini system for {self.sysname}\n")
             f.write("\n[molecules]\n")
             f.write("; name\t\tnumber\n")
-            for molecule, count in self.molecules.items():
+            for molecule in molecules:
+                count = self.molecules[molecule]
                 if molecule.startswith("ligand_"):
                     molecule = molecule.replace("ligand_", "")
                 f.write(f"{molecule}\t\t{count}\n")
