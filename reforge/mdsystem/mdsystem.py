@@ -696,7 +696,8 @@ class MartiniMixin:
         aa_atoms = ligand_residue.atoms
         aa_by_name: dict[str, list] = defaultdict(list)
         for idx, a in enumerate(aa_atoms):
-            aa_by_name[f"{a.type}{idx+1}"].append(a)
+            # aa_by_name[f"{a.type}{idx+1}"].append(a)
+            aa_by_name[f"{a.name}"].append(a)
         beads = []  # list of (bead_name, xyz)
         for bead_name, atom_names in bead_to_atomnames.items():
             bead_atoms = []

@@ -58,16 +58,14 @@ if __name__ == "__main__":
     sysnames = ["KDA"]
     runs = ["mdrun"]
 
-    submit = False
+    submit = True
 
     ##### For MD #####
     pyscript = str(pdir / 'cg_pro_lig.py')
-    # run_job('workflow', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00')
-    sys_job('setup', submit=submit, mem='16G')
+    # sys_job('setup', submit=submit, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
-    # # run_job('extend', submit=submit, G='1', c='4', mem='2G')
-    # # run_job('trjconv', submit=submit)
-    # run_job('main', submit=submit)
+    # run_job('trjconv', submit=submit)
+    # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####
     # pyscript = str(pdir / 'analysis.py')
