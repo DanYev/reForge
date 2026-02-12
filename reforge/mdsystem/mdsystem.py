@@ -744,23 +744,21 @@ class MartiniMixin:
             Name of the target ITP file (without .itp extension)
         """
         target_itp = self.topdir / f"{target_name}.itp"
-        
         if not target_itp.exists():
             raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
-        
+        if not ligand_itp.exists():
+            raise FileNotFoundError(f"Ligand ITP file not found: {ligand_itp}")
         logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
-        
         # Load both topologies
         target_topo = Topology.from_itp(target_itp)
+        print(len(target_topo.angles))
         ligand_topo = Topology.from_itp(ligand_itp)
-        
-        # Merge ligand into target
         target_topo += ligand_topo
-        
-        # Write merged topology back to target file
-        target_topo.write_to_itp(str(target_itp))
-        
-        logger.info(f"Successfully merged {ligand_itp.name} into {target_itp.name}")
+        # print(target_topo.atoms)
+        print(len(target_topo.angles))
+        target_topo.write_to_itp(self.topdir / "tmp.itp")
+        # target_topo.write_to_itp(str(target_itp))
+        logger.info(f"Merged {ligand_itp.name} into {target_itp.name}")
 
     def martinize_ligands(
         self, 
@@ -778,12 +776,12 @@ class MartiniMixin:
             itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
             if not ligand_residues:
                 raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
-            self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
             if merge_with:
                 self._merge_ligand_with(itp_file, merge_with)
             else:
+                self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):

@@ -28,7 +28,6 @@ Date: YYYY-MM-DD
 import logging
 from pathlib import Path
 import numpy as np
-from . import itpio
 
 ############################################################
 # Helper class for working with bonds
@@ -241,7 +240,7 @@ class Topology:
         Exclusion parameter.
     atoms : list
         List of atom records.
-    bonds, angles, dihs, cons, excls, pairs, vs3s, posres, elnet : BondList
+    bonds, angles, dihs, cons, excls, pairs, vs2s, vs3s, vs4s, vsn, posres, elnet : BondList
         BondList instances for various bonded interactions.
     blist : list
         List containing all bond-type BondLists.
@@ -251,7 +250,7 @@ class Topology:
         Total number of atoms.
     """
 
-    def __init__(self, forcefield=None, sequence: list | None = None, secstruct: list | None = None, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         """Initialize a Topology instance.
 
         Description:
@@ -275,8 +274,8 @@ class Topology:
         """
         molname = kwargs.pop("molname", "molecule")
         nrexcl = kwargs.pop("nrexcl", 1)
-        self.ff = forcefield
-        self.sequence = sequence if sequence is not None else []
+        self.ff = kwargs.pop("forcefield", None)
+        self.sequence = kwargs.pop("sequence", [])
         self.name = molname
         self.nrexcl = nrexcl
         self.atoms: list = []
@@ -286,13 +285,15 @@ class Topology:
         self.cons = BondList()
         self.excls = BondList()
         self.pairs = BondList()
+        self.vs2s = BondList()
         self.vs3s = BondList()
+        self.vs4s = BondList()
+        self.vsn = BondList()
         self.posres = BondList()
         self.elnet = BondList()
         self.mapping: list = []
         self.natoms = len(self.atoms)
-        self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, self.vs3s]
-        self.secstruct = secstruct if secstruct is not None else ["F"] * len(self.sequence) if self.sequence else []
+        self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, self.vs2s, self.vs3s, self.vs4s, self.vsn]
 
     def __iadd__(self, other) -> "Topology":
         """Implement in-place addition of another Topology instance.
@@ -322,9 +323,15 @@ class Topology:
             return [conn, bond[1], bond[2]]
 
         atom_shift = self.natoms
-        residue_shift = len(self.sequence)
+        # Calculate residue_shift from actual max residue ID in atoms, not sequence length
+        if self.atoms:
+            residue_shift = max(atom[2] for atom in self.atoms)
+        else:
+            residue_shift = 0
+        
         new_atoms = [update_atom(atom, atom_shift, residue_shift) for atom in other.atoms]
         self.atoms.extend(new_atoms)
+        self.natoms = len(self.atoms)  # Update natoms after extending
         for self_attrib, other_attrib in zip(self.blist, other.blist):
             updated_bonds = [update_bond(bond, atom_shift) for bond in other_attrib]
             self_attrib.extend(updated_bonds)
@@ -359,19 +366,21 @@ class Topology:
             A list of strings, each representing a line in the topology file.
         """
         forcefield_name = self.ff.name if self.ff is not None else ""
-        lines = itpio.format_header(molname=self.name, forcefield=forcefield_name, arguments="")
-        lines += itpio.format_sequence_section(self.sequence, self.secstruct)
-        lines += itpio.format_moleculetype_section(molname=self.name, nrexcl=self.nrexcl)
-        lines += itpio.format_atoms_section(self.atoms)
-        lines += itpio.format_bonded_section("bonds", self.bonds)
-        lines += itpio.format_bonded_section("angles", self.angles)
-        lines += itpio.format_bonded_section("dihedrals", self.dihs)
-        lines += itpio.format_bonded_section("constraints", self.cons)
-        lines += itpio.format_bonded_section("exclusions", self.excls)
-        lines += itpio.format_bonded_section("pairs", self.pairs)
-        lines += itpio.format_bonded_section("virtual_sites3", self.vs3s)
-        lines += itpio.format_bonded_section("bonds", self.elnet)
-        lines += itpio.format_posres_section(self.atoms)
+        lines = format_header(molname=self.name, forcefield=forcefield_name, arguments="")
+        lines += format_moleculetype_section(molname=self.name, nrexcl=self.nrexcl)
+        lines += format_atoms_section(self.atoms)
+        lines += format_bonded_section("bonds", self.bonds)
+        lines += format_bonded_section("angles", self.angles)
+        lines += format_bonded_section("dihedrals", self.dihs)
+        lines += format_bonded_section("constraints", self.cons)
+        lines += format_bonded_section("exclusions", self.excls)
+        lines += format_bonded_section("pairs", self.pairs)
+        lines += format_bonded_section("virtual_sites2", self.vs2s)
+        lines += format_bonded_section("virtual_sites3", self.vs3s)
+        lines += format_bonded_section("virtual_sites4", self.vs4s)
+        lines += format_bonded_section("virtual_sitesn", self.vsn)
+        lines += format_bonded_section("bonds", self.elnet)
+        lines += format_posres_section(self.atoms)
         logging.info("Created coarsegrained topology")
         return lines
 
@@ -467,21 +476,18 @@ class Topology:
         if not itp_file.exists():
             raise FileNotFoundError(f"ITP file not found: {itp_file}")
         
-        # Read moleculetype section manually to get name and nrexcl
+        # Read ITP file
+        itp_data = read_itp(str(itp_file))
+        
+        # Read moleculetype section to get name and nrexcl
         nrexcl = 1
-        with itp_file.open("r") as f:
-            in_moleculetype = False
-            for line in f:
-                if line.strip().startswith("[ moleculetype ]"):
-                    in_moleculetype = True
-                    continue
-                if in_moleculetype:
-                    if line.strip() and not line.strip().startswith(";"):
-                        parts = line.split()
-                        if len(parts) >= 2 and not molname:
-                            molname = parts[0]
-                            nrexcl = int(parts[1])
-                        break
+        if "moleculetype" in itp_data:
+            for entry in itp_data["moleculetype"]:
+                if len(entry) >= 2:
+                    if not molname:
+                        molname = entry[0]
+                    nrexcl = int(entry[1])
+                    break
         
         if not molname:
             molname = "molecule"
@@ -489,39 +495,34 @@ class Topology:
         # Create empty topology
         topo = cls(forcefield=None, sequence=[], molname=molname, nrexcl=nrexcl)
         
-        # Read atoms section manually (not handled well by read_itp)
-        with itp_file.open("r") as f:
-            in_atoms = False
-            for line in f:
-                if line.strip().startswith("[ atoms ]"):
-                    in_atoms = True
-                    continue
-                if in_atoms:
-                    if line.strip().startswith("["):
-                        break
-                    if line.strip() and not line.strip().startswith(";"):
-                        parts = line.split(";")
-                        data = parts[0].split()
-                        comment = parts[1].strip() if len(parts) > 1 else ""
-                        if data:
-                            # Format: nr type resnr residue atom cgnr charge mass [comment]
-                            atom = [
-                                int(data[0]),      # atom id
-                                data[1],           # type
-                                int(data[2]),      # residue id
-                                data[3],           # residue name
-                                data[4],           # atom name
-                                int(data[5]),      # charge group
-                                float(data[6]),    # charge
-                            ]
-                            if len(data) > 7:
-                                atom.append(float(data[7]))  # mass
-                            if comment:
-                                atom.append(comment)
-                            topo.atoms.append(atom)
-        
-        # Use read_itp for bonded interactions
-        itp_data = itpio.read_itp(str(itp_file))
+        # Read atoms section
+        if "atoms" in itp_data:
+            for entry in itp_data["atoms"]:
+                # Format: nr type resnr residue atom cgnr charge [mass] [comment]
+                if len(entry) >= 7:
+                    atom = [
+                        int(entry[0]),      # atom id
+                        entry[1],           # type
+                        int(entry[2]),      # residue id
+                        entry[3],           # residue name
+                        entry[4],           # atom name
+                        int(entry[5]),      # charge group
+                        float(entry[6]),    # charge
+                    ]
+                    if len(entry) > 7:
+                        try:
+                            atom.append(float(entry[7]))  # mass
+                        except ValueError:
+                            # It's a comment, not mass
+                            atom.append("")
+                            if entry[7]:
+                                atom.append(entry[7])
+                    if len(entry) > 8 and entry[8]:
+                        # Comment in last position
+                        if len(atom) == 7:
+                            atom.append("")  # No mass
+                        atom.append(entry[8])
+                    topo.atoms.append(atom)
         
         # Map section names to BondList attributes
         section_map = {
@@ -531,7 +532,10 @@ class Topology:
             "constraints": topo.cons,
             "exclusions": topo.excls,
             "pairs": topo.pairs,
+            "virtual_sites2": topo.vs2s,
             "virtual_sites3": topo.vs3s,
+            "virtual_sites4": topo.vs4s,
+            "virtual_sitesn": topo.vsn,
         }
         
         # Populate BondLists from itp_data
@@ -543,6 +547,18 @@ class Topology:
                     params = list(entry[1]) if entry[1] else []
                     comment = entry[2]
                     bondlist.append([conn, params, comment])
+        
+        # Handle position_restraints section (parsed as generic data)
+        if "position_restraints" in itp_data:
+            for entry in itp_data["position_restraints"]:
+                # Format: atom_id func_type fc_x fc_y fc_z [comment]
+                if len(entry) >= 5:
+                    atom_id = int(entry[0])
+                    func_type = int(entry[1])
+                    # Store as connectivity=atom_id, parameters=[func_type, fc_x, fc_y, fc_z]
+                    params = [func_type, entry[2], entry[3], entry[4]]
+                    comment = entry[5] if len(entry) > 5 else ""
+                    topo.posres.append([[atom_id], params, comment])
         
         topo.natoms = len(topo.atoms)
         logging.info(f"Loaded topology from {itp_file.name}: {topo.natoms} atoms")
@@ -567,3 +583,407 @@ class Topology:
             for new_top in topologies:
                 top += new_top
         return top
+
+###################################
+# ITP PARSING UTILITIES
+###################################
+
+def read_itp(fpath):
+    """Read a Gromacs ITP file and organize its contents by section.
+
+    Parameters
+    ----------
+    fpath : Path or str
+        The path to the ITP file.
+
+    Returns
+    -------
+    dict
+        A dictionary where keys are section names and values are lists of entries.
+        For bonded sections, each entry is [connectivity, parameters, comment].
+        For other sections, each entry is a list of parsed line data.
+        Header lines are stored in itp_data["header"].
+        
+    Notes
+    -----
+    - #ifdef blocks in the header are preserved
+    - #ifdef POSRES in position_restraints section is processed
+    - All other #ifdef blocks are ignored along with their content
+    """
+    # Define which sections should be parsed as bonded interactions
+    bonded_sections = {"bonds", "angles", "dihedrals", "constraints", 
+                      "pairs", "exclusions", "virtual_sites2", "virtual_sites3", 
+                      "virtual_sites4", "virtual_sitesn"}
+    
+    itp_data = {"header": []}
+    current_section = None
+    inside_ifdef = False
+    ifdef_allowed = False  # True only for POSRES in position_restraints
+    
+    with open(fpath, "r", encoding="utf-8") as file:
+        for line in file:
+            stripped = line.strip()
+            
+            # Handle #ifdef and #ifndef blocks
+            if stripped.startswith("#ifdef") or stripped.startswith("#ifndef"):
+                if current_section is None:
+                    # In header - keep it
+                    itp_data["header"].append(line)
+                elif current_section == "position_restraints" and "POSRES" in line:
+                    # POSRES in position_restraints - allow this block
+                    inside_ifdef = True
+                    ifdef_allowed = True
+                else:
+                    # Any other ifdef/ifndef - ignore this block
+                    inside_ifdef = True
+                    ifdef_allowed = False
+                continue
+            
+            # Handle #else
+            if stripped.startswith("#else"):
+                if current_section is None:
+                    # In header - keep it
+                    itp_data["header"].append(line)
+                else:
+                    # Toggle allowed state if inside ifdef (for now, just skip)
+                    # We'll keep behavior simple: skip everything in non-POSRES blocks
+                    pass
+                continue
+            
+            # Handle #endif
+            if stripped.startswith("#endif"):
+                if current_section is None:
+                    # In header - keep it
+                    itp_data["header"].append(line)
+                else:
+                    inside_ifdef = False
+                    ifdef_allowed = False
+                continue
+            
+            # Skip content inside ignored ifdef blocks
+            if inside_ifdef and not ifdef_allowed:
+                continue
+            
+            # Handle #define and other preprocessor directives in header
+            if current_section is None and stripped.startswith("#"):
+                itp_data["header"].append(line)
+                continue
+            
+            # Skip any other preprocessor directives in sections (shouldn't parse them as data)
+            if current_section is not None and stripped.startswith("#"):
+                continue
+            
+            # Store header lines (before first section)
+            if current_section is None:
+                if stripped.startswith("[") and stripped.endswith("]"):
+                    # First section found
+                    current_section = stripped[1:-1].strip()
+                    itp_data[current_section] = []
+                else:
+                    # Store as header
+                    itp_data["header"].append(line)
+                continue
+            
+            # Skip empty lines
+            if stripped == "":
+                continue
+            
+            # Check for new section header
+            if stripped.startswith("[") and stripped.endswith("]"):
+                current_section = stripped[1:-1].strip()
+                itp_data[current_section] = []
+                continue
+            
+            # Skip comment lines within sections
+            if stripped.startswith(";"):
+                continue
+            
+            # Parse section content
+            if current_section in bonded_sections:
+                # Parse as bonded interaction
+                connectivity, parameters, comment = line_to_bond(line, current_section)
+                itp_data[current_section].append([connectivity, parameters, comment])
+            else:
+                # Parse as generic line data
+                parts = line.split(";", 1)
+                data = parts[0].split()
+                comment = parts[1].strip() if len(parts) > 1 else ""
+                if data:  # Only add non-empty data
+                    itp_data[current_section].append(data + ([comment] if comment else []))
+    
+    return itp_data
+
+
+def line_to_bond(line, section):
+    """Parse a line from an ITP file and return connectivity, parameters, and comment.
+
+    Parameters
+    ----------
+    line : str
+        A line from the ITP file.
+    section : str
+        The section (e.g. 'bonds', 'angles', etc.).
+
+    Returns
+    -------
+    tuple
+        A tuple (connectivity, parameters, comment) where connectivity is a tuple of ints,
+        parameters is a tuple of numbers (first as int, rest as floats), and comment is a string.
+    """
+    data, _, comment = line.partition(";")
+    data = data.split()
+    comment = comment.strip()
+    if section == "bonds" or section == "constraints":
+        connectivity = data[:2]
+        parameters = data[2:]
+    elif section == "virtual_sites2":
+        connectivity = data[:3]  # virtual site + 2 constructing atoms
+        parameters = data[3:]
+    elif section == "angles":
+        connectivity = data[:3]
+        parameters = data[3:]
+    elif section == "dihedrals" or section == "virtual_sites3":
+        connectivity = data[:4]
+        parameters = data[4:]
+    elif section == "virtual_sites4":
+        connectivity = data[:5]  # virtual site + 4 constructing atoms
+        parameters = data[5:]
+    elif section == "virtual_sitesn":
+        # For virtual_sitesn, format is: vsite func_type at1 at2 ... at_n [params]
+        # The number of constructing atoms depends on func_type
+        # We'll store first atom as connectivity, rest as parameters for flexibility
+        if len(data) >= 2:
+            connectivity = [data[0]]  # Just the virtual site atom
+            parameters = data[1:]  # func_type and everything else
+        else:
+            connectivity = data
+            parameters = []
+    else:
+        connectivity = data
+        parameters = []
+    if parameters:
+        # Try to convert parameters, but handle cases where all data is stored in parameters
+        try:
+            parameters[0] = int(parameters[0])
+            parameters[1:] = [float(i) for i in parameters[1:]]
+        except (ValueError, IndexError):
+            # If conversion fails, keep as strings (e.g., for virtual_sitesn)
+            pass
+    connectivity = tuple(int(i) for i in connectivity)
+    parameters = tuple(parameters)
+    return connectivity, parameters, comment
+
+
+def bond_to_line(connectivity=None, parameters="", comment=""):
+    """Format a bond entry into a string for a Gromacs ITP file.
+
+    Parameters
+    ----------
+    connectivity : tuple, optional
+        Connectivity indices.
+    parameters : tuple, optional
+        Bond parameters.
+    comment : str, optional
+        Optional comment.
+
+    Returns
+    -------
+    str
+        A formatted string representing the bond entry.
+    """
+    connectivity_str = "   ".join(f"{int(atom):5d}" for atom in connectivity)
+    type_str = ""
+    parameters_str = ""
+    if parameters:
+        type_str = f"{int(parameters[0]):2d}"
+        parameters_str = "   ".join(f"{float(param):7.4f}" for param in parameters[1:])
+    line = connectivity_str + "   " + type_str + "   " + parameters_str
+    if comment:
+        line += " ; " + comment
+    line += "\n"
+    return line
+
+###################################
+# ITP FORMATTING
+###################################
+
+def format_header(molname="molecule", forcefield="", arguments="", timestamp="") -> list[str]:
+    """Format the header of the topology file.
+
+    Parameters
+    ----------
+    molname : str, optional
+        Molecule name. Default is "molecule".
+    forcefield : str, optional
+        Force field identifier.
+    arguments : str, optional
+        Parsed arguments with their values including defaults.
+    timestamp : str, optional
+        Timestamp when file was generated.
+
+    Returns
+    -------
+    list[str]
+        A list of header lines.
+    """
+    lines = [f'; MARTINI ({forcefield}) Coarse Grained topology file for "{molname}"\n']
+    if timestamp:
+        lines.append(f"; Generated on: {timestamp}\n")
+    lines.append("; Created using the following options:\n")
+    if arguments:
+        lines.append(f"; {arguments}\n")
+    lines.append("; " + "#" * 100 + "\n")
+    return lines
+
+
+def format_sequence_section(sequence, secstruct) -> list[str]:
+    """Format the sequence section.
+
+    Parameters
+    ----------
+    sequence : iterable
+        Sequence characters.
+    secstruct : iterable
+        Secondary structure characters.
+
+    Returns
+    -------
+    list[str]
+        Formatted lines for the sequence section.
+    """
+    sequence_str = "".join(sequence)
+    secstruct_str = "".join(secstruct)
+    lines = ["; Sequence:\n"]
+    lines.append(f"; {sequence_str}\n")
+    lines.append("; Secondary Structure:\n")
+    lines.append(f"; {secstruct_str}\n")
+    return lines
+
+
+def format_moleculetype_section(molname="molecule", nrexcl=1) -> list[str]:
+    """Format the moleculetype section.
+
+    Parameters
+    ----------
+    molname : str, optional
+        Molecule name. Default is "molecule".
+    nrexcl : int, optional
+        Number of exclusions. Default is 1.
+
+    Returns
+    -------
+    list[str]
+        Formatted lines for the moleculetype section.
+    """
+    lines = ["\n[ moleculetype ]\n"]
+    lines.append("; Name         Exclusions\n")
+    lines.append(f"{molname:<15s} {nrexcl:3d}\n")
+    return lines
+
+
+def format_atoms_section(atoms: list[tuple]) -> list[str]:
+    """Format the atoms section for a Gromacs ITP file.
+
+    Parameters
+    ----------
+    atoms : list[tuple]
+        List of atom records.
+
+    Returns
+    -------
+    list[str]
+        A list of formatted lines.
+    """
+    lines = ["\n[ atoms ]\n"]
+    for atom in atoms:
+        atom = tuple(atom)
+        if len(atom) == 9:
+            # Format with mass + comment: nr type resnr residue atom cgnr charge mass comment
+            if atom[8] and isinstance(atom[8], str) and atom[8].strip():
+                line = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f ; %s" % atom
+            else:
+                line = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f" % atom[:8]
+        elif len(atom) == 8:
+            # Format with mass, no comment: nr type resnr residue atom cgnr charge mass
+            if isinstance(atom[7], float):
+                line = "%5d %5s %5d %5s %5s %5d %7.4f %7.4f" % atom
+            else:
+                # atom[7] is a comment string
+                line = "%5d %5s %5d %5s %5s %5d %7.4f ; %s" % atom
+        else:
+            # Format with just 7 values: nr type resnr residue atom cgnr charge
+            line = "%5d %5s %5d %5s %5s %5d %7.4f" % atom[:7]
+        line += "\n"
+        lines.append(line)
+    return lines
+
+
+def format_bonded_section(header: str, bonds: list[list]) -> list[str]:
+    """Format a bonded section (e.g., bonds, angles) for a Gromacs ITP file.
+
+    Parameters
+    ----------
+    header : str
+        Section header.
+    bonds : list[list]
+        List of bond entries.
+
+    Returns
+    -------
+    list[str]
+        A list of formatted lines.
+    """
+    if not bonds:
+        return []  # Don't write empty sections
+    lines = [f"\n[ {header} ]\n"]
+    for bond in bonds:
+        line = bond_to_line(*bond)
+        lines.append(line)
+    return lines
+
+
+def format_posres_section(atoms: list[tuple], posres_fc=500, 
+                          selection: list[str] | None = None) -> list[str]:
+    """Format the position restraints section.
+
+    Parameters
+    ----------
+    atoms : list[tuple]
+        List of atom records.
+    posres_fc : float, optional
+        Force constant for restraints. Default is 500.
+    selection : list[str], optional
+        Atom names to select. Defaults to ["BB1", "BB2", "BB3", "SC1"] if not provided.
+
+    Returns
+    -------
+    list[str]
+        A list of formatted lines.
+    """
+    if selection is None:
+        selection = ["BB1", "BB2", "BB3", "SC1"]
+    lines = [
+        "\n#ifdef POSRES\n",
+        f"#define POSRES_FC {posres_fc:.2f}\n",
+        " [ position_restraints ]\n",
+    ]
+    for atom in atoms:
+        if atom[4] in selection:
+            lines.append(f"  {atom[0]:5d}    1    POSRES_FC    POSRES_FC    POSRES_FC\n")
+    lines.append("#endif")
+    return lines
+
+
+def write_itp(filename, lines):
+    """Write a list of lines to an ITP file.
+
+    Parameters
+    ----------
+    filename : str
+        Output file path.
+    lines : list[str]
+        Lines to write.
+    """
+    with open(filename, "w", encoding="utf-8") as file:
+        for line in lines:
+            file.write(line)

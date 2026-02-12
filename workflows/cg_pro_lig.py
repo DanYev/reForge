@@ -33,8 +33,8 @@ def setup_martini(sysdir, sysname):
     
     # 1.2. COARSE-GRAINING. Done separately for each chain. 
     # If don"t want to split some of them, it needs to be done manually. 
-    # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', 
-    #   p="backbone", pf=500, append=True)  # Martini + Elastic network FF 
+    mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', 
+      p="backbone", pf=1000, append=True)  # Martini + Elastic network FF 
     # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', 
     #   p="backbone", pf=500, append=False) # Martini + Go-network FF
     # mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, 
