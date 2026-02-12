@@ -19,10 +19,10 @@ import logging
 import sys
 from datetime import datetime
 from reforge.forge.forcefields import Martini30RNA
-from reforge.forge import cgmap
+from reforge.forge import cgmap, topology
 from reforge.forge.topology import Topology
 from reforge.pdbtools import AtomList, pdb2system
-from reforge import itpio
+
 
 # Set up logging - force configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', 

@@ -26,9 +26,9 @@ Date: YYYY-MM-DD
 """
 
 import logging
-from typing import List
+from pathlib import Path
 import numpy as np
-from reforge import itpio
+from . import itpio
 
 ############################################################
 # Helper class for working with bonds
@@ -217,7 +217,6 @@ class BondList(list):
             return BondList([bond for bond in self if condition(bond[2])])
         return BondList([bond for bond in self if condition(bond)])
 
-
 ############################################################
 # Topology Class
 ############################################################
@@ -252,7 +251,7 @@ class Topology:
         Total number of atoms.
     """
 
-    def __init__(self, forcefield, sequence: List = None, secstruct: List = None, **kwargs) -> None:
+    def __init__(self, forcefield=None, sequence: list | None = None, secstruct: list | None = None, **kwargs) -> None:
         """Initialize a Topology instance.
 
         Description:
@@ -261,8 +260,8 @@ class Topology:
 
         Parameters
         ----------
-        forcefield : object
-            An instance of the nucleic force field class.
+        forcefield : object, optional
+            An instance of the nucleic force field class. Can be None when loading from ITP.
         sequence : list, optional
             List of residue names.
         secstruct : list, optional
@@ -277,10 +276,10 @@ class Topology:
         molname = kwargs.pop("molname", "molecule")
         nrexcl = kwargs.pop("nrexcl", 1)
         self.ff = forcefield
-        self.sequence = sequence
+        self.sequence = sequence if sequence is not None else []
         self.name = molname
         self.nrexcl = nrexcl
-        self.atoms: List = []
+        self.atoms: list = []
         self.bonds = BondList()
         self.angles = BondList()
         self.dihs = BondList()
@@ -290,10 +289,10 @@ class Topology:
         self.vs3s = BondList()
         self.posres = BondList()
         self.elnet = BondList()
-        self.mapping: List = []
+        self.mapping: list = []
         self.natoms = len(self.atoms)
         self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, self.vs3s]
-        self.secstruct = secstruct if secstruct is not None else ["F"] * len(self.sequence)
+        self.secstruct = secstruct if secstruct is not None else ["F"] * len(self.sequence) if self.sequence else []
 
     def __iadd__(self, other) -> "Topology":
         """Implement in-place addition of another Topology instance.
@@ -359,9 +358,10 @@ class Topology:
         list
             A list of strings, each representing a line in the topology file.
         """
-        lines = itpio.format_header(molname=self.name, forcefield=self.ff.name, arguments="")
+        forcefield_name = self.ff.name if self.ff is not None else ""
+        lines = itpio.format_header(molname=self.name, forcefield=forcefield_name, arguments="")
         lines += itpio.format_sequence_section(self.sequence, self.secstruct)
-        lines += itpio.format_moleculetype_section(molname=self.name, nrexcl=1)
+        lines += itpio.format_moleculetype_section(molname=self.name, nrexcl=self.nrexcl)
         lines += itpio.format_atoms_section(self.atoms)
         lines += itpio.format_bonded_section("bonds", self.bonds)
         lines += itpio.format_bonded_section("angles", self.angles)
@@ -387,190 +387,8 @@ class Topology:
             for line in self.lines():
                 file.write(line)
 
-    @staticmethod
-    def _update_bb_connectivity(conn, atid, reslen, prevreslen=None):
-        """Update backbone connectivity indices for a residue.
 
-        Description:
-            Adjusts atom indices based on the length of the current residue and, if provided,
-            the previous residue for dihedral definitions.
-
-        Parameters
-        ----------
-        conn : list of int
-            Connectivity indices from the force field. Negative indices indicate connections
-            relative to the previous residue.
-        atid : int
-            Atom ID of the first atom in the current residue.
-        reslen : int
-            Number of atoms in the current residue.
-        prevreslen : int, optional
-            Number of atoms in the previous residue. If None, negative indices are not updated.
-
-        Returns
-        -------
-        list
-            A list of updated connectivity indices.
-
-        Example
-        -------
-        >>> conn = [0, 1, -1]
-        >>> Topology._update_bb_connectivity(conn, 10, 5, prevreslen=4)
-        [10, 11, 8]
-        """
-        result = []
-        prev = -1
-        for idx in conn:
-            if idx < 0:
-                if prevreslen is not None:
-                    result.append(atid - prevreslen + idx + 3)
-                    continue
-                return list(conn)
-            if idx > prev:
-                result.append(atid + idx)
-            else:
-                result.append(atid + idx + reslen)
-                atid += reslen
-            prev = idx
-        return result
-
-    @staticmethod
-    def _update_sc_connectivity(conn, atid):
-        """Update sidechain connectivity indices for a residue.
-
-        Description:
-            Adjusts sidechain connectivity by adding the starting atom index.
-
-        Parameters
-        ----------
-        conn : list of int
-            Connectivity indices for the sidechain.
-        atid : int
-            Starting atom id for the residue.
-
-        Returns
-        -------
-        list
-            A list of updated connectivity indices.
-        """
-        return [atid + idx for idx in conn]
-
-    def _check_connectivity(self, conn):
-        """Check if the connectivity indices are within valid boundaries.
-
-        Parameters
-        ----------
-        conn : list of int
-            Connectivity indices to check.
-
-        Returns
-        -------
-        bool
-            True if all indices are between 1 and natoms, False otherwise.
-        """
-        for idx in conn:
-            if idx < 1 or idx > self.natoms:
-                return False
-        return True
-
-    def process_atoms(self, start_atom: int = 0, start_resid: int = 1):
-        """Process atoms based on the sequence and force field definitions.
-
-        Description:
-            For each residue in the sequence, constructs atom records using both
-            backbone and sidechain definitions from the force field.
-
-        Parameters
-        ----------
-        start_atom : int, optional
-            Starting atom ID (default is 0).
-        start_resid : int, optional
-            Starting residue ID (default is 1).
-        """
-        atid = start_atom
-        resid = start_resid
-        for resname in self.sequence:
-            ff_atoms = self.ff.bb_atoms + self.ff.sc_atoms(resname)
-            reslen = len(ff_atoms)
-            for ffatom in ff_atoms:
-                atom = [
-                    ffatom[0] + atid,    # atom id
-                    ffatom[1],           # type
-                    resid,               # residue id
-                    resname,             # residue name
-                    ffatom[2],           # name
-                    ffatom[3] + atid,    # charge group
-                    ffatom[4],           # charge
-                    ffatom[5],           # mass
-                    "",
-                ]
-                self.atoms.append(atom)
-            atid += reslen
-            resid += 1
-        self.atoms.pop(0)  # Remove dummy atom
-        self.natoms = len(self.atoms)
-
-    def process_bb_bonds(self, start_atom: int = 0, start_resid: int = 1):
-        """Process backbone bonds using force field definitions.
-
-        Parameters
-        ----------
-        start_atom : int, optional
-            Starting atom ID.
-        start_resid : int, optional
-            Starting residue ID.
-        """
-        logging.debug(self.sequence)
-        atid = start_atom
-        resid = start_resid
-        prevreslen = None
-        for resname in self.sequence:
-            reslen = len(self.ff.bb_atoms) + len(self.ff.sc_atoms(resname))
-            ff_blist = self.ff.bb_blist
-            for btype, ff_btype in zip(self.blist, ff_blist):
-                for bond in ff_btype:
-                    if bond:
-                        connectivity = bond[0]
-                        parameters = bond[1]
-                        comment = bond[2]
-                        upd_conn = self._update_bb_connectivity(connectivity, atid, reslen, prevreslen)
-                        if self._check_connectivity(upd_conn):
-                            upd_bond = [list(upd_conn), list(parameters), comment]
-                            btype.append(upd_bond)
-            prevreslen = reslen
-            atid += reslen
-            resid += 1
-
-    def process_sc_bonds(self, start_atom: int = 0, start_resid: int = 1):
-        """Process sidechain bonds using force field definitions.
-
-        Parameters
-        ----------
-        start_atom : int, optional
-            Starting atom ID.
-        start_resid : int, optional
-            Starting residue ID.
-        """
-        atid = start_atom
-        resid = start_resid
-        for resname in self.sequence:
-            reslen = len(self.ff.bb_atoms) + len(self.ff.sc_atoms(resname))
-            ff_blist = self.ff.sc_blist(resname)
-            for btype, ff_btype in zip(self.blist, ff_blist):
-                for bond in ff_btype:
-                    if bond:
-                        connectivity = bond[0]
-                        parameters = bond[1]
-                        comment = bond[2]
-                        upd_conn = self._update_sc_connectivity(connectivity, atid)
-                        if self._check_connectivity(upd_conn):
-                            upd_bond = [list(upd_conn), list(parameters), comment]
-                            btype.append(upd_bond)
-            atid += reslen
-            resid += 1
-        logging.info("Finished nucleic acid topology construction.")
-
-    def elastic_network(self, atoms, anames: List[str] = None, el: float = 0.5, eu: float = 1.1, ef: float = 500):
+    def elastic_network(self, atoms, anames: list[str] | None = None, el: float = 0.5, eu: float = 1.1, ef: float = 500):
         """Construct an elastic network between selected atoms.
 
         Parameters
@@ -628,6 +446,107 @@ class Topology:
         """
         sequence = [residue.resname for residue in chain]
         self.from_sequence(sequence, secstruc=secstruc)
+
+    @classmethod
+    def from_itp(cls, itp_file: Path | str, molname: str | None = None) -> "Topology":
+        """Create a Topology instance from an ITP file.
+        
+        Parameters
+        ----------
+        itp_file : Path or str
+            Path to the ITP file to read
+        molname : str, optional
+            Molecule name. If not provided, will be read from moleculetype section
+            
+        Returns
+        -------
+        Topology
+            A new Topology instance with data from the ITP file
+        """
+        itp_file = Path(itp_file)
+        if not itp_file.exists():
+            raise FileNotFoundError(f"ITP file not found: {itp_file}")
+        
+        # Read moleculetype section manually to get name and nrexcl
+        nrexcl = 1
+        with itp_file.open("r") as f:
+            in_moleculetype = False
+            for line in f:
+                if line.strip().startswith("[ moleculetype ]"):
+                    in_moleculetype = True
+                    continue
+                if in_moleculetype:
+                    if line.strip() and not line.strip().startswith(";"):
+                        parts = line.split()
+                        if len(parts) >= 2 and not molname:
+                            molname = parts[0]
+                            nrexcl = int(parts[1])
+                        break
+        
+        if not molname:
+            molname = "molecule"
+        
+        # Create empty topology
+        topo = cls(forcefield=None, sequence=[], molname=molname, nrexcl=nrexcl)
+        
+        # Read atoms section manually (not handled well by read_itp)
+        with itp_file.open("r") as f:
+            in_atoms = False
+            for line in f:
+                if line.strip().startswith("[ atoms ]"):
+                    in_atoms = True
+                    continue
+                if in_atoms:
+                    if line.strip().startswith("["):
+                        break
+                    if line.strip() and not line.strip().startswith(";"):
+                        parts = line.split(";")
+                        data = parts[0].split()
+                        comment = parts[1].strip() if len(parts) > 1 else ""
+                        if data:
+                            # Format: nr type resnr residue atom cgnr charge mass [comment]
+                            atom = [
+                                int(data[0]),      # atom id
+                                data[1],           # type
+                                int(data[2]),      # residue id
+                                data[3],           # residue name
+                                data[4],           # atom name
+                                int(data[5]),      # charge group
+                                float(data[6]),    # charge
+                            ]
+                            if len(data) > 7:
+                                atom.append(float(data[7]))  # mass
+                            if comment:
+                                atom.append(comment)
+                            topo.atoms.append(atom)
+        
+        # Use read_itp for bonded interactions
+        itp_data = itpio.read_itp(str(itp_file))
+        
+        # Map section names to BondList attributes
+        section_map = {
+            "bonds": topo.bonds,
+            "angles": topo.angles,
+            "dihedrals": topo.dihs,
+            "constraints": topo.cons,
+            "exclusions": topo.excls,
+            "pairs": topo.pairs,
+            "virtual_sites3": topo.vs3s,
+        }
+        
+        # Populate BondLists from itp_data
+        for section_name, bondlist in section_map.items():
+            if section_name in itp_data:
+                for entry in itp_data[section_name]:
+                    # Convert tuples to lists for mutability
+                    conn = list(entry[0])
+                    params = list(entry[1]) if entry[1] else []
+                    comment = entry[2]
+                    bondlist.append([conn, params, comment])
+        
+        topo.natoms = len(topo.atoms)
+        logging.info(f"Loaded topology from {itp_file.name}: {topo.natoms} atoms")
+        return topo
 
     @staticmethod
     def merge_topologies(topologies):

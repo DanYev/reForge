@@ -31,9 +31,9 @@ from collections import defaultdict
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
-from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
+from reforge.forge.topology import Topology
 
 logger = logging.getLogger(__name__)
 
@@ -733,7 +733,41 @@ class MartiniMixin:
             w.write("END\n")
         logger.info("Wrote mapped ligand CG PDB: %s", outpdb)
 
-    def martinize_ligands(self, input_pdb=None, ligands=None):
+    def _merge_ligand_with(self, ligand_itp: Path, target_name: str) -> None:
+        """Merge ligand ITP file into target ITP file using Topology class.
+        
+        Parameters
+        ----------
+        ligand_itp : Path
+            Path to the ligand ITP file to merge
+        target_name : str
+            Name of the target ITP file (without .itp extension)
+        """
+        target_itp = self.topdir / f"{target_name}.itp"
+        
+        if not target_itp.exists():
+            raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
+        
+        logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
+        
+        # Load both topologies
+        target_topo = Topology.from_itp(target_itp)
+        ligand_topo = Topology.from_itp(ligand_itp)
+        
+        # Merge ligand into target
+        target_topo += ligand_topo
+        
+        # Write merged topology back to target file
+        target_topo.write_to_itp(str(target_itp))
+        
+        logger.info(f"Successfully merged {ligand_itp.name} into {target_itp.name}")
+
+    def martinize_ligands(
+        self, 
+        input_pdb: Path | None = None, 
+        ligands: list[str] | None = None, 
+        merge_with: str | None = None
+    ) -> None:
         logger.info("Working on ligands...")
         if not input_pdb:
             input_pdb = self.inpdb
@@ -747,6 +781,9 @@ class MartiniMixin:
             self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
+            if merge_with:
+                self._merge_ligand_with(itp_file, merge_with)
+            else:
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
@@ -764,7 +801,7 @@ class MartiniMixin:
         # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
         cg_pdb_files = sort_for_gmx(cg_pdb_files)
         cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
-        all_atoms = AtomList()
+        all_atoms = pdbtools.AtomList()
         for file in cg_pdb_files:
             atoms = pdbtools.pdb2atomlist(file)
             all_atoms.extend(atoms)
