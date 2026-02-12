@@ -272,12 +272,9 @@ class Topology:
                 nrexcl : int
                     Exclusion parameter (default: 1).
         """
-        molname = kwargs.pop("molname", "molecule")
-        nrexcl = kwargs.pop("nrexcl", 1)
-        self.ff = kwargs.pop("forcefield", None)
-        self.sequence = kwargs.pop("sequence", [])
-        self.name = molname
-        self.nrexcl = nrexcl
+        self.header = []
+        self.molname = "molecule"
+        self.nrexcl = 1
         self.atoms: list = []
         self.bonds = BondList()
         self.angles = BondList()
@@ -291,7 +288,6 @@ class Topology:
         self.vsn = BondList()
         self.posres = BondList()
         self.elnet = BondList()
-        self.mapping: list = []
         self.natoms = len(self.atoms)
         self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, self.vs2s, self.vs3s, self.vs4s, self.vsn]
 
@@ -365,9 +361,8 @@ class Topology:
         list
             A list of strings, each representing a line in the topology file.
         """
-        forcefield_name = self.ff.name if self.ff is not None else ""
-        lines = format_header(molname=self.name, forcefield=forcefield_name, arguments="")
-        lines += format_moleculetype_section(molname=self.name, nrexcl=self.nrexcl)
+        lines = format_header()
+        lines += format_moleculetype_section(molname=self.molname, nrexcl=self.nrexcl)
         lines += format_atoms_section(self.atoms)
         lines += format_bonded_section("bonds", self.bonds)
         lines += format_bonded_section("angles", self.angles)
@@ -428,36 +423,8 @@ class Topology:
                         comment = f"{a1.resname}{a1.atid}-{a2.resname}{a2.atid}"
                         self.elnet.append([[a1.atid, a2.atid], [6, d, ef], comment])
 
-    def from_sequence(self, sequence, secstruc=None):
-        """Build topology from a given sequence.
-
-        Parameters
-        ----------
-        sequence : list
-            Nucleic acid sequence (list of residue names).
-        secstruc : list, optional
-            Secondary structure. If not provided, defaults to all 'F'.
-        """
-        self.sequence = sequence
-        self.process_atoms()
-        self.process_bb_bonds()
-        self.process_sc_bonds()
-
-    def from_chain(self, chain, secstruc=None):
-        """Build topology from a chain instance.
-
-        Parameters
-        ----------
-        chain : object
-            Chain object containing residues.
-        secstruc : list, optional
-            Secondary structure.
-        """
-        sequence = [residue.resname for residue in chain]
-        self.from_sequence(sequence, secstruc=secstruc)
-
     @classmethod
-    def from_itp(cls, itp_file: Path | str, molname: str | None = None) -> "Topology":
+    def from_itp(cls, itp_file: Path | str, **kwargs) -> "Topology":
         """Create a Topology instance from an ITP file.
         
         Parameters
@@ -466,6 +433,9 @@ class Topology:
             Path to the ITP file to read
         molname : str, optional
             Molecule name. If not provided, will be read from moleculetype section
+        define : list[str], optional
+            List of macro names that are defined. Controls which #ifdef/#ifndef blocks are included.
+            If None, defaults to empty list (no macros defined).
             
         Returns
         -------
@@ -477,15 +447,14 @@ class Topology:
             raise FileNotFoundError(f"ITP file not found: {itp_file}")
         
         # Read ITP file
-        itp_data = read_itp(str(itp_file))
+        itp_data = read_itp(str(itp_file), **kwargs)
         
         # Read moleculetype section to get name and nrexcl
         nrexcl = 1
         if "moleculetype" in itp_data:
             for entry in itp_data["moleculetype"]:
                 if len(entry) >= 2:
-                    if not molname:
-                        molname = entry[0]
+                    molname = entry[0]
                     nrexcl = int(entry[1])
                     break
         
@@ -588,13 +557,16 @@ class Topology:
 # ITP PARSING UTILITIES
 ###################################
 
-def read_itp(fpath):
+def read_itp(fpath, define: list[str] = ["POSRES"]):
     """Read a Gromacs ITP file and organize its contents by section.
 
     Parameters
     ----------
     fpath : Path or str
         The path to the ITP file.
+    define : list[str], optional
+        List of macro names that are defined. Controls which #ifdef/#ifndef blocks are included.
+        If None, defaults to empty list (no macros defined).
 
     Returns
     -------
@@ -607,8 +579,9 @@ def read_itp(fpath):
     Notes
     -----
     - #ifdef blocks in the header are preserved
-    - #ifdef POSRES in position_restraints section is processed
-    - All other #ifdef blocks are ignored along with their content
+    - #ifdef MACRO: included if MACRO in define list, excluded otherwise
+    - #ifndef MACRO: included if MACRO not in define list, excluded otherwise
+    - #else flips the inclusion logic within a block
     """
     # Define which sections should be parsed as bonded interactions
     bonded_sections = {"bonds", "angles", "dihedrals", "constraints", 
@@ -618,7 +591,7 @@ def read_itp(fpath):
     itp_data = {"header": []}
     current_section = None
     inside_ifdef = False
-    ifdef_allowed = False  # True only for POSRES in position_restraints
+    ifdef_allowed = False  # Whether to include content from current preprocessor block
     
     with open(fpath, "r", encoding="utf-8") as file:
         for line in file:
@@ -629,14 +602,20 @@ def read_itp(fpath):
                 if current_section is None:
                     # In header - keep it
                     itp_data["header"].append(line)
-                elif current_section == "position_restraints" and "POSRES" in line:
-                    # POSRES in position_restraints - allow this block
-                    inside_ifdef = True
-                    ifdef_allowed = True
                 else:
-                    # Any other ifdef/ifndef - ignore this block
+                    # Extract macro name from directive
+                    parts = stripped.split()
+                    macro_name = parts[1] if len(parts) > 1 else ""
+                    print(macro_name)
+                    print(define)
+                    
                     inside_ifdef = True
-                    ifdef_allowed = False
+                    if stripped.startswith("#ifdef"):
+                        # #ifdef MACRO: include if MACRO is defined
+                        ifdef_allowed = macro_name in define
+                    else:
+                        # #ifndef MACRO: include if MACRO is NOT defined
+                        ifdef_allowed = macro_name not in define
                 continue
             
             # Handle #else
@@ -644,10 +623,9 @@ def read_itp(fpath):
                 if current_section is None:
                     # In header - keep it
                     itp_data["header"].append(line)
-                else:
-                    # Toggle allowed state if inside ifdef (for now, just skip)
-                    # We'll keep behavior simple: skip everything in non-POSRES blocks
-                    pass
+                elif inside_ifdef:
+                    # Flip the allowed state
+                    ifdef_allowed = not ifdef_allowed
                 continue
             
             # Handle #endif
@@ -749,12 +727,15 @@ def line_to_bond(line, section):
         connectivity = data[:5]  # virtual site + 4 constructing atoms
         parameters = data[5:]
     elif section == "virtual_sitesn":
-        # For virtual_sitesn, format is: vsite func_type at1 at2 ... at_n [params]
-        # The number of constructing atoms depends on func_type
-        # We'll store first atom as connectivity, rest as parameters for flexibility
+        # Format: vsite func_type at1 at2 ... atN
+        # connectivity: vsite + all constructing atoms
+        # parameters: just func_type (integer)
         if len(data) >= 2:
-            connectivity = [data[0]]  # Just the virtual site atom
-            parameters = data[1:]  # func_type and everything else
+            vsite = [data[0]]
+            func_type = [data[1]]
+            constructing_atoms = data[2:]  # All remaining atoms
+            connectivity = vsite + constructing_atoms
+            parameters = func_type
         else:
             connectivity = data
             parameters = []
@@ -762,13 +743,8 @@ def line_to_bond(line, section):
         connectivity = data
         parameters = []
     if parameters:
-        # Try to convert parameters, but handle cases where all data is stored in parameters
-        try:
-            parameters[0] = int(parameters[0])
-            parameters[1:] = [float(i) for i in parameters[1:]]
-        except (ValueError, IndexError):
-            # If conversion fails, keep as strings (e.g., for virtual_sitesn)
-            pass
+        parameters[0] = int(parameters[0])
+        parameters[1:] = [float(i) for i in parameters[1:]]
     connectivity = tuple(int(i) for i in connectivity)
     parameters = tuple(parameters)
     return connectivity, parameters, comment
@@ -807,32 +783,7 @@ def bond_to_line(connectivity=None, parameters="", comment=""):
 # ITP FORMATTING
 ###################################
 
-def format_header(molname="molecule", forcefield="", arguments="", timestamp="") -> list[str]:
-    """Format the header of the topology file.
-
-    Parameters
-    ----------
-    molname : str, optional
-        Molecule name. Default is "molecule".
-    forcefield : str, optional
-        Force field identifier.
-    arguments : str, optional
-        Parsed arguments with their values including defaults.
-    timestamp : str, optional
-        Timestamp when file was generated.
-
-    Returns
-    -------
-    list[str]
-        A list of header lines.
-    """
-    lines = [f'; MARTINI ({forcefield}) Coarse Grained topology file for "{molname}"\n']
-    if timestamp:
-        lines.append(f"; Generated on: {timestamp}\n")
-    lines.append("; Created using the following options:\n")
-    if arguments:
-        lines.append(f"; {arguments}\n")
-    lines.append("; " + "#" * 100 + "\n")
+def format_header(lines=[]) -> list[str]:
     return lines
 
 
@@ -936,9 +887,23 @@ def format_bonded_section(header: str, bonds: list[list]) -> list[str]:
     if not bonds:
         return []  # Don't write empty sections
     lines = [f"\n[ {header} ]\n"]
-    for bond in bonds:
-        line = bond_to_line(*bond)
-        lines.append(line)
+    
+    # Special formatting for virtual_sitesn: all values as integers
+    if header == "virtual_sitesn":
+        for bond in bonds:
+            connectivity, parameters, comment = bond
+            # Format: vsite, func_type, then constructing atoms
+            # conn[0] + params[0] + conn[1:] + ; comment
+            vals = [connectivity[0]] + list(parameters) + list(connectivity[1:])
+            line = "".join(f"{int(val):>8d}" for val in vals)
+            if comment:
+                line += " ; " + comment
+            line += "\n"
+            lines.append(line)
+    else:
+        for bond in bonds:
+            line = bond_to_line(*bond)
+            lines.append(line)
     return lines
 
 
