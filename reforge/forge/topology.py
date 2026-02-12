@@ -289,7 +289,8 @@ class Topology:
         self.posres = BondList()
         self.elnet = BondList()
         self.natoms = len(self.atoms)
-        self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, self.vs2s, self.vs3s, self.vs4s, self.vsn]
+        self.blist = [self.bonds, self.angles, self.dihs, self.cons, self.excls, self.pairs, 
+            self.vs2s, self.vs3s, self.vs4s, self.vsn, self.posres, self.elnet]
 
     def __iadd__(self, other) -> "Topology":
         """Implement in-place addition of another Topology instance.
@@ -318,6 +319,9 @@ class Topology:
             conn = [idx + atom_shift for idx in conn]
             return [conn, bond[1], bond[2]]
 
+        # # Store initial lengths before merge for verification
+        # initial_self_lengths = [len(lst) for lst in self.blist]
+        
         atom_shift = self.natoms
         # Calculate residue_shift from actual max residue ID in atoms, not sequence length
         if self.atoms:
@@ -331,7 +335,33 @@ class Topology:
         for self_attrib, other_attrib in zip(self.blist, other.blist):
             updated_bonds = [update_bond(bond, atom_shift) for bond in other_attrib]
             self_attrib.extend(updated_bonds)
+        
+        # # Verify that each bonded list has the correct length
+        # self._check_iadd(other, initial_self_lengths)
         return self
+    
+    def _check_iadd(self, other, initial_self_lengths):
+        """Check that bonded lists have correct lengths after addition.
+        
+        Parameters
+        ----------
+        other : Topology
+            The other topology that was added to self.
+        initial_self_lengths : list of int
+            The initial lengths of self.blist before merge.
+        """
+        blist_names = ["bonds", "angles", "dihedrals", "constraints", "exclusions", 
+                      "pairs", "vs2s", "vs3s", "vs4s", "vsn", "posres", "elnet"]
+        
+        for i, (self_list, other_list, self_init) in enumerate(zip(self.blist, other.blist, initial_self_lengths)):
+            expected_length = self_init + len(other_list)
+            actual_length = len(self_list)
+            if actual_length != expected_length:
+                raise ValueError(
+                    f"Length mismatch in {blist_names[i]}: "
+                    f"expected {expected_length} (self={self_init} + other={len(other_list)}), "
+                    f"got {actual_length}"
+                )
 
     def __add__(self, other) -> "Topology":
         """Implement addition of two Topology objects.
@@ -361,7 +391,7 @@ class Topology:
         list
             A list of strings, each representing a line in the topology file.
         """
-        lines = format_header()
+        lines = format_header(self.header)
         lines += format_moleculetype_section(molname=self.molname, nrexcl=self.nrexcl)
         lines += format_atoms_section(self.atoms)
         lines += format_bonded_section("bonds", self.bonds)
@@ -375,7 +405,7 @@ class Topology:
         lines += format_bonded_section("virtual_sites4", self.vs4s)
         lines += format_bonded_section("virtual_sitesn", self.vsn)
         lines += format_bonded_section("bonds", self.elnet)
-        lines += format_posres_section(self.atoms)
+        lines += format_posres_section(self.posres)
         logging.info("Created coarsegrained topology")
         return lines
 
@@ -390,7 +420,6 @@ class Topology:
         with open(filename, "w", encoding="utf-8") as file:
             for line in self.lines():
                 file.write(line)
-
 
     def elastic_network(self, atoms, anames: list[str] | None = None, el: float = 0.5, eu: float = 1.1, ef: float = 500):
         """Construct an elastic network between selected atoms.
@@ -447,23 +476,23 @@ class Topology:
             raise FileNotFoundError(f"ITP file not found: {itp_file}")
         
         # Read ITP file
-        itp_data = read_itp(str(itp_file), **kwargs)
+        itp_data = read_itp(str(itp_file), **kwargs)    
+        
+        # Create empty topology
+        topo = cls()
+        
+        # Header 
+        topo.header = itp_data.get("header", [])
         
         # Read moleculetype section to get name and nrexcl
         nrexcl = 1
         if "moleculetype" in itp_data:
             for entry in itp_data["moleculetype"]:
                 if len(entry) >= 2:
-                    molname = entry[0]
-                    nrexcl = int(entry[1])
+                    topo.molname = entry[0]
+                    topo.nrexcl = int(entry[1])
                     break
-        
-        if not molname:
-            molname = "molecule"
-        
-        # Create empty topology
-        topo = cls(forcefield=None, sequence=[], molname=molname, nrexcl=nrexcl)
-        
+
         # Read atoms section
         if "atoms" in itp_data:
             for entry in itp_data["atoms"]:
@@ -606,8 +635,6 @@ def read_itp(fpath, define: list[str] = ["POSRES"]):
                     # Extract macro name from directive
                     parts = stripped.split()
                     macro_name = parts[1] if len(parts) > 1 else ""
-                    print(macro_name)
-                    print(define)
                     
                     inside_ifdef = True
                     if stripped.startswith("#ifdef"):
@@ -783,49 +810,15 @@ def bond_to_line(connectivity=None, parameters="", comment=""):
 # ITP FORMATTING
 ###################################
 
-def format_header(lines=[]) -> list[str]:
-    return lines
-
-
-def format_sequence_section(sequence, secstruct) -> list[str]:
-    """Format the sequence section.
-
-    Parameters
-    ----------
-    sequence : iterable
-        Sequence characters.
-    secstruct : iterable
-        Secondary structure characters.
-
-    Returns
-    -------
-    list[str]
-        Formatted lines for the sequence section.
-    """
-    sequence_str = "".join(sequence)
-    secstruct_str = "".join(secstruct)
-    lines = ["; Sequence:\n"]
-    lines.append(f"; {sequence_str}\n")
-    lines.append("; Secondary Structure:\n")
-    lines.append(f"; {secstruct_str}\n")
+def format_header(lines=None) -> list[str]:
+    """Format the header section."""
+    if lines is None:
+        return []
     return lines
 
 
 def format_moleculetype_section(molname="molecule", nrexcl=1) -> list[str]:
-    """Format the moleculetype section.
-
-    Parameters
-    ----------
-    molname : str, optional
-        Molecule name. Default is "molecule".
-    nrexcl : int, optional
-        Number of exclusions. Default is 1.
-
-    Returns
-    -------
-    list[str]
-        Formatted lines for the moleculetype section.
-    """
+    """Format the moleculetype section."""
     lines = ["\n[ moleculetype ]\n"]
     lines.append("; Name         Exclusions\n")
     lines.append(f"{molname:<15s} {nrexcl:3d}\n")
@@ -907,35 +900,50 @@ def format_bonded_section(header: str, bonds: list[list]) -> list[str]:
     return lines
 
 
-def format_posres_section(atoms: list[tuple], posres_fc=500, 
-                          selection: list[str] | None = None) -> list[str]:
+def format_posres_section(posres: BondList) -> list[str]:
     """Format the position restraints section.
 
     Parameters
     ----------
-    atoms : list[tuple]
-        List of atom records.
-    posres_fc : float, optional
-        Force constant for restraints. Default is 500.
-    selection : list[str], optional
-        Atom names to select. Defaults to ["BB1", "BB2", "BB3", "SC1"] if not provided.
+    posres : BondList
+        List of position restraint records. Each record has:
+        - conn: [atom_id]
+        - params: [func_type, fc_x, fc_y, fc_z]
+        - comment: comment string
 
     Returns
     -------
     list[str]
         A list of formatted lines.
     """
-    if selection is None:
-        selection = ["BB1", "BB2", "BB3", "SC1"]
+    if not posres:
+        return []
+    
     lines = [
         "\n#ifdef POSRES\n",
-        f"#define POSRES_FC {posres_fc:.2f}\n",
         " [ position_restraints ]\n",
     ]
-    for atom in atoms:
-        if atom[4] in selection:
-            lines.append(f"  {atom[0]:5d}    1    POSRES_FC    POSRES_FC    POSRES_FC\n")
-    lines.append("#endif")
+    for restraint in posres:
+        atom_id = restraint[0][0]  # conn is [atom_id]
+        params = restraint[1]  # [func_type, fc_x, fc_y, fc_z]
+        comment = restraint[2]
+        
+        if params:
+            func_type = params[0]
+            fc_x = params[1] if len(params) > 1 else "POSRES_FC"
+            fc_y = params[2] if len(params) > 2 else "POSRES_FC"
+            fc_z = params[3] if len(params) > 3 else "POSRES_FC"
+        else:
+            func_type = 1
+            fc_x = fc_y = fc_z = "POSRES_FC"
+        
+        line = f"  {atom_id:5d}    {func_type}    {fc_x}    {fc_y}    {fc_z}"
+        if comment:
+            line += f"  ; {comment}"
+        line += "\n"
+        lines.append(line)
+    
+    lines.append("#endif\n")
     return lines
 
 

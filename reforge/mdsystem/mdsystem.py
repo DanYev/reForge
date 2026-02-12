@@ -733,7 +733,10 @@ class MartiniMixin:
             w.write("END\n")
         logger.info("Wrote mapped ligand CG PDB: %s", outpdb)
 
-    def _merge_ligand_with(self, ligand_itp: Path, target_name: str) -> None:
+    def _merge_ligand_with(self, ligand_itp: Path, 
+        target_name: str, 
+        add_bonded_restraints: list[tuple[int, int, float, float]] | None = None,
+    ) -> None:
         """Merge ligand ITP file into target ITP file using Topology class.
         
         Parameters
@@ -742,6 +745,8 @@ class MartiniMixin:
             Path to the ligand ITP file to merge
         target_name : str
             Name of the target ITP file (without .itp extension)
+        add_bonded_restraints : list of tuple, optional
+            List of bonded restraints to add (default: None)
         """
         target_itp = self.topdir / f"{target_name}.itp"
         if not target_itp.exists():
@@ -751,20 +756,24 @@ class MartiniMixin:
         logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
         # Load both topologies
         target_topo = Topology.from_itp(target_itp)
-        print(len(target_topo.angles))
         ligand_topo = Topology.from_itp(ligand_itp)
         target_topo += ligand_topo
-        # print(target_topo.atoms)
-        print(len(target_topo.angles))
-        target_topo.write_to_itp(self.topdir / "tmp.itp")
-        # target_topo.write_to_itp(str(target_itp))
+        if add_bonded_restraints:
+            for restraint in add_bonded_restraints:
+                target_topo.bonds.append([
+                (restraint[0], restraint[1]), 
+                (6, restraint[2], restraint[3]), 
+                "BONDED DISTANCE RESTRAINT",
+                ])
+        target_topo.write_to_itp(target_itp)
         logger.info(f"Merged {ligand_itp.name} into {target_itp.name}")
 
     def martinize_ligands(
         self, 
         input_pdb: Path | None = None, 
         ligands: list[str] | None = None, 
-        merge_with: str | None = None
+        merge_with: str | None = None,
+        add_bonded_restraints: list[tuple[int, int, float, float]] | None = None, 
     ) -> None:
         logger.info("Working on ligands...")
         if not input_pdb:
@@ -779,7 +788,7 @@ class MartiniMixin:
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
             if merge_with:
-                self._merge_ligand_with(itp_file, merge_with)
+                self._merge_ligand_with(itp_file, merge_with, add_bonded_restraints)
             else:
                 self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
