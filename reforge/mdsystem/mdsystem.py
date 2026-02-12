@@ -733,10 +733,7 @@ class MartiniMixin:
             w.write("END\n")
         logger.info("Wrote mapped ligand CG PDB: %s", outpdb)
 
-    def _merge_ligand_with(self, ligand_itp: Path, 
-        target_name: str, 
-        add_bonded_restraints: list[tuple[int, int, float, float]] | None = None,
-    ) -> None:
+    def _merge_ligands_with(self, target: str, ligand: str) -> None:
         """Merge ligand ITP file into target ITP file using Topology class.
         
         Parameters
@@ -748,7 +745,8 @@ class MartiniMixin:
         add_bonded_restraints : list of tuple, optional
             List of bonded restraints to add (default: None)
         """
-        target_itp = self.topdir / f"{target_name}.itp"
+        target_itp = self.topdir / f"{target}.itp"
+        ligand_itp = self.topdir / f"ligand_{ligand}.itp"
         if not target_itp.exists():
             raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
         if not ligand_itp.exists():
@@ -757,23 +755,27 @@ class MartiniMixin:
         # Load both topologies
         target_topo = Topology.from_itp(target_itp)
         ligand_topo = Topology.from_itp(ligand_itp)
-        target_topo += ligand_topo
-        if add_bonded_restraints:
-            for restraint in add_bonded_restraints:
-                target_topo.bonds.append([
-                (restraint[0], restraint[1]), 
-                (6, restraint[2], restraint[3]), 
-                "BONDED DISTANCE RESTRAINT",
-                ])
+        ligand_key = f"ligand_{ligand}"
+        for n in range(self.molecules[ligand_key]):
+            target_topo += ligand_topo
+        del self.molecules[ligand_key]
         target_topo.write_to_itp(target_itp)
-        logger.info(f"Merged {ligand_itp.name} into {target_itp.name}")
+        logger.info("Saved merged topology to %s", target_itp)
+        
+        # if add_bonded_restraints:
+        #     for restraint in add_bonded_restraints:
+        #         target_topo.bonds.append([
+        #         (restraint[0], restraint[1]), 
+        #         (6, restraint[2], restraint[3]), 
+        #         "BONDED DISTANCE RESTRAINT",
+        #         ])
 
     def martinize_ligands(
         self, 
         input_pdb: Path | None = None, 
         ligands: list[str] | None = None, 
         merge_with: str | None = None,
-        add_bonded_restraints: list[tuple[int, int, float, float]] | None = None, 
+        out_itp: Path | None = None
     ) -> None:
         logger.info("Working on ligands...")
         if not input_pdb:
@@ -787,11 +789,11 @@ class MartiniMixin:
                 raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
             for ligand_residue in ligand_residues:
                 self._map_ligand(map_file, ligand_residue)
-            if merge_with:
-                self._merge_ligand_with(itp_file, merge_with, add_bonded_restraints)
-            else:
                 self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
+            if merge_with:
+                self._merge_ligands_with(merge_with, ligand)
+
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.

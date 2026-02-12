@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import shutil
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
 from reforge.utils import clean_dir, get_logger
@@ -36,19 +37,12 @@ def setup_martini(sysdir, sysname):
     # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', 
     #   p="backbone", pf=1000, append=False)  # Martini + Elastic network FF 
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', 
-      p="backbone", pf=500, append=False) # Martini + Go-network FF
+      p="backbone", pf=500, append=True) # MAKES chain_A.itp to merge ligands into later
+    shutil.copy(mdsys.topdir / "chain_A.itp", mdsys.topdir / "tmp.itp") # Make a copy of the protein topology to merge ligands into later
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
-    restraints = [
-        [(305, 1085, 0.35, 1000), (299, 1086, 0.45, 1000)], 
-        [(474, 1088, 0.35, 1000)],
-    ]
-    mdsys.martinize_ligands(
-        input_pdb=input_pdb, 
-        ligands=["ATP", "MG"], 
-        merge_with="chain_A", 
-        add_bonded_restraints=restraints,
-    )
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ATP", "MG"], merge_with="chain_A")
+    # restraints = [(305, 1085, 0.35, 1000), (299, 1086, 0.45, 1000), (474, 1088, 0.35, 1000)]
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
@@ -61,6 +55,21 @@ def setup_martini(sysdir, sysname):
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
+
+
+def _martiniize_ligands(mdsys, input_pdb, ligands, merge_with=None, add_bonded_restraints=None):
+    for ligand in ligands:
+        mdsys.martinize_ligand(input_pdb, ligand=ligand, from_ff="amber", pf=500, append=False)
+    
+    # 2. Merge ligand topologies with the protein topology (if specified)
+    if merge_with is not None:
+        mdsys.merge_topologies(merge_with=merge_with, ligands=ligands)
+
+    # 3. Add bonded restraints between ligand and protein (if specified)
+    if add_bonded_restraints is not None:
+        for i, ligand in enumerate(ligands):
+            restraints = add_bonded_restraints[i]
+            mdsys.add_bonded_restraints(ligand=ligand, restraints=restraints)
     
     
 def md_npt(sysdir, sysname, runname, nsteps=None): 
