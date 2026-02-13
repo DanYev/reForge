@@ -650,6 +650,30 @@ class MartiniMixin:
             output_itp = self.topdir / f"{mol_name}.itp"
             martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
+    
+    def martinize_ligands(
+        self, 
+        input_pdb: Path | None = None, 
+        ligands: list[str] | None = None, 
+        merge_with: str | None = None,
+        out_itp: Path | None = None
+    ) -> None:
+        logger.info("Working on ligands...")
+        if not input_pdb:
+            input_pdb = self.inpdb
+        u = mda.Universe(input_pdb)
+        for ligand in ligands:
+            ligand_residues = u.select_atoms(f"resname {ligand}").residues
+            map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
+            itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
+            if not ligand_residues:
+                raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
+            for ligand_residue in ligand_residues:
+                self._map_ligand(map_file, ligand_residue)
+                self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
+                shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
+            if merge_with:
+                self._merge_ligands_with(merge_with, ligand)
 
     def _map_ligand(self, map_file, ligand_residue):
         """Map an all-atom ligand residue to Martini beads using a `.map` file.
@@ -762,38 +786,16 @@ class MartiniMixin:
         target_topo.write_to_itp(target_itp)
         logger.info("Saved merged topology to %s", target_itp)
         
-        # if add_bonded_restraints:
-        #     for restraint in add_bonded_restraints:
-        #         target_topo.bonds.append([
-        #         (restraint[0], restraint[1]), 
-        #         (6, restraint[2], restraint[3]), 
-        #         "BONDED DISTANCE RESTRAINT",
-        #         ])
-
-    def martinize_ligands(
-        self, 
-        input_pdb: Path | None = None, 
-        ligands: list[str] | None = None, 
-        merge_with: str | None = None,
-        out_itp: Path | None = None
-    ) -> None:
-        logger.info("Working on ligands...")
-        if not input_pdb:
-            input_pdb = self.inpdb
-        u = mda.Universe(input_pdb)
-        for ligand in ligands:
-            ligand_residues = u.select_atoms(f"resname {ligand}").residues
-            map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
-            itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
-            if not ligand_residues:
-                raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
-            for ligand_residue in ligand_residues:
-                self._map_ligand(map_file, ligand_residue)
-                self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
-                shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
-            if merge_with:
-                self._merge_ligands_with(merge_with, ligand)
-
+    def add_bonded_restraints(self, itp_file: Path, restraints: list[tuple]) -> None:
+        target_topo = Topology.from_itp(itp_file)
+        for restraint in restraints:
+            target_topo.bonds.append([
+            (restraint[0], restraint[1]), 
+            (6, restraint[2], restraint[3]), 
+            "BONDED DISTANCE RESTRAINT",
+            ])
+        target_topo.write_to_itp(itp_file)
+        logger.info("Saved topology with bonded restraints to %s", itp_file)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.

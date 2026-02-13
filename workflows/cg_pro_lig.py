@@ -4,6 +4,7 @@ import shutil
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
 from reforge.utils import clean_dir, get_logger
+from reforge.forge.topology import Topology
 
 logger = get_logger()
 
@@ -28,9 +29,9 @@ def setup_martini(sysdir, sysname):
     input_pdb = Path(sysdir) / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
     # mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
+    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
     # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
-    mdsys.split_chains()
+    # mdsys.split_chains()
     
     # 1.2. COARSE-GRAINING. Done separately for each chain. 
     # If don"t want to split some of them, it needs to be done manually. 
@@ -38,11 +39,11 @@ def setup_martini(sysdir, sysname):
     #   p="backbone", pf=1000, append=False)  # Martini + Elastic network FF 
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', 
       p="backbone", pf=500, append=True) # MAKES chain_A.itp to merge ligands into later
-    shutil.copy(mdsys.topdir / "chain_A.itp", mdsys.topdir / "tmp.itp") # Make a copy of the protein topology to merge ligands into later
+    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") # Make a copy of the protein topology to merge ligands into later
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ATP", "MG"], merge_with="chain_A")
-    # restraints = [(305, 1085, 0.35, 1000), (299, 1086, 0.45, 1000), (474, 1088, 0.35, 1000)]
+    add_bonded_restraints(mdsys)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
@@ -57,19 +58,18 @@ def setup_martini(sysdir, sysname):
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
 
 
-def _martiniize_ligands(mdsys, input_pdb, ligands, merge_with=None, add_bonded_restraints=None):
-    for ligand in ligands:
-        mdsys.martinize_ligand(input_pdb, ligand=ligand, from_ff="amber", pf=500, append=False)
-    
-    # 2. Merge ligand topologies with the protein topology (if specified)
-    if merge_with is not None:
-        mdsys.merge_topologies(merge_with=merge_with, ligands=ligands)
-
-    # 3. Add bonded restraints between ligand and protein (if specified)
-    if add_bonded_restraints is not None:
-        for i, ligand in enumerate(ligands):
-            restraints = add_bonded_restraints[i]
-            mdsys.add_bonded_restraints(ligand=ligand, restraints=restraints)
+def add_bonded_restraints(mdsys) -> None:
+    itp_file = mdsys.topdir / "chain_A.itp"
+    target_topo = Topology.from_itp(itp_file)
+    restraints = [(210, 1085, 0.35, 1000), (211, 1086, 0.45, 1000), (362, 1088, 0.35, 1000)]
+    for restraint in restraints:
+        target_topo.bonds.append([
+        (restraint[0], restraint[1]), 
+        (1, restraint[2], restraint[3]), 
+        "BONDED DISTANCE RESTRAINT",
+        ])
+    target_topo.write_to_itp(itp_file)
+    logger.info("Saved topology with bonded restraints to %s", itp_file)
     
     
 def md_npt(sysdir, sysname, runname, nsteps=None): 
