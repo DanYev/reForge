@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import shutil
 import MDAnalysis as mda
@@ -39,7 +38,8 @@ def setup_martini(sysdir, sysname):
     #   p="backbone", pf=1000, append=False)  # Martini + Elastic network FF 
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', 
       p="backbone", pf=500, append=True) # MAKES chain_A.itp to merge ligands into later
-    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") # Make a copy of the protein topology to merge ligands into later
+    # shutil.copy(mdsys.topdir / "chain_A.itp", mdsys.topdir / "tmp.itp") 
+    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ATP", "MG"], merge_with="chain_A")
@@ -61,7 +61,7 @@ def setup_martini(sysdir, sysname):
 def add_bonded_restraints(mdsys) -> None:
     itp_file = mdsys.topdir / "chain_A.itp"
     target_topo = Topology.from_itp(itp_file)
-    restraints = [(210, 1085, 0.35, 1000), (211, 1086, 0.45, 1000), (362, 1088, 0.35, 1000)]
+    restraints = [(210, 1085, 0.35, 1000), (211, 1086, 0.45, 1000), (362, 1088, 0.35, 1000), (330, 1077, 0.35, 1000)]
     for restraint in restraints:
         target_topo.bonds.append([
         (restraint[0], restraint[1]), 

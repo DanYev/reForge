@@ -55,16 +55,16 @@ if __name__ == "__main__":
     shscript = str(pdir / 'run.sh')
 
     sysdir = "systems"
-    sysnames = ["KDA"]
-    runs = ["mdrun"]
+    sysnames = ["KDA", ]
+    runs = ["mdrun", ]
 
     submit = True
 
     ##### For MD #####
     pyscript = str(pdir / 'cg_pro_lig.py')
-    sys_job('setup', submit=False, mem='16G')
+    # sys_job('setup', submit=False, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
-    # run_job('trjconv', submit=False)
+    run_job('trjconv', submit=False)
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####

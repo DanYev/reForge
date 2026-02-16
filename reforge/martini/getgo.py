@@ -10,19 +10,23 @@ Author: DY
 """
 
 import argparse
+import logging
 import os
 import platform
 import shutil
 import subprocess as sp
 import time
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.options import Options
-from webdriver_manager.firefox import GeckoDriverManager
-import logging
+try:
+    import selenium
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.firefox.options import Options
+    from webdriver_manager.firefox import GeckoDriverManager
+except:
+    pass
 
 logger = logging.getLogger(__name__)
 
