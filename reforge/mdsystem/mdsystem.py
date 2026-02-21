@@ -664,8 +664,8 @@ class MartiniMixin:
         u = mda.Universe(input_pdb)
         for ligand in ligands:
             ligand_residues = u.select_atoms(f"resname {ligand}").residues
-            map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
-            itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
+            map_file = self.ligdir / ligand / f"{ligand}.map"
+            itp_file = self.ligdir / ligand / f"{ligand}.itp"
             if not ligand_residues:
                 raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
             for ligand_residue in ligand_residues:

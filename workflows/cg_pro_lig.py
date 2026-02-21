@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+import numpy as np
 import MDAnalysis as mda
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
 from reforge.utils import clean_dir, get_logger
@@ -42,9 +43,13 @@ def setup_martini(sysdir, sysname):
     shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ATP", "MG"], merge_with="chain_A")
-    add_bonded_restraints(mdsys)
+    # shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated_tmp.itp", 
+    #   mdsys.root / "ligands"/ "ANP"/ "ANP.itp")
+    # shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
+    #   mdsys.root / "ligands"/ "ANP"/ "ANP.map")
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with="chain_A")
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
+    add_protein_ligand_bonds(mdsys, ligand_bead_names=["204", "N06", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
     # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
@@ -58,18 +63,68 @@ def setup_martini(sysdir, sysname):
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
 
 
-def add_bonded_restraints(mdsys) -> None:
+def add_protein_ligand_bonds(mdsys, ligand_bead_names) -> None:
+    """Find closest protein beads to specified ligand beads using solute.pdb.
+    
+    Parameters
+    ----------
+    mdsys : GmxSystem
+        The molecular dynamics system object
+    ligand_bead_names : list, optional
+        List of ligand bead names (e.g., ["204", "N06", "D01", "MG"]).
+        If None, uses a default list.
+    """
+    # Load solute structure
+    u = mda.Universe(str(mdsys.solupdb))
+    
+    # Get protein atoms (exclude CA virtual sites)
+    protein_atoms = u.select_atoms("name BB* or name SC*") # Martini backbone and sidechain beads
+    if len(protein_atoms) == 0:
+        logger.warning("No protein atoms found")
+        return
+    
+    restraints = []
+    
+    # For each ligand bead name, find matching atoms and their closest protein partner
+    for bead_name in ligand_bead_names:
+        ligand_atoms = u.select_atoms(f"name {bead_name}")
+        
+        if len(ligand_atoms) == 0:
+            logger.warning(f"No ligand atoms found with name: {bead_name}")
+            continue
+        
+        for lig_atom in ligand_atoms:
+            lig_pos = lig_atom.position
+            
+            # Find closest protein atom
+            distances = np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
+            closest_idx = np.argmin(distances)
+            closest_protein = protein_atoms[closest_idx]
+            
+            distance_angstrom = distances[closest_idx]
+            distance_nm = distance_angstrom / 10.0
+            
+            # Use serial numbers from PDB (1-indexed)
+            ligand_id = lig_atom.index + 1
+            protein_id = closest_protein.index + 1
+            
+            restraints.append(((ligand_id, protein_id), (1, distance_nm, 1000), "BONDED DISTANCE RESTRAINT"))
+            logger.info(f"Bond: protein atom {protein_id} ({closest_protein.name}) <-> "
+                       f"ligand atom {ligand_id} ({lig_atom.name}), distance: {distance_angstrom:.2f} Å")
+    
+    if not restraints:
+        logger.warning("No restraints generated")
+        return
+    
+    # Update topology with generated restraints
     itp_file = mdsys.topdir / "chain_A.itp"
     target_topo = Topology.from_itp(itp_file)
-    restraints = [(210, 1085, 0.35, 1000), (211, 1086, 0.45, 1000), (362, 1088, 0.35, 1000), (330, 1077, 0.35, 1000)]
     for restraint in restraints:
-        target_topo.bonds.append([
-        (restraint[0], restraint[1]), 
-        (1, restraint[2], restraint[3]), 
-        "BONDED DISTANCE RESTRAINT",
-        ])
+        target_topo.bonds.append(restraint)
     target_topo.write_to_itp(itp_file)
-    logger.info("Saved topology with bonded restraints to %s", itp_file)
+    logger.info("Saved topology with %d bonded restraints to %s", len(restraints), itp_file)
+
+    
     
     
 def md_npt(sysdir, sysname, runname, nsteps=None): 
