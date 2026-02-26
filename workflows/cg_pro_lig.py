@@ -43,13 +43,13 @@ def setup_martini(sysdir, sysname):
     shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
-    # shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated_tmp.itp", 
-    #   mdsys.root / "ligands"/ "ANP"/ "ANP.itp")
-    # shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
-    #   mdsys.root / "ligands"/ "ANP"/ "ANP.map")
+    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated_tmp.itp", 
+      mdsys.root / "ligands"/ "ANP"/ "ANP.itp")
+    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
+      mdsys.root / "ligands"/ "ANP"/ "ANP.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with="chain_A")
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    add_protein_ligand_bonds(mdsys, ligand_bead_names=["204", "N06", "D01", "MG"])
+    add_protein_ligand_bonds(mdsys, ligand_bead_names=["P04", "N05", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
     # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
@@ -133,9 +133,7 @@ def md_npt(sysdir, sysname, runname, nsteps=None):
     ntomp = get_ntomp()
     mdrun.empp(f=mdrun.mdpdir / "em_cg.mdp")
     mdrun.mdrun(deffnm="em", ntomp=ntomp)
-    mdrun.hupp(f=mdrun.mdpdir / "hu_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
-    mdrun.mdrun(deffnm="hu", ntomp=ntomp)
-    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="hu.gro", r="hu.gro", maxwarn="1") 
+    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
     if nsteps is None:
