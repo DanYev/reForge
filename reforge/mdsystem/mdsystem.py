@@ -454,7 +454,6 @@ class MartiniMixin:
         ``pour_martini=True``.
         """
         self.cgdir.mkdir(parents=True, exist_ok=True)
-        self.mapdir.mkdir(parents=True, exist_ok=True)
         self.topdir.mkdir(parents=True, exist_ok=True)
         # Copy water.gro and atommass.dat from master data directory
         shutil.copy(self.MDATDIR / "water.gro", self.root)
@@ -563,7 +562,6 @@ class MartiniMixin:
             mol_name = f.split(".")[0]
             self.molecules[mol_name] = int(1)
         logger.info(f"Found {len(pdb_files)} protein PDB files to process")
-        exit()
         itp_files = [f.replace("pdb", "itp") for f in pdb_files]
         # Filter unprocessed files
         if append:

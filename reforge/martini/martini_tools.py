@@ -62,7 +62,7 @@ def append_to(in_file, out_file):
     # Check if input file exists
     if not in_path.exists():
         logger.warning(f"Source file does not exist: {in_path}")
-        return
+        exit(1)
     
     # Create parent directory for output file if it doesn't exist
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,7 +113,6 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
     logger.info(f"Output written to: {out_map_path}")
 
 
-@cli.from_wdir
 def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0", 
     go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, **kwargs):
     """Run virtual site-based GoMartini via martinize2.
@@ -162,34 +161,24 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0",
     logger.info(f"Topology directory: {topdir_path}")
     logger.info(f"Input AA PDB: {aapdb}")
     logger.info(f"Input CG PDB: {cgpdb}")
-    with cd(topdir_path):
+    with cd(wdir):
         go_write_path = wdir_path / "maps" / f"{name}.map"
-        logger.info(f"Go-map will be written to: {go_write_path}")
         go_write_path.parent.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Created directory: {go_write_path.parent}")
-        relative_go_path = go_write_path.relative_to(wdir_path)
+        relative_map_path = go_write_path.relative_to(wdir_path)
         line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
                 "-go-write-file {} -dssp {}").format(
-                    name, go_eps, go_low, go_up, go_res_dist, relative_go_path, text)
+                    name, go_eps, go_low, go_up, go_res_dist, relative_map_path, text)
         logger.info(f"Running martinize2 with command: {line}")
         cli.run("martinize2", line, **kwargs)
-        go_atomtypes_src = Path("go_atomtypes.itp")
-        go_atomtypes_dst = topdir_path / "go_atomtypes.itp"
-        go_nbparams_src = Path("go_nbparams.itp")
-        go_nbparams_dst = topdir_path / "go_nbparams.itp"
-        protein_itp_src = Path(f"{name}.itp")
-        protein_itp_dst = topdir_path / f"{name}.itp"
-        logger.debug(f"Moving files to topology directory: {topdir_path}")
-        append_to(go_atomtypes_src, go_atomtypes_dst)
-        logger.debug(f"Appended {go_atomtypes_src} to {go_atomtypes_dst}")
-        append_to(go_nbparams_src, go_nbparams_dst)
-        logger.debug(f"Appended {go_nbparams_src} to {go_nbparams_dst}")
+        _handle_vsites(topdir, name, vsites_name="go")
+        # Move protein itp file to topology directory
+        protein_itp_src = f"{name}.itp"
+        protein_itp_dst = topdir / f"{name}.itp"
         shutil.move(protein_itp_src, protein_itp_dst)
         logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
     logger.info(f"martinize_go completed successfully for protein '{name}'")
 
 
-@cli.from_wdir
 def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     """Run protein elastic network generation via martinize2.
 
@@ -228,12 +217,17 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     # Convert paths to Path objects
     wdir = Path(wdir)
     topdir = Path(topdir)
-    logger.info(f"Starting martinize_en for protein")
+    logger.info(f"Starting martinize_en for protein %s", name)
     ss = dssp(aapdb)
     line = ("-elastic -ef {} -el {} -eu {} -ss {} {}").format(ef, el, eu, ss, text)
     with cd(wdir):
         cli.run("martinize2", line, **kwargs)
-        _handle_vsites(topdir, "protein")
+        _handle_vsites(topdir, name, vsites_name="virtual_sites")
+        # Move the generated itp file to the topology directory
+        protein_itp_src = Path("molecule_0.itp")
+        protein_itp_dst = topdir / f"{name}.itp"
+        shutil.move(protein_itp_src, protein_itp_dst)
+        logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
     logger.info(f"martinize_en completed successfully for protein '{name}'")
 
 
@@ -241,16 +235,13 @@ def _handle_vsites(topdir, name, vsites_name="go"):
     vs_atomtypes_src = Path(f"{vsites_name}_atomtypes.itp")
     vs_atomtypes_dst = topdir / f"{vsites_name}_atomtypes.itp"
     vs_nbparams_src = Path(f"{vsites_name}_nbparams.itp")
+    if not vs_nbparams_src.exists():
+        vs_nbparams_src = Path(f"{vsites_name}_nonbond_params.itp")
     vs_nbparams_dst = topdir / f"{vsites_name}_nbparams.itp"
-    protein_itp_src = Path(f"{name}.itp")
-    protein_itp_dst = topdir / f"{name}.itp"
     logger.debug(f"Moving files to topology directory: {topdir}")
     append_to(vs_atomtypes_src, vs_atomtypes_dst)
-    logger.debug(f"Appended {vs_atomtypes_src} to {vs_atomtypes_dst}")
     append_to(vs_nbparams_src, vs_nbparams_dst)
-    logger.debug(f"Appended {vs_nbparams_src} to {vs_nbparams_dst}")
-    shutil.move(protein_itp_src, protein_itp_dst)
-    logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
+
 
 
 def run_martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
