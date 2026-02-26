@@ -1,10 +1,16 @@
-
-from pathlib import Path
+import logging
+import os
+import shutil
+import numpy as np
 import MDAnalysis as mda
+from pathlib import Path
+from reforge import logger
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
-from reforge.utils import clean_dir, get_logger
+from reforge.utils import clean_dir
+from reforge.forge.topology import Topology
+import mdtraj
 
-logger = get_logger()
+# logger = logging.getLogger("reforge")
 
 # Global settings
 INPDB = 'KDA.pdb'
@@ -26,20 +32,28 @@ def setup_martini(sysdir, sysname):
     mdsys = GmxSystem(sysdir, sysname)
     input_pdb = Path(sysdir) / INPDB
     # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
-    mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
+    # mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
+    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
     # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
-    mdsys.split_chains()
-    
-    # # 1.2.2 Looks like we don't need this anymore
-    # mdsys.get_go_maps(append=True)
+    # mdsys.split_chains()
 
-    # 1.2. COARSE-GRAINING. Done separately for each chain. If don"t want to split some of them, it needs to be done manually. 
-    mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, from_ff='charmm', p="backbone", pf=500, append=True)  # Martini + Elastic network FF 
-    # # # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, from_ff='amber', p="backbone", pf=500, append=False) # Martini + Go-network FF
-    # # # mdsys.martinize_rna(elastic="yes", ef=100, el=0.5, eu=1.2, merge=True, p="backbone", pf=500, append=False) # Martini RNA FF 
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["MG", "ANP", ])
+    idr_regions = _get_idr_regions(input_pdb, min_length=15)
+    add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
+    add_command = f"-id-regions {idr_regions}" # martinize2 -h for help
+    # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, text=add_command, append=False)  # Martini + Elastic network FF 
+    mdsys.martinize_proteins_go(go_eps=10.0, go_low=0.3, go_up=1.0, ff="martini3IDP",
+        p="backbone", pf="200",  text=add_command, append=False) 
+    shutil.copy(mdsys.topdir / "chain_A.itp", mdsys.topdir / "tmp.itp") 
+    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
+
+    # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
+    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated.itp", 
+        mdsys.root / "ligands"/ "ANP"/ "ANP.itp")
+    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
+        mdsys.root / "ligands"/ "ANP"/ "ANP.map")
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with="chain_A")
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
+    _add_protein_ligand_bonds(mdsys, ligand_bead_names=["P04", "N05", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
     # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
@@ -51,17 +65,96 @@ def setup_martini(sysdir, sysname):
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
+
+
+def _get_idr_regions(input_pdb, min_length=3):
+    struct = mdtraj.load_pdb(input_pdb)
+    dssp = mdtraj.compute_dssp(struct, simplified=True)
+    idr_regions = []
+    curr_region = False
+    for i, ss in enumerate(dssp[0]):
+        if ss == 'C' and not curr_region:  # Coil regions are considered IDRs
+            curr_region = True
+            idr_region_start = i + 1
+            continue
+        if curr_region and ss != 'C':
+            curr_region = False
+            idr_region_end = i
+            if idr_region_end - idr_region_start + 1 >= min_length:  # Only consider regions of length >= min_length
+                idr_regions.append(f"{idr_region_start}:{idr_region_end}")
+    idr_regions_str = " ".join(map(str, idr_regions))
+    return idr_regions_str
+
+
+def _add_protein_ligand_bonds(mdsys, ligand_bead_names) -> None:
+    """Find closest protein beads to specified ligand beads using solute.pdb.
     
+    Parameters
+    ----------
+    mdsys : GmxSystem
+        The molecular dynamics system object
+    ligand_bead_names : list, optional
+        List of ligand bead names (e.g., ["204", "N06", "D01", "MG"]).
+        If None, uses a default list.
+    """
+    # Load solute structure
+    u = mda.Universe(str(mdsys.solupdb))
     
+    # Get protein atoms (exclude CA virtual sites)
+    protein_atoms = u.select_atoms("name BB* or name SC*") # Martini backbone and sidechain beads
+    if len(protein_atoms) == 0:
+        logger.warning("No protein atoms found")
+        return
+    
+    restraints = []
+    
+    # For each ligand bead name, find matching atoms and their closest protein partner
+    for bead_name in ligand_bead_names:
+        ligand_atoms = u.select_atoms(f"name {bead_name}")
+        
+        if len(ligand_atoms) == 0:
+            logger.warning(f"No ligand atoms found with name: {bead_name}")
+            continue
+        
+        for lig_atom in ligand_atoms:
+            lig_pos = lig_atom.position
+            
+            # Find closest protein atom
+            distances = np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
+            closest_idx = np.argmin(distances)
+            closest_protein = protein_atoms[closest_idx]
+            
+            distance_angstrom = distances[closest_idx]
+            distance_nm = distance_angstrom / 10.0
+            
+            # Use serial numbers from PDB (1-indexed)
+            ligand_id = lig_atom.index + 1
+            protein_id = closest_protein.index + 1
+            
+            restraints.append(((ligand_id, protein_id), (1, distance_nm, 1000), "BONDED DISTANCE RESTRAINT"))
+            logger.info(f"Bond: protein atom {protein_id} ({closest_protein.name}) <-> "
+                       f"ligand atom {ligand_id} ({lig_atom.name}), distance: {distance_angstrom:.2f} Å")
+    
+    if not restraints:
+        logger.warning("No restraints generated")
+        return
+    
+    # Update topology with generated restraints
+    itp_file = mdsys.topdir / "chain_A.itp"
+    target_topo = Topology.from_itp(itp_file)
+    for restraint in restraints:
+        target_topo.bonds.append(restraint)
+    target_topo.write_to_itp(itp_file)
+    logger.info("Saved topology with %d bonded restraints to %s", len(restraints), itp_file)
+
+     
 def md_npt(sysdir, sysname, runname, nsteps=None): 
     mdrun = GmxRun(sysdir, sysname, runname)
     mdrun.prepare_files()
     ntomp = get_ntomp()
     mdrun.empp(f=mdrun.mdpdir / "em_cg.mdp")
     mdrun.mdrun(deffnm="em", ntomp=ntomp)
-    mdrun.hupp(f=mdrun.mdpdir / "hu_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
-    mdrun.mdrun(deffnm="hu", ntomp=ntomp)
-    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="hu.gro", r="hu.gro", maxwarn="1") 
+    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
     if nsteps is None:
@@ -97,6 +190,5 @@ def trjconv(sysdir, sysname, runname, **kwargs):
 if __name__ == "__main__":
     from reforge.cli import run_command
     run_command()
-    # setup_martini("systems", "1PZP")
 
     

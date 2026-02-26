@@ -7,22 +7,23 @@ import logging
 
 # Configure logging first
 debug = os.environ.get("DEBUG", "0") == "1"
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        # format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S"
-    )
+log_level = logging.DEBUG if debug else logging.INFO
+_LOG_FORMAT = "%(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+_DATE_FORMAT = "%H:%M:%S"
 
 # Set up main package logger
+logging.basicConfig(
+        format=_LOG_FORMAT,
+        datefmt=_DATE_FORMAT,
+        # level=log_level,
+        # force=True,
+    )
 logger = logging.getLogger("reforge")
-log_level = logging.DEBUG if debug else logging.INFO
 logger.setLevel(log_level)
 
 if debug:
     logger.debug("reforge package initialized in debug mode")
-# else:
-#     logger.info("reforge package initialized")
+
 
 # Global warning suppression for MDAnalysis
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -35,7 +36,7 @@ logging.getLogger('MDAnalysis.topology.guessers').setLevel(logging.WARNING)
 logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
 
 # Make logger available at package level
-__all__ = ["logger"]
+__all__ = [logger]
 do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py", "plotting.py"]
 
 # Lazy loading: modules are imported on first access

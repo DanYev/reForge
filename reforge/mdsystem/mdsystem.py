@@ -31,9 +31,9 @@ from collections import defaultdict
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
 from reforge import cli, mdm, pdbtools, io
-from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
+from reforge.forge.topology import Topology
 
 logger = logging.getLogger(__name__)
 
@@ -454,7 +454,6 @@ class MartiniMixin:
         ``pour_martini=True``.
         """
         self.cgdir.mkdir(parents=True, exist_ok=True)
-        self.mapdir.mkdir(parents=True, exist_ok=True)
         self.topdir.mkdir(parents=True, exist_ok=True)
         # Copy water.gro and atommass.dat from master data directory
         shutil.copy(self.MDATDIR / "water.gro", self.root)
@@ -576,7 +575,7 @@ class MartiniMixin:
             temp_itp = self.root / "molecule_0.itp"
             final_itp = self.topdir / pdb_file.replace("pdb", "itp")
             temp_top = self.root / "protein.top"
-            martini_tools.run_martinize_en(self.root, input_pdb, output_pdb, **kwargs)
+            martini_tools.run_martinize_en(self.root, self.topdir, input_pdb, output_pdb, name=mol_name, **kwargs)
             with open(temp_itp, "r", encoding="utf-8") as f:
                 content = f.read()
             mol_name = pdb_file[:-4]
@@ -650,6 +649,30 @@ class MartiniMixin:
             output_itp = self.topdir / f"{mol_name}.itp"
             martini_tools.run_martinize_rna(self.root, 
                 f=input_pdb, os=output_pdb, ot=output_itp, mol=mol_name, **kwargs)
+    
+    def martinize_ligands(
+        self, 
+        input_pdb: Path | None = None, 
+        ligands: list[str] | None = None, 
+        merge_with: str | None = None,
+        out_itp: Path | None = None
+    ) -> None:
+        logger.info("Working on ligands...")
+        if not input_pdb:
+            input_pdb = self.inpdb
+        u = mda.Universe(input_pdb)
+        for ligand in ligands:
+            ligand_residues = u.select_atoms(f"resname {ligand}").residues
+            map_file = self.ligdir / ligand / f"{ligand}.map"
+            itp_file = self.ligdir / ligand / f"{ligand}.itp"
+            if not ligand_residues:
+                raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
+            for ligand_residue in ligand_residues:
+                self._map_ligand(map_file, ligand_residue)
+                self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
+                shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
+            if merge_with:
+                self._merge_ligands_with(merge_with, ligand)
 
     def _map_ligand(self, map_file, ligand_residue):
         """Map an all-atom ligand residue to Martini beads using a `.map` file.
@@ -696,7 +719,8 @@ class MartiniMixin:
         aa_atoms = ligand_residue.atoms
         aa_by_name: dict[str, list] = defaultdict(list)
         for idx, a in enumerate(aa_atoms):
-            aa_by_name[f"{a.type}{idx+1}"].append(a)
+            # aa_by_name[f"{a.type}{idx+1}"].append(a)
+            aa_by_name[f"{a.name}"].append(a)
         beads = []  # list of (bead_name, xyz)
         for bead_name, atom_names in bead_to_atomnames.items():
             bead_atoms = []
@@ -732,21 +756,45 @@ class MartiniMixin:
             w.write("END\n")
         logger.info("Wrote mapped ligand CG PDB: %s", outpdb)
 
-    def martinize_ligands(self, input_pdb=None, ligands=None):
-        logger.info("Working on ligands...")
-        if not input_pdb:
-            input_pdb = self.inpdb
-        u = mda.Universe(input_pdb)
-        for ligand in ligands:
-            ligand_residues = u.select_atoms(f"resname {ligand}").residues
-            map_file = self.ligdir / ligand / f"{ligand.lower()}.map"
-            itp_file = self.ligdir / ligand / f"{ligand.lower()}.itp"
-            if not ligand_residues:
-                raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
-            self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
-            for ligand_residue in ligand_residues:
-                self._map_ligand(map_file, ligand_residue)
-                shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
+    def _merge_ligands_with(self, target: str, ligand: str) -> None:
+        """Merge ligand ITP file into target ITP file using Topology class.
+        
+        Parameters
+        ----------
+        ligand_itp : Path
+            Path to the ligand ITP file to merge
+        target_name : str
+            Name of the target ITP file (without .itp extension)
+        add_bonded_restraints : list of tuple, optional
+            List of bonded restraints to add (default: None)
+        """
+        target_itp = self.topdir / f"{target}.itp"
+        ligand_itp = self.topdir / f"ligand_{ligand}.itp"
+        if not target_itp.exists():
+            raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
+        if not ligand_itp.exists():
+            raise FileNotFoundError(f"Ligand ITP file not found: {ligand_itp}")
+        logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
+        # Load both topologies
+        target_topo = Topology.from_itp(target_itp)
+        ligand_topo = Topology.from_itp(ligand_itp)
+        ligand_key = f"ligand_{ligand}"
+        for n in range(self.molecules[ligand_key]):
+            target_topo += ligand_topo
+        del self.molecules[ligand_key]
+        target_topo.write_to_itp(target_itp)
+        logger.info("Saved merged topology to %s", target_itp)
+        
+    def add_bonded_restraints(self, itp_file: Path, restraints: list[tuple]) -> None:
+        target_topo = Topology.from_itp(itp_file)
+        for restraint in restraints:
+            target_topo.bonds.append([
+            (restraint[0], restraint[1]), 
+            (6, restraint[2], restraint[3]), 
+            "BONDED DISTANCE RESTRAINT",
+            ])
+        target_topo.write_to_itp(itp_file)
+        logger.info("Saved topology with bonded restraints to %s", itp_file)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
         """Merges coarse-grained PDB files into a single solute PDB file.
@@ -763,7 +811,7 @@ class MartiniMixin:
         # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
         cg_pdb_files = sort_for_gmx(cg_pdb_files)
         cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
-        all_atoms = AtomList()
+        all_atoms = pdbtools.AtomList()
         for file in cg_pdb_files:
             atoms = pdbtools.pdb2atomlist(file)
             all_atoms.extend(atoms)
