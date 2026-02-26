@@ -4,11 +4,13 @@ import shutil
 import numpy as np
 import MDAnalysis as mda
 from pathlib import Path
+from reforge import _DATE_FORMAT, _LOG_FORMAT
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
 from reforge.utils import clean_dir
 from reforge.forge.topology import Topology
 
 logger = logging.getLogger("reforge")
+logging.basicConfig(format=_LOG_FORMAT, datefmt=_DATE_FORMAT)
 
 # Global settings
 INPDB = 'KDA.pdb'

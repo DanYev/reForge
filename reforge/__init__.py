@@ -8,17 +8,19 @@ import logging
 # Configure logging first
 debug = os.environ.get("DEBUG", "0") == "1"
 log_level = logging.DEBUG if debug else logging.INFO
-_LOG_FORMAT = "[%(filename)s:%(lineno)d] - %(levelname)s - %(message)s"
+_LOG_FORMAT = "[%(filename)s:%(lineno)d] - %(levelname)s - %(name)s - %(message)s"
 _DATE_FORMAT = "%H:%M:%S"
 
 # Set up main package logger
 logging.basicConfig(
         format=_LOG_FORMAT,
         datefmt=_DATE_FORMAT,
-        level=log_level
+        # level=log_level,
+        # force=True,
     )
 logger = logging.getLogger("reforge")
 logger.setLevel(log_level)
+logger.info("reforge package initialized with log level: %s", logging.getLevelName(log_level))
 
 if debug:
     logger.debug("reforge package initialized in debug mode")
@@ -35,7 +37,7 @@ logging.getLogger('MDAnalysis.topology.guessers').setLevel(logging.WARNING)
 logging.getLogger('MDAnalysis').setLevel(logging.WARNING)
 
 # Make logger available at package level
-__all__ = ["logger"]
+__all__ = [logger]
 do_not_import = ["__init__.py", "insane.py", "martinize_nucleotides_old.py", "plotting.py"]
 
 # Lazy loading: modules are imported on first access

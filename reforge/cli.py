@@ -34,7 +34,7 @@ Date: YYYY-MM-DD
 
 import datetime
 import inspect
-import logging
+from reforge import logger
 import os
 import shutil
 import subprocess as sp
@@ -44,7 +44,6 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
 
 
 ##############################################################

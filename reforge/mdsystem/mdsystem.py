@@ -30,12 +30,12 @@ import numpy as np
 from collections import defaultdict
 from openmm.app import PDBFile
 from pdbfixer.pdbfixer import PDBFixer
-from reforge import cli, mdm, pdbtools, io
+from reforge import cli, mdm, pdbtools, io, logger
 from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
 from reforge.forge.topology import Topology
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 ################################################################################
 # GMX system class
@@ -563,6 +563,7 @@ class MartiniMixin:
             mol_name = f.split(".")[0]
             self.molecules[mol_name] = int(1)
         logger.info(f"Found {len(pdb_files)} protein PDB files to process")
+        exit()
         itp_files = [f.replace("pdb", "itp") for f in pdb_files]
         # Filter unprocessed files
         if append:
