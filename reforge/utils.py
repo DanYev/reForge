@@ -26,23 +26,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional, TypeVar, Union
 
-def get_logger(name="reforge"):
-    """Get the configured logger instance.
-    
-    Since logging is now configured in reforge.__init__.py, this function
-    simply returns the already-configured logger instance.
-    
-    Parameters
-    ----------
-    name : str, optional
-        Logger name (default: "reforge")
-        
-    Returns
-    -------
-    logging.Logger
-        The configured logger instance
-    """
-    return logging.getLogger(name)
+logger = logging.getLogger("reforge")
 
 
 def timeit(*args, **kwargs):
