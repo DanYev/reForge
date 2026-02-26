@@ -70,8 +70,24 @@ def run(*args, **kwargs):
     """
     clinput = kwargs.pop("clinput", None)
     cltext = kwargs.pop("cltext", True)
+    check = kwargs.pop("check", True)
     command = args_to_str(*args) + " " + kwargs_to_str(**kwargs)
-    sp.run(command.split(), input=clinput, text=cltext, check=False)
+
+    debug_mode = os.environ.get("DEBUG", "0") == "1"
+    try:
+        sp.run(command.split(), input=clinput, text=cltext, check=check)
+    except FileNotFoundError as e:
+        if debug_mode:
+            raise
+        logger.error(f"Command not found: {args[0] if args else command}")
+        logger.info("Set DEBUG=1 environment variable to see full traceback.")
+        sys.exit(127)
+    except sp.CalledProcessError as e:
+        if debug_mode:
+            raise
+        logger.error(f"Command failed with exit code {e.returncode}: {command}")
+        logger.info("Set DEBUG=1 environment variable to see full traceback.")
+        sys.exit(e.returncode if e.returncode is not None else 1)
 
 
 def sbatch(script, *args, **kwargs):
@@ -350,8 +366,12 @@ def run_command():
             functions[command]()
         print(f"Successfully completed {command}", file=sys.stderr)
     except Exception as e:
+        debug_mode = os.environ.get("DEBUG", "0") == "1"
         print(f"Error executing {command}: {str(e)}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+        if debug_mode:
+            traceback.print_exc(file=sys.stderr)
+        else:
+            print("Set DEBUG=1 environment variable to see full traceback.", file=sys.stderr)
         sys.exit(1)
 
 
