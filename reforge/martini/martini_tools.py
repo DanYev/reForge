@@ -13,12 +13,12 @@ import warnings
 from pathlib import Path
 from MDAnalysis import Universe
 from MDAnalysis.analysis.dssp import translate, DSSP
-from reforge import cli, logger
+from reforge import cli
 from reforge.martini import martinize_rna
 from reforge.martini.martinize_rna import martinize_rna
 from reforge.utils import cd
 
-# logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", message="Reader has no dt information, set to 1.0 ps")
 
 
