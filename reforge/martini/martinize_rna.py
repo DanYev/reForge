@@ -24,12 +24,6 @@ from reforge.forge.topology import Topology
 from reforge.pdbtools import AtomList, pdb2system
 
 
-# Set up logging - force configuration
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', 
-                   datefmt='%H:%M:%S', force=True)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 def martinize_rna(f, ot='molecule.itp', os='molecule.pdb',
                   ff='reg', mol='molecule', merge='yes',
                   elastic='yes', ef=200, el=0.3, 

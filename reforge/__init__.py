@@ -8,7 +8,7 @@ import logging
 # Configure logging first
 debug = os.environ.get("DEBUG", "0") == "1"
 log_level = logging.DEBUG if debug else logging.INFO
-_LOG_FORMAT = "[%(filename)s:%(lineno)d] - %(levelname)s - %(name)s - %(message)s"
+_LOG_FORMAT = "%(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
 _DATE_FORMAT = "%H:%M:%S"
 
 # Set up main package logger
@@ -20,7 +20,6 @@ logging.basicConfig(
     )
 logger = logging.getLogger("reforge")
 logger.setLevel(log_level)
-logger.info("reforge package initialized with log level: %s", logging.getLevelName(log_level))
 
 if debug:
     logger.debug("reforge package initialized in debug mode")
