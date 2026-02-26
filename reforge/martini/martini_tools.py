@@ -18,7 +18,7 @@ from reforge.martini import martinize_rna
 from reforge.martini.martinize_rna import martinize_rna
 from reforge.utils import cd
 
-logger = logging.getLogger("reforge")
+logger = logging.getLogger()
 warnings.filterwarnings("ignore", message="Reader has no dt information, set to 1.0 ps")
 
 

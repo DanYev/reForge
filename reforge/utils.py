@@ -26,7 +26,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional, TypeVar, Union
 
-logger = logging.getLogger("reforge")
+logger = logging.getLogger(__name__)
 
 
 def timeit(*args, **kwargs):

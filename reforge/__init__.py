@@ -7,13 +7,12 @@ import logging
 
 # Configure logging first
 debug = os.environ.get("DEBUG", "0") == "1"
-_LOG_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+_LOG_FORMAT = "[%(filename)s:%(lineno)d] - %(levelname)s - %(message)s"
 _DATE_FORMAT = "%H:%M:%S"
 
 root_logger = logging.getLogger()
 if not root_logger.handlers:
     logging.basicConfig(
-        # format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         format=_LOG_FORMAT,
         datefmt=_DATE_FORMAT,
     )
