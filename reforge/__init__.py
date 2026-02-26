@@ -10,7 +10,7 @@ debug = os.environ.get("DEBUG", "0") == "1"
 if not logging.getLogger().handlers:
     logging.basicConfig(
         # format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        format="%(filename)s:%(lineno)d - %(levelname)s - %(message)s",
+        format="[%(filename)s:%(lineno)d] - %(levelname)s - %(message)s",
         datefmt="%H:%M:%S"
     )
 

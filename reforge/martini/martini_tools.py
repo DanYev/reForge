@@ -18,7 +18,7 @@ from reforge.martini import martinize_rna
 from reforge.martini.martinize_rna import martinize_rna
 from reforge.utils import cd
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("reforge")
 warnings.filterwarnings("ignore", message="Reader has no dt information, set to 1.0 ps")
 
 
@@ -219,11 +219,11 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     kwargs.setdefault("sep", "")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
-    kwargs,setdefault("from", amber)
+    kwargs.setdefault("from", "amber")
     kwargs.setdefault("maxwarn", "1000")
-    ef = kwargs.pop("ef", ef)
-    el = kwargs.pop("el", el)
-    eu = kwargs.pop("eu", eu)
+    ef = kwargs.pop("ef", 700)
+    el = kwargs.pop("el", 0.3)
+    eu = kwargs.pop("eu", 0.9)
     text = kwargs.pop("text", "")
     # Convert paths to Path objects
     wdir = Path(wdir)

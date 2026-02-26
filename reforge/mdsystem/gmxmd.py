@@ -37,7 +37,7 @@ from reforge.pdbtools import AtomList
 from reforge.utils import cd, clean_dir
 from reforge.mdsystem.mdsystem import MDSystem, MDRun, MartiniMixin
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("reforge")
 
 ################################################################################
 # GMX system class
