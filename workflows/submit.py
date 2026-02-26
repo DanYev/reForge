@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # sys_job('setup', submit=False, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
     # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='general', q='grp_sozkan')
-    run_job('trjconv', submit=False)
+    run_job('trjconv', submit=True)
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####
