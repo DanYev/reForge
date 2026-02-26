@@ -12,6 +12,7 @@ Requirements:
 Author: DY
 Date: YYYY-MM-DD
 """
+from __future__ import annotations
 
 import logging
 import os
@@ -23,6 +24,7 @@ import warnings
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
+from typing import Callable, Optional, TypeVar, Union
 
 def get_logger(name="reforge"):
     """Get the configured logger instance.
@@ -181,9 +183,6 @@ def clean_dir(directory=".", pattern="#*"):
 #####################################################################
 # Failure and error handling utilities
 #####################################################################
-
-from __future__ import annotations
-from typing import Callable, Optional, TypeVar, Union
 
 T = TypeVar("T")
 
