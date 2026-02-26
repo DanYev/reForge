@@ -10,7 +10,7 @@ debug = os.environ.get("DEBUG", "0") == "1"
 if not logging.getLogger().handlers:
     logging.basicConfig(
         # format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        format="%(filename)s:%(lineno)d - %(levelname)s - %(message)s",
         datefmt="%H:%M:%S"
     )
 
@@ -21,8 +21,7 @@ logger.setLevel(log_level)
 
 if debug:
     logger.debug("reforge package initialized in debug mode")
-# else:
-#     logger.info("reforge package initialized")
+
 
 # Global warning suppression for MDAnalysis
 warnings.filterwarnings("ignore", category=DeprecationWarning)

@@ -576,7 +576,7 @@ class MartiniMixin:
             temp_itp = self.root / "molecule_0.itp"
             final_itp = self.topdir / pdb_file.replace("pdb", "itp")
             temp_top = self.root / "protein.top"
-            martini_tools.run_martinize_en(self.root, input_pdb, output_pdb, **kwargs)
+            martini_tools.run_martinize_en(self.root, self.topdir, input_pdb, output_pdb, name=mol_name, **kwargs)
             with open(temp_itp, "r", encoding="utf-8") as f:
                 content = f.read()
             mol_name = pdb_file[:-4]

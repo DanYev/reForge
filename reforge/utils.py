@@ -45,11 +45,6 @@ def get_logger(name="reforge"):
     return logging.getLogger(name)
 
 
-# Backward compatibility - provide logger at module level
-# For new code, prefer: from reforge.utils import get_logger; logger = get_logger()
-logger = get_logger()
-
-
 def timeit(*args, **kwargs):
     """Backwards-compatible timeit decorator"""
     # If called with no args, it's being used as @timeit

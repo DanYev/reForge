@@ -114,8 +114,8 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
 
 
 @cli.from_wdir
-def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
-                 go_low=0.3, go_up=1.1, go_res_dist=3, from_ff='amber', **kwargs):
+def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0", 
+    go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, **kwargs):
     """Run virtual site-based GoMartini via martinize2.
 
     Parameters
@@ -129,7 +129,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
     cgpdb : str
         Coarse-grained PDB file.
     name : str, optional
-        Protein name. Default is "protein".
+        Protein name. Default is "protein_0 ".
     go_eps : float, optional
         Strength of the Go-model bias. Default is 9.414.
     go_low : float, optional
@@ -151,8 +151,8 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
     kwargs.setdefault("sep", " ")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
+    kwargs.setdefault("from", "amber")
     kwargs.setdefault("maxwarn", "1000")
-    kwargs.setdefault("from", from_ff)
     text = kwargs.pop("text", "")
     # Convert paths to Path objects
     wdir_path = Path(wdir)
@@ -162,7 +162,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
     logger.info(f"Topology directory: {topdir_path}")
     logger.info(f"Input AA PDB: {aapdb}")
     logger.info(f"Input CG PDB: {cgpdb}")
-    with cd(wdir):
+    with cd(topdir_path):
         go_write_path = wdir_path / "maps" / f"{name}.map"
         logger.info(f"Go-map will be written to: {go_write_path}")
         go_write_path.parent.mkdir(parents=True, exist_ok=True)
@@ -173,25 +173,24 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein", go_eps=9.414,
                     name, go_eps, go_low, go_up, go_res_dist, relative_go_path, text)
         logger.info(f"Running martinize2 with command: {line}")
         cli.run("martinize2", line, **kwargs)
-        logger.info("martinize2 execution completed")
         go_atomtypes_src = Path("go_atomtypes.itp")
         go_atomtypes_dst = topdir_path / "go_atomtypes.itp"
         go_nbparams_src = Path("go_nbparams.itp")
         go_nbparams_dst = topdir_path / "go_nbparams.itp"
         protein_itp_src = Path(f"{name}.itp")
         protein_itp_dst = topdir_path / f"{name}.itp"
-        logger.info(f"Moving files to topology directory: {topdir_path}")
+        logger.debug(f"Moving files to topology directory: {topdir_path}")
         append_to(go_atomtypes_src, go_atomtypes_dst)
-        logger.info(f"Appended {go_atomtypes_src} to {go_atomtypes_dst}")
+        logger.debug(f"Appended {go_atomtypes_src} to {go_atomtypes_dst}")
         append_to(go_nbparams_src, go_nbparams_dst)
-        logger.info(f"Appended {go_nbparams_src} to {go_nbparams_dst}")
+        logger.debug(f"Appended {go_nbparams_src} to {go_nbparams_dst}")
         shutil.move(protein_itp_src, protein_itp_dst)
-        logger.info(f"Moved {protein_itp_src} to {protein_itp_dst}")
+        logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
     logger.info(f"martinize_go completed successfully for protein '{name}'")
 
 
 @cli.from_wdir
-def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, from_ff='amber', **kwargs):
+def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     """Run protein elastic network generation via martinize2.
 
     Parameters
@@ -220,14 +219,38 @@ def run_martinize_en(wdir, aapdb, cgpdb, ef=700, el=0.0, eu=0.9, from_ff='amber'
     kwargs.setdefault("sep", "")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
+    kwargs,setdefault("from", amber)
     kwargs.setdefault("maxwarn", "1000")
-    kwargs.setdefault("elastic", "")
-    kwargs.setdefault("from", from_ff)
+    ef = kwargs.pop("ef", ef)
+    el = kwargs.pop("el", el)
+    eu = kwargs.pop("eu", eu)
     text = kwargs.pop("text", "")
+    # Convert paths to Path objects
+    wdir = Path(wdir)
+    topdir = Path(topdir)
+    logger.info(f"Starting martinize_en for protein")
     ss = dssp(aapdb)
-    line = ("-ef {} -el {} -eu {} -ss {} {}").format(ef, el, eu, ss, text)
+    line = ("-elastic -ef {} -el {} -eu {} -ss {} {}").format(ef, el, eu, ss, text)
     with cd(wdir):
         cli.run("martinize2", line, **kwargs)
+        _handle_vsites(topdir, "protein")
+    logger.info(f"martinize_en completed successfully for protein '{name}'")
+
+
+def _handle_vsites(topdir, name, vsites_name="go"):
+    vs_atomtypes_src = Path(f"{vsites_name}_atomtypes.itp")
+    vs_atomtypes_dst = topdir / f"{vsites_name}_atomtypes.itp"
+    vs_nbparams_src = Path(f"{vsites_name}_nbparams.itp")
+    vs_nbparams_dst = topdir / f"{vsites_name}_nbparams.itp"
+    protein_itp_src = Path(f"{name}.itp")
+    protein_itp_dst = topdir / f"{name}.itp"
+    logger.debug(f"Moving files to topology directory: {topdir}")
+    append_to(vs_atomtypes_src, vs_atomtypes_dst)
+    logger.debug(f"Appended {vs_atomtypes_src} to {vs_atomtypes_dst}")
+    append_to(vs_nbparams_src, vs_nbparams_dst)
+    logger.debug(f"Appended {vs_nbparams_src} to {vs_nbparams_dst}")
+    shutil.move(protein_itp_src, protein_itp_dst)
+    logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
 
 
 def run_martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
