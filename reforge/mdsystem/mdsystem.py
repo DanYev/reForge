@@ -35,7 +35,7 @@ from reforge.utils import cd, clean_dir
 from reforge.martini import getgo, martini_tools
 from reforge.forge.topology import Topology
 
-logger = logging.getLogger("reforge")
+logger = logging.getLogger(__name__)
 
 ################################################################################
 # GMX system class
