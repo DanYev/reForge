@@ -6,9 +6,9 @@
 # "bash" starts a new shell process to execute the script.
 
 module purge
-source deactivate
 module load mamba/latest
 module load gromacs-2023.3-openmpi-cuda-qx
+source deactivate
 source activate reforge
 
 # Pre-load reforge to speed up interactive usage (optional)
