@@ -775,8 +775,8 @@ class MartiniMixin:
         target_topo = Topology.from_itp(target_itp)
         ligand_topo = Topology.from_itp(ligand_itp)
         ligand_key = f"ligand_{ligand}"
-        # for n in range(self.molecules[ligand_key]):
-        target_topo += ligand_topo
+        for n in range(self.molecules[ligand_key]):
+            target_topo += ligand_topo
         del self.molecules[ligand_key]
         target_topo.write_to_itp(target_itp)
         logger.info("Saved merged topology to %s", target_itp)
