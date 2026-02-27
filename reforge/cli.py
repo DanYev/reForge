@@ -72,25 +72,23 @@ def run(*args, **kwargs):
     command = args_to_str(*args) + " " + kwargs_to_str(**kwargs)
 
     debug_mode = os.environ.get("DEBUG", "0") == "1"
-    try:
-        # capture output so we can show child stderr cleanly and avoid
-        # propagating a CalledProcessError (which creates an outer traceback)
-        sp.run(command.split(), input=clinput, text=cltext, check=check, capture_output=True)
-    except FileNotFoundError:
-        logger.error(f"Command not found: {args[0] if args else command}")
-        logger.info("Set DEBUG=1 environment variable to see full traceback.")
-        sys.exit(127)
-    except sp.CalledProcessError as e:
-        # Print the child's stderr (if available) so the real error is visible
-        if e.stderr:
-            try:
-                sys.stderr.write(e.stderr)
-            except Exception:
-                pass
-        else:
-            logger.error(f"Command failed with exit code {e.returncode}: {command}")
-        logger.info("Set DEBUG=1 environment variable to see full traceback.")
-        sys.exit(e.returncode if e.returncode is not None else 1)
+    sp.run(command.split(), input=clinput, text=cltext, check=check) #  capture_output=True)
+    # try:
+    # except FileNotFoundError:
+    #     logger.error(f"Command not found: {args[0] if args else command}")
+    #     logger.info("Set DEBUG=1 environment variable to see full traceback.")
+    #     sys.exit(127)
+    # except sp.CalledProcessError as e:
+    #     # Print the child's stderr (if available) so the real error is visible
+    #     if e.stderr:
+    #         try:
+    #             sys.stderr.write(e.stderr)
+    #         except Exception:
+    #             pass
+    #     else:
+    #         logger.error(f"Command failed with exit code {e.returncode}: {command}")
+    #     logger.info("Set DEBUG=1 environment variable to see full traceback.")
+    #     sys.exit(e.returncode if e.returncode is not None else 1)
 
 
 def sbatch(script, *args, **kwargs):
@@ -216,19 +214,9 @@ def gmx(command, gmx_callable="gmx_mpi", **kwargs):
     cltext = kwargs.pop("cltext", True)
     command = gmx_callable + " " + command + " " + kwargs_to_str(**kwargs)
     try:
-        sp.run(command.split(), input=clinput, text=cltext, check=True, capture_output=True)
+        sp.run(command.split(), input=clinput, text=cltext, check=True)
     except sp.CalledProcessError as e:
-        # Check if we're in debug mode
-        # Print child stderr if available so the underlying error is visible
-        if hasattr(e, 'stderr') and e.stderr:
-            try:
-                sys.stderr.write(e.stderr)
-            except Exception:
-                pass
-        else:
-            logger.error(f"GROMACS command failed with exit code {e.returncode}")
-        logger.info("Set DEBUG=1 environment variable to see full traceback.")
-        sys.exit(e.returncode if e.returncode is not None else 1)
+        raise RuntimeError(f"GROMACS command failed with exit code {e.returncode}") from e
 
 
 ##############################################################
