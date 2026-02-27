@@ -73,17 +73,22 @@ def run(*args, **kwargs):
 
     debug_mode = os.environ.get("DEBUG", "0") == "1"
     try:
-        sp.run(command.split(), input=clinput, text=cltext, check=check)
-    except FileNotFoundError as e:
-        if debug_mode:
-            raise
+        # capture output so we can show child stderr cleanly and avoid
+        # propagating a CalledProcessError (which creates an outer traceback)
+        sp.run(command.split(), input=clinput, text=cltext, check=check, capture_output=True)
+    except FileNotFoundError:
         logger.error(f"Command not found: {args[0] if args else command}")
         logger.info("Set DEBUG=1 environment variable to see full traceback.")
         sys.exit(127)
     except sp.CalledProcessError as e:
-        if debug_mode:
-            raise
-        logger.error(f"Command failed with exit code {e.returncode}: {command}")
+        # Print the child's stderr (if available) so the real error is visible
+        if e.stderr:
+            try:
+                sys.stderr.write(e.stderr)
+            except Exception:
+                pass
+        else:
+            logger.error(f"Command failed with exit code {e.returncode}: {command}")
         logger.info("Set DEBUG=1 environment variable to see full traceback.")
         sys.exit(e.returncode if e.returncode is not None else 1)
 
@@ -211,18 +216,19 @@ def gmx(command, gmx_callable="gmx_mpi", **kwargs):
     cltext = kwargs.pop("cltext", True)
     command = gmx_callable + " " + command + " " + kwargs_to_str(**kwargs)
     try:
-        sp.run(command.split(), input=clinput, text=cltext, check=True)
+        sp.run(command.split(), input=clinput, text=cltext, check=True, capture_output=True)
     except sp.CalledProcessError as e:
         # Check if we're in debug mode
-        debug_mode = os.environ.get("DEBUG", "0") == "1"
-        if debug_mode:
-            # In debug mode, show full traceback
-            raise RuntimeError(f"GROMACS command failed with exit code {e.returncode}") from e
+        # Print child stderr if available so the underlying error is visible
+        if hasattr(e, 'stderr') and e.stderr:
+            try:
+                sys.stderr.write(e.stderr)
+            except Exception:
+                pass
         else:
-            # In normal mode, log clean error and exit without traceback
             logger.error(f"GROMACS command failed with exit code {e.returncode}")
-            logger.info("Set DEBUG=1 environment variable to see full traceback.")
-            sys.exit(1)
+        logger.info("Set DEBUG=1 environment variable to see full traceback.")
+        sys.exit(e.returncode if e.returncode is not None else 1)
 
 
 ##############################################################
@@ -364,12 +370,8 @@ def run_command():
             functions[command]()
         print(f"Successfully completed {command}", file=sys.stderr)
     except Exception as e:
-        debug_mode = os.environ.get("DEBUG", "0") == "1"
         print(f"Error executing {command}: {str(e)}", file=sys.stderr)
-        if debug_mode:
-            traceback.print_exc(file=sys.stderr)
-        else:
-            print("Set DEBUG=1 environment variable to see full traceback.", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 

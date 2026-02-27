@@ -6,6 +6,7 @@
 # "bash" starts a new shell process to execute the script.
 
 module purge
+source deactivate
 module load mamba/latest
 module load gromacs
 source activate reforge

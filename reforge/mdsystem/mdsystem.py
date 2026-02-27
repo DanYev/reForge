@@ -770,17 +770,13 @@ class MartiniMixin:
         """
         target_itp = self.topdir / f"{target}.itp"
         ligand_itp = self.topdir / f"ligand_{ligand}.itp"
-        if not target_itp.exists():
-            raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
-        if not ligand_itp.exists():
-            raise FileNotFoundError(f"Ligand ITP file not found: {ligand_itp}")
         logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
         # Load both topologies
         target_topo = Topology.from_itp(target_itp)
         ligand_topo = Topology.from_itp(ligand_itp)
         ligand_key = f"ligand_{ligand}"
-        for n in range(self.molecules[ligand_key]):
-            target_topo += ligand_topo
+        # for n in range(self.molecules[ligand_key]):
+        target_topo += ligand_topo
         del self.molecules[ligand_key]
         target_topo.write_to_itp(target_itp)
         logger.info("Saved merged topology to %s", target_itp)
@@ -807,10 +803,13 @@ class MartiniMixin:
             Additional keyword arguments (currently unused)
         """
         logger.info("Merging CG PDB files into a single solute PDB...")
-        cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
-        # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
-        cg_pdb_files = sort_for_gmx(cg_pdb_files)
-        cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
+        mol_files = [p.name for p in self.cgdir.iterdir() if not p.name.startswith("ligand")]
+        mol_files = sort_for_gmx(mol_files)
+        mol_files = [self.cgdir / fname for fname in mol_files]
+        ligand_files = [p.name for p in self.cgdir.iterdir() if p.name.startswith("ligand")]
+        ligand_files = sort_for_gmx(ligand_files)
+        ligand_files = [self.cgdir / fname for fname in ligand_files]
+        cg_pdb_files = mol_files + ligand_files
         all_atoms = pdbtools.AtomList()
         for file in cg_pdb_files:
             atoms = pdbtools.pdb2atomlist(file)

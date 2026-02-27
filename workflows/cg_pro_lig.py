@@ -33,20 +33,19 @@ def setup(sysdir, sysname):
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, ff="martini3001",
         p="backbone", pf="500",  text=add_command, append=True) 
-    shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
-    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
+    # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
+    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
     shutil.copytree(mdsys.sysdir / "ligands", mdsys.root / "ligands", dirs_exist_ok=True)
+    anp_dir = Path("/home/dyangali/LigPar/systems/ANP/mapping")
     for x in ["A", "B"]:
         Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
-        shutil.copy(f"/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated.itp", 
-            mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
-        shutil.copy(f"/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
-            mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
+        shutil.copy(anp_dir / "ANP_updated.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
+        shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    _add_protein_ligand_bonds(mdsys, ligand_bead_names=["P04", "N05", "D01", "MG"])
+    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["P04", "N05", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
     # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
@@ -79,7 +78,7 @@ def _get_idr_regions(input_pdb, min_length=3):
     return idr_regions_str
 
 
-def _add_protein_ligand_bonds(mdsys, ligand_bead_names) -> None:
+def _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names) -> None:
     """Find closest protein beads to specified ligand beads using solute.pdb.
     
     Parameters
@@ -133,7 +132,7 @@ def _add_protein_ligand_bonds(mdsys, ligand_bead_names) -> None:
         return
     
     # Update topology with generated restraints
-    itp_file = mdsys.topdir / "chain_A.itp"
+    itp_file = mdsys.topdir / f"{molname}.itp"
     target_topo = Topology.from_itp(itp_file)
     for restraint in restraints:
         target_topo.bonds.append(restraint)

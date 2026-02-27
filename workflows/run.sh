@@ -94,20 +94,20 @@ echo "  SLURM_JOB_ID: $SLURM_JOB_ID" >&2
 echo "  SLURM_JOB_NAME: $SLURM_JOB_NAME" >&2
 echo "  HOSTNAME: $HOSTNAME" >&2
 
-# --- Temp/runtime directories (OpenMPI/PMIx safety) ---
-# Some clusters have restricted or full /tmp; OpenMPI/PMIx may fail if it can't
-# create its per-job contact files there. Prefer SLURM-provided node-local tmp,
-# else fall back to a local temp folder inside this repo.
-export TMPDIR="${SLURM_TMPDIR:-$(pwd)/tmp/slurm_tmp_${SLURM_JOB_ID:-$$}}"
-mkdir -p "$TMPDIR"
-chmod 700 "$TMPDIR" || true
-# OpenMPI runtime dirs (only read by OpenMPI-based MPI stacks)
-# Use a dedicated subdir so OpenMPI always has a valid parent.
-export OMPI_MCA_orte_tmpdir_base="$TMPDIR/ompi"
-export OMPI_MCA_opal_tmpdir_base="$TMPDIR/ompi"
-mkdir -p "$OMPI_MCA_orte_tmpdir_base"
-chmod 700 "$OMPI_MCA_orte_tmpdir_base" || true
-echo "  TMPDIR: $TMPDIR" >&2
+# # --- Temp/runtime directories (OpenMPI/PMIx safety) ---
+# # Some clusters have restricted or full /tmp; OpenMPI/PMIx may fail if it can't
+# # create its per-job contact files there. Prefer SLURM-provided node-local tmp,
+# # else fall back to a local temp folder inside this repo.
+# export TMPDIR="${SLURM_TMPDIR:-$(pwd)/tmp/slurm_tmp_${SLURM_JOB_ID:-$$}}"
+# mkdir -p "$TMPDIR"
+# chmod 700 "$TMPDIR" || true
+# # OpenMPI runtime dirs (only read by OpenMPI-based MPI stacks)
+# # Use a dedicated subdir so OpenMPI always has a valid parent.
+# export OMPI_MCA_orte_tmpdir_base="$TMPDIR/ompi"
+# export OMPI_MCA_opal_tmpdir_base="$TMPDIR/ompi"
+# mkdir -p "$OMPI_MCA_orte_tmpdir_base"
+# chmod 700 "$OMPI_MCA_orte_tmpdir_base" || true
+# echo "  TMPDIR: $TMPDIR" >&2
 
 MPS_ENABLED=0
 if has_gpus; then
