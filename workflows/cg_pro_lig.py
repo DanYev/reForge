@@ -31,10 +31,10 @@ def setup(sysdir, sysname):
     idr_regions = "A-282:475 B-282:475"
     add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, ff="martini3001",
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.1, ff="martini3001",
         p="backbone", pf="500",  text=add_command, append=True) 
     # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
-    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
+    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
     shutil.copytree(mdsys.sysdir / "ligands", mdsys.root / "ligands", dirs_exist_ok=True)
@@ -165,15 +165,17 @@ def extend(sysdir, sysname, runname, nsteps=None):
     
 def trjconv(sysdir, sysname, runname, **kwargs):
     kwargs.setdefault("b", 0) # in ps
-    kwargs.setdefault("dt", 200) # in ps
-    kwargs.setdefault("e", 10000000) # in ps
+    kwargs.setdefault("dt", 1000) # in ps
+    kwargs.setdefault("e", 1e7) # in ps
     mdrun = GmxRun(sysdir, sysname, runname)
     k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions
     # mdrun.trjconv(clinput=f"0\n 0\n", s="eq.tpr", f="eq.gro", o="viz.pdb", n=mdrun.sysndx, pbc="atom", ur="compact", e=0)
     mdrun.convert_tpr(clinput=f"{k}\n", s="md.tpr", n=mdrun.sysndx, o="topology.tpr")
-    mdrun.trjconv(clinput=f"{k}\n {k}\n", s="md.tpr", f="md.xtc", o="conv.xtc", n=mdrun.sysndx, pbc="cluster", ur="compact", **kwargs)
-    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
-    mdrun.trjconv(clinput="0\n 0\n", s="topology.tpr", f="conv.xtc", o="samples.xtc", fit="rot+trans")
+    topology = "topology.tpr" # mdrun.solupdb
+    mdrun.trjconv(clinput=f"{k}\n {k}\n", s="md.tpr", f="md.xtc", o="conv.xtc", n=mdrun.sysndx, pbc="atom", ur="compact", **kwargs)
+    mdrun.trjconv(clinput="0\n 0\n", s=topology, f="conv.xtc", o="conv.xtc", pbc="nojump")
+    mdrun.trjconv(clinput="0\n 0\n", s=topology, f="conv.xtc", o="topology.pdb", fit="rot+trans", e=0)
+    mdrun.trjconv(clinput="0\n 0\n", s=topology, f="conv.xtc", o="samples.xtc", fit="rot+trans")
     clean_dir(mdrun.rundir)
 
 
