@@ -8,6 +8,7 @@
 module purge
 module load mamba/latest
 module load gromacs
+source deactivate
 source activate reforge
 
 # Pre-load reforge to speed up interactive usage (optional)

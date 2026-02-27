@@ -667,14 +667,14 @@ class MartiniMixin:
             itp_file = self.ligdir / ligand / f"{ligand}.itp"
             if not ligand_residues:
                 raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
-            for ligand_residue in ligand_residues:
-                self._map_ligand(map_file, ligand_residue)
+            for n, ligand_residue in enumerate(ligand_residues):
+                self._map_ligand(map_file, ligand_residue, n)
                 self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
             if merge_with:
                 self._merge_ligands_with(merge_with, ligand)
 
-    def _map_ligand(self, map_file, ligand_residue):
+    def _map_ligand(self, map_file, ligand_residue, n):
         """Map an all-atom ligand residue to Martini beads using a `.map` file.
 
         Parameters
@@ -741,7 +741,7 @@ class MartiniMixin:
         self.cgdir.mkdir(parents=True, exist_ok=True)
         resname = str(ligand_residue.resname)
         resid = int(ligand_residue.resid)
-        outpdb = self.cgdir / f"ligand_{resname}_{resid}.pdb"
+        outpdb = self.cgdir / f"ligand_{resname}_{n}.pdb"
         # PDB formatting: keep it simple and GROMACS-friendly.
         # Use one residue, chain A, one atom per bead.
         with outpdb.open("w", encoding="utf-8") as w:
@@ -750,7 +750,7 @@ class MartiniMixin:
                 # atom name field is 4 chars, right/left aligned depends; simplest: right align
                 atom_name = f"{bead_name:>4}"[:4]
                 w.write(
-                    f"ATOM  {i:5d} {atom_name} {resname:>3} A{resid:4d}    "
+                    f"ATOM  {i:5d} {atom_name} {resname:>3} X{resid:4d}    "
                     f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00\n"
                 )
             w.write("END\n")
@@ -770,17 +770,13 @@ class MartiniMixin:
         """
         target_itp = self.topdir / f"{target}.itp"
         ligand_itp = self.topdir / f"ligand_{ligand}.itp"
-        if not target_itp.exists():
-            raise FileNotFoundError(f"Target ITP file not found: {target_itp}")
-        if not ligand_itp.exists():
-            raise FileNotFoundError(f"Ligand ITP file not found: {ligand_itp}")
         logger.info(f"Merging {ligand_itp.name} into {target_itp.name} using Topology class")
         # Load both topologies
         target_topo = Topology.from_itp(target_itp)
         ligand_topo = Topology.from_itp(ligand_itp)
         ligand_key = f"ligand_{ligand}"
         for n in range(self.molecules[ligand_key]):
-            target_topo += ligand_topo
+            target_topo += ligand_topo 
         del self.molecules[ligand_key]
         target_topo.write_to_itp(target_itp)
         logger.info("Saved merged topology to %s", target_itp)
@@ -807,10 +803,13 @@ class MartiniMixin:
             Additional keyword arguments (currently unused)
         """
         logger.info("Merging CG PDB files into a single solute PDB...")
-        cg_pdb_files = [p.name for p in self.cgdir.iterdir()]
-        # cg_pdb_files = pdbtools.sort_uld(cg_pdb_files)
-        cg_pdb_files = sort_for_gmx(cg_pdb_files)
-        cg_pdb_files = [self.cgdir / fname for fname in cg_pdb_files]
+        mol_files = [p.name for p in self.cgdir.iterdir() if not p.name.startswith("ligand")]
+        mol_files = sort_for_gmx(mol_files)
+        mol_files = [self.cgdir / fname for fname in mol_files]
+        ligand_files = [p.name for p in self.cgdir.iterdir() if p.name.startswith("ligand")]
+        ligand_files = sort_for_gmx(ligand_files)
+        ligand_files = [self.cgdir / fname for fname in ligand_files]
+        cg_pdb_files = mol_files + ligand_files
         all_atoms = pdbtools.AtomList()
         for file in cg_pdb_files:
             atoms = pdbtools.pdb2atomlist(file)

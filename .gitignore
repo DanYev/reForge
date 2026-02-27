@@ -1,4 +1,5 @@
 # Temporary files and build artifacts
+.vscode/
 tmp/
 build/
 examples/

@@ -308,13 +308,16 @@ class Topology:
         Topology
             The merged topology (self).
         """
+        
         def update_atom(atom, atom_shift, residue_shift):
+            atom = atom.copy()
             atom[0] += atom_shift  # Update atom id
             atom[2] += residue_shift  # Update residue id
             atom[5] += atom_shift  # Update charge group number
             return atom
 
         def update_bond(bond, atom_shift):
+            bond = bond.copy()
             conn = bond[0]
             conn = [idx + atom_shift for idx in conn]
             return [conn, bond[1], bond[2]]
