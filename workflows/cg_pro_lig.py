@@ -13,45 +13,38 @@ import mdtraj
 # logger = logging.getLogger("reforge")
 
 # Global settings
-INPDB = 'KDA.pdb'
 DT = 0.020  # Time step in picoseconds
 total_time = 1000  # Total simulation time in nanoseconds
 NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
 
-def workflow(sysdir, sysname, runname):
-    md_npt(sysdir, sysname, runname, nsteps=NSTEPS)
-    trjconv(sysdir, sysname, runname)
 
-
-def setup(*args):
-    setup_martini(*args)
-
-
-def setup_martini(sysdir, sysname):
+def setup(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
-    input_pdb = Path(sysdir) / INPDB
-    # 1.1. Need to copy force field and md-parameter files and prepare PDBs and directories
+    input_pdb = Path(sysdir) / f"{sysname}.pdb"
     # mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=False, add_hydrogens=False, pH=7.0) # Generates Amber ff names in PDB
-    # mdsys.clean_pdb_gmx(input_pdb, clinput="8\n 7\n", ignh="no", renum="yes") # 8 for CHARMM, sometimes you need to refer to AMBER FF
-    # mdsys.split_chains()
+    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0) # Generates Amber ff names in PDB
 
-    idr_regions = _get_idr_regions(input_pdb, min_length=15)
+    # Martinizing
+    # idr_regions = _get_idr_regions(mdsys.inpdb, min_length=15)
+    molname = "protein_0"
+    idr_regions = "A-282:475 B-282:475"
     add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
-    add_command = f"-id-regions {idr_regions}" # martinize2 -h for help
-    # mdsys.martinize_proteins_en(ef=1000, el=0.3, eu=0.9, text=add_command, append=False)  # Martini + Elastic network FF 
-    mdsys.martinize_proteins_go(go_eps=10.0, go_low=0.3, go_up=1.0, ff="martini3IDP",
-        p="backbone", pf="200",  text=add_command, append=False) 
-    shutil.copy(mdsys.topdir / "chain_A.itp", mdsys.topdir / "tmp.itp") 
+    shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.0, ff="martini3001",
+        p="backbone", pf="500",  text=add_command, append=True) 
+    shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / "chain_A.itp") 
 
     # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
-    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated.itp", 
-        mdsys.root / "ligands"/ "ANP"/ "ANP.itp")
-    shutil.copy("/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
-        mdsys.root / "ligands"/ "ANP"/ "ANP.map")
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with="chain_A")
+    shutil.copytree(mdsys.sysdir / "ligands", mdsys.root / "ligands", dirs_exist_ok=True)
+    for x in ["A", "B"]:
+        Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
+        shutil.copy(f"/home/dyangali/LigPar/systems/ANP/mapping/ANP_updated.itp", 
+            mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
+        shutil.copy(f"/home/dyangali/LigPar/systems/ANP/mapping/ANP.map", 
+            mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     _add_protein_ligand_bonds(mdsys, ligand_bead_names=["P04", "N05", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
