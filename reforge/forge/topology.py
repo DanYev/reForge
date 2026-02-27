@@ -333,7 +333,6 @@ class Topology:
             residue_shift = 0
         
         new_atoms = [update_atom(atom, atom_shift, residue_shift) for atom in other.atoms]
-        print(new_atoms)
         self.atoms.extend(new_atoms)
         self.natoms = len(self.atoms)  # Update natoms after extending
         for self_attrib, other_attrib in zip(self.blist, other.blist):
