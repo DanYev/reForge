@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     sysdir = "systems"
     sysnames = ["EGFR_kinase_AB_tail", ]
-    runs = ["mdrun_1", "mdrun_2" ]
+    runs = ["mdrun_3", "mdrun_4" ]
 
     submit = True
 
