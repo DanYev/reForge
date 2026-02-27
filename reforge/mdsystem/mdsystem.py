@@ -667,14 +667,14 @@ class MartiniMixin:
             itp_file = self.ligdir / ligand / f"{ligand}.itp"
             if not ligand_residues:
                 raise ValueError(f"No residues found for ligand: {ligand}, check the ligand list or the PDB file.")
-            for ligand_residue in ligand_residues:
-                self._map_ligand(map_file, ligand_residue)
+            for n, ligand_residue in enumerate(ligand_residues):
+                self._map_ligand(map_file, ligand_residue, n)
                 self.molecules[f"ligand_{ligand}"] = len(ligand_residues)
                 shutil.copy(itp_file, self.topdir / f"ligand_{ligand}.itp")
             if merge_with:
                 self._merge_ligands_with(merge_with, ligand)
 
-    def _map_ligand(self, map_file, ligand_residue):
+    def _map_ligand(self, map_file, ligand_residue, n):
         """Map an all-atom ligand residue to Martini beads using a `.map` file.
 
         Parameters
@@ -741,7 +741,7 @@ class MartiniMixin:
         self.cgdir.mkdir(parents=True, exist_ok=True)
         resname = str(ligand_residue.resname)
         resid = int(ligand_residue.resid)
-        outpdb = self.cgdir / f"ligand_{resname}_{resid}.pdb"
+        outpdb = self.cgdir / f"ligand_{resname}_{n}.pdb"
         # PDB formatting: keep it simple and GROMACS-friendly.
         # Use one residue, chain A, one atom per bead.
         with outpdb.open("w", encoding="utf-8") as w:
@@ -750,7 +750,7 @@ class MartiniMixin:
                 # atom name field is 4 chars, right/left aligned depends; simplest: right align
                 atom_name = f"{bead_name:>4}"[:4]
                 w.write(
-                    f"ATOM  {i:5d} {atom_name} {resname:>3} A{resid:4d}    "
+                    f"ATOM  {i:5d} {atom_name} {resname:>3} X{resid:4d}    "
                     f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00\n"
                 )
             w.write("END\n")
