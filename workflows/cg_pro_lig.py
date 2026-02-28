@@ -10,22 +10,12 @@ from reforge.utils import clean_dir
 from reforge.forge.topology import Topology
 import mdtraj
 
-# logger = logging.getLogger("reforge")
+logger = logging.getLogger(__name__)
 
 # Global settings
 DT = 0.020  # Time step in picoseconds
 total_time = 1000  # Total simulation time in nanoseconds
 NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
-
-
-def script(sysdir="systems", sysname="EGFR_kinase_AB_tail"):
-    from MDAnalysis.lib.util import convert_aa_code
-    mdsys = GmxSystem(sysdir, sysname)
-    u = mda.Universe(mdsys.inpdb)
-    ag = u.select_atoms("chainID A") # select protein and ligand atoms
-    resnames = [convert_aa_code(resname) for resname in ag.residues.resnames]
-    resnames_str = "".join(resnames)
-    print(resnames_str)
 
 
 def setup(sysdir, sysname):
@@ -102,53 +92,28 @@ def _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names) -> None:
         List of ligand bead names (e.g., ["204", "N06", "D01", "MG"]).
         If None, uses a default list.
     """
-    # Load solute structure
     u = mda.Universe(str(mdsys.solupdb))
-    
-    # Get protein atoms (exclude CA virtual sites)
     protein_atoms = u.select_atoms("name BB* or name SC*") # Martini backbone and sidechain beads
-    if len(protein_atoms) == 0:
-        logger.warning("No protein atoms found")
-        return
-    
-    restraints = []
-    
+    restraints = [] 
     # For each ligand bead name, find matching atoms and their closest protein partner
     for bead_name in ligand_bead_names:
-        ligand_atoms = u.select_atoms(f"name {bead_name}")
-        
-        if len(ligand_atoms) == 0:
-            logger.warning(f"No ligand atoms found with name: {bead_name}")
-            continue
-        
-        for lig_atom in ligand_atoms:
-            lig_pos = lig_atom.position
-            
-            # Find closest protein atom
-            distances = np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
-            closest_idx = np.argmin(distances)
-            closest_protein = protein_atoms[closest_idx]
-            
-            distance_angstrom = distances[closest_idx]
-            distance_nm = distance_angstrom / 10.0
-            
-            # Use serial numbers from PDB (1-indexed)
-            ligand_id = lig_atom.index + 1
-            protein_id = closest_protein.index + 1
-            
-            restraints.append(((ligand_id, protein_id), (1, distance_nm, 1000), "BONDED DISTANCE RESTRAINT"))
-            logger.info(f"Bond: protein atom {protein_id} ({closest_protein.name}) <-> "
-                       f"ligand atom {ligand_id} ({lig_atom.name}), distance: {distance_angstrom:.2f} Å")
-    
-    if not restraints:
-        logger.warning("No restraints generated")
-        return
-    
+        ligand_bead = u.select_atoms(f"name {bead_name}")
+        lig_pos = ligand_bead.position
+        # Find closest protein atom
+        distances = 0.1 * np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
+        closest_idx = np.argmin(distances)
+        closest_protein = protein_atoms[closest_idx]
+        distance = distances[closest_idx]
+        # Use serial numbers from PDB (1-indexed)
+        ligand_id = ligand_bead.index + 1
+        protein_id = closest_protein.index + 1
+        restraints.append(((ligand_id, protein_id), (1, distance, 1000), "BONDED DISTANCE RESTRAINT"))
+        logger.info(f"Bond: protein atom {protein_id} ({closest_protein.name}) <-> "
+                    f"ligand atom {ligand_id} ({ligand_bead.name}), distance: {distance:.2f} nm")
     # Update topology with generated restraints
     itp_file = mdsys.topdir / f"{molname}.itp"
     target_topo = Topology.from_itp(itp_file)
-    for restraint in restraints:
-        target_topo.bonds.append(restraint)
+    target_topo.bonds.extend(restraints)
     target_topo.write_to_itp(itp_file)
     logger.info("Saved topology with %d bonded restraints to %s", len(restraints), itp_file)
 
@@ -162,9 +127,7 @@ def md_npt(sysdir, sysname, runname, nsteps=None):
     mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
-    if nsteps is None:
-        nsteps = NSTEPS
-    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=nsteps, ) # bonded="gpu")
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu")
     
     
 def extend(sysdir, sysname, runname, nsteps=None):    
