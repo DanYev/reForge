@@ -79,6 +79,6 @@ if __name__ == "__main__":
     # sys_job('get_averages', submit=submit, c='1', mem='4G') # Big arrays: mem > 2 * c * array size
     # sys_job('enm_analysis', submit=submit, G='1', mem='8G') # ENM
 
-    ##### Bioemu #####
-    pyscript = str(pdir / 'sample_bioemu.py')
-    run_job('sample_emu', submit=submit, G='1', c='1', mem='8G', t='00-04:00:00', p='htc', q='public')
+    # ##### Bioemu #####
+    # pyscript = str(pdir / 'sample_bioemu.py')
+    # run_job('sample_emu', submit=submit, G='1', c='1', mem='8G', t='00-04:00:00', p='htc', q='public')

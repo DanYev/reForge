@@ -3,7 +3,7 @@ from pathlib import Path
 import MDAnalysis as mda
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("reforge")
 
 ################################################################################
 ### Bioemu ###
@@ -13,16 +13,19 @@ def sample_emu(sysdir, sysname, runname):
     from bioemu.sample import main as sample
     mdrun = MDRun(sysdir, sysname, runname)
     mdrun.prepare_files()
-    sequence = _pdb_to_seq(mdrun.root / "inpdb.pdb")
-    sample(sequence=sequence, num_samples=1000, batch_size_100=20, output_dir=mdrun.rundir)
+    input_pdb = mdrun.root / "inpdb.pdb"
+    sequence = _pdb_to_seq(input_pdb, select="protein and chainID A")
+    logger.info(f"Extracted sequence: {sequence}")
+    sample(model_name="bioemu-v1.2", sequence=sequence, 
+        num_samples=100, batch_size_100=10, output_dir=mdrun.rundir)
 
 
-def _pdb_to_seq(pdb):
+def _pdb_to_seq(pdb, select="protein"):
     u = mda.Universe(pdb)
-    logger.info('Selecting protein atoms for sequence extraction')
-    protein = u.select_atoms("protein")
-    seq = "".join(res.resname for res in protein.residues)  # three-letter codes
-    seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
+    logger.info(f'Selecting {select} atoms for sequence extraction')
+    atoms = u.select_atoms(select)
+    seq = "".join(res.resname for res in atoms.residues)  # three-letter codes
+    seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in atoms.residues)
     return seq_oneletter
 
 
