@@ -56,9 +56,9 @@ if __name__ == "__main__":
 
     sysdir = "systems"
     sysnames = ["EGFR_kinase_AB_tail", ]
-    runs = ["mdrun_3", "mdrun_4" ]
+    runs = ["mdrun_emu" ]
 
-    submit = True
+    submit = False
 
     ##### For MD #####
     pyscript = str(pdir / 'cg_pro_lig.py')
@@ -69,7 +69,8 @@ if __name__ == "__main__":
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####
-    # pyscript = str(pdir / 'analysis.py')
+    pyscript = str(pdir / 'analysis.py')
+    run_job('sample_emu', submit=submit, G='1', c='1', mem='8G', t='00-04:00:00', p='htc', q='public')
     # sys_job('pca_trajs', submit=submit) # PCA
     # sys_job('clust_cov', submit=submit) # Clustering
     # run_job('rms_analysis', submit=submit) # RMSF/RMSD

@@ -18,6 +18,16 @@ total_time = 1000  # Total simulation time in nanoseconds
 NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
 
 
+def script(sysdir="systems", sysname="EGFR_kinase_AB_tail"):
+    from MDAnalysis.lib.util import convert_aa_code
+    mdsys = GmxSystem(sysdir, sysname)
+    u = mda.Universe(mdsys.inpdb)
+    ag = u.select_atoms("chainID A") # select protein and ligand atoms
+    resnames = [convert_aa_code(resname) for resname in ag.residues.resnames]
+    resnames_str = "".join(resnames)
+    print(resnames_str)
+
+
 def setup(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
@@ -38,7 +48,7 @@ def setup(sysdir, sysname):
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
-    # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
+    # LIGANDS 
     shutil.copytree(mdsys.sysdir / "ligands", mdsys.root / "ligands", dirs_exist_ok=True)
     anp_dir = Path("/home/dyangali/LigPar/systems/ANP/mapping")
     for x in ["A", "B"]:
@@ -64,7 +74,6 @@ def setup(sysdir, sysname):
 def _get_idr_regions(input_pdb, min_length=3, idr_start=0, idr_end=1000):
     struct = mdtraj.load_pdb(input_pdb)
     dssp = mdtraj.compute_dssp(struct, simplified=False)
-    print(dssp[0][idr_start:idr_end])
     coil_token = ' '
     idr_regions = []
     curr_region = False
@@ -169,7 +178,7 @@ def extend(sysdir, sysname, runname, nsteps=None):
     
 def trjconv(sysdir, sysname, runname, **kwargs):
     kwargs.setdefault("b", 0) # in ps
-    kwargs.setdefault("dt", 1000) # in ps
+    kwargs.setdefault("dt", 200) # in ps
     kwargs.setdefault("e", 1e7) # in ps
     mdrun = GmxRun(sysdir, sysname, runname)
     k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions
