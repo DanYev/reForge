@@ -236,7 +236,6 @@ def _handle_vsites(topdir, name, vsites_name="go"):
     append_to(vs_nbparams_src, vs_nbparams_dst)
 
 
-
 def run_martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
     """Run nucleotide coarse-graining using martinize_nucleotides.
 
