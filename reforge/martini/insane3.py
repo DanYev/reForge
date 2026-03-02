@@ -4,6 +4,7 @@ import sys, math, random
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 version   = "---"
 previous  = "20140603.11.TAW"
@@ -693,14 +694,11 @@ Define additional lipid types (same format as in lipid-martini-itp-v01.py)
 args = sys.argv[1:]
 
 if '-h' in args or '--help' in args:
-    logger.info("\n", __file__)
-    logger.info(desc or "\nSomeone ought to write a description for this script...\n")
     for thing in options:
         if not isinstance(thing, str):
             logger.info("%10s  %s" % (thing[0], thing[1].description))
         else:
             logger.info(thing)
-    logger.info()
     sys.exit()
 
 # Convert the option list to a dictionary, discarding all comments
@@ -729,7 +727,7 @@ for name, head, link, tail in zip(usrmols, usrheads, usrlinks, usrtails):
     lipidDefString = ""
 
     if len(tailsArray) != len(linkArray):
-        logger.info("Error, Number of tails has to equal number of linkers", file=sys.stderr)
+        logger.info("Error, Number of tails has to equal number of linkers")
         sys.exit()
 
     # Find longest tail 
@@ -757,7 +755,7 @@ for name, head, link, tail in zip(usrmols, usrheads, usrlinks, usrtails):
         elif cLinker == 'A':
             lipidDefString += "AM" + str(i + 1) + " "
         else:
-            logger.info("Error, linker type not supported", file=sys.stderr)
+            logger.info("Error, linker type not supported")
             sys.exit()
 
     # Add tails 
@@ -1082,8 +1080,8 @@ if lipL:
     maxd = float(max([max(i) for i in grid_up + grid_lo]))
     if maxd == 0:
         if protein:
-            logger.info("; The protein seems not to be inside the membrane.", file=sys.stderr)
-            logger.info("; Run with -orient to put it in.", file=sys.stderr)
+            logger.info("; The protein seems not to be inside the membrane.")
+            logger.info("; Run with -orient to put it in.")
         maxd = 1
 
     fudge = options["-fudge"].value
@@ -1134,7 +1132,7 @@ if lipL:
             hx, hy = (int(0.5 * lo_lipids_x), int(0.5 * lo_lipids_y))
         hr = int(options["-hole"].value / min(lo_lipdx, lo_lipdy) + 0.5)
         ys = int(lo_lipids_x * box[1][0] / box[0][0] + 0.5)
-        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr, file=sys.stderr)
+        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr)
         hr -= 1
         for ii in range(hx - hr - 1, hx + hr + 1):
             for jj in range(hx - hr - 1, hx + hr + 1):
@@ -1161,7 +1159,7 @@ if lipL:
             hx, hy = (int(0.5 * up_lipids_x), int(0.5 * up_lipids_y))
         hr = int(options["-hole"].value / min(up_lipdx, up_lipdy) + 0.5)
         ys = int(up_lipids_x * box[1][0] / box[0][0] + 0.5)
-        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr, file=sys.stderr)
+        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr)
         hr -= 1
         for ii in range(hx - hr - 1, hx + hr + 1):
             for jj in range(hx - hr - 1, hx + hr + 1):
@@ -1197,9 +1195,9 @@ if lipL:
     upper = [i[1:] for i in upper[max(0, asym):]]
     lower = [i[1:] for i in lower[max(0, -asym):]]
 
-    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in upper leaflet" % (pbcx, up_lipids_x, pbcy, up_lipids_y), file=sys.stderr)
-    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in lower leaflet" % (pbcx, lo_lipids_x, pbcy, lo_lipids_y), file=sys.stderr)
-    logger.info("; %d lipids in upper leaflet, %d lipids in lower leaflet" % (len(upper), len(lower)), file=sys.stderr)
+    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in upper leaflet" % (pbcx, up_lipids_x, pbcy, up_lipids_y))
+    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in lower leaflet" % (pbcx, lo_lipids_x, pbcy, lo_lipids_y))
+    logger.info("; %d lipids in upper leaflet, %d lipids in lower leaflet" % (len(upper), len(lower)))
 
     lipU, numU = zip(*[parse_mol(i) for i in lipU])
     totU = float(sum(numU))
@@ -1262,13 +1260,13 @@ for j in protein.atoms:
 
 charge = mcharge + pcharge
 plen = len(protein) if protein else 0
-logger.info("; NDX Solute %d %d" % (1, plen), file=sys.stderr)
-logger.info("; Charge of protein: %f" % pcharge, file=sys.stderr)
+logger.info("; NDX Solute %d %d" % (1, plen))
+logger.info("; Charge of protein: %f" % pcharge)
 
 mlen = len(membrane) if membrane else 0
-logger.info("; NDX Membrane %d %d" % (1 + plen, plen + mlen), file=sys.stderr)
-logger.info("; Charge of membrane: %f" % mcharge, file=sys.stderr)
-logger.info("; Total charge: %f" % charge, file=sys.stderr)
+logger.info("; NDX Membrane %d %d" % (1 + plen, plen + mlen))
+logger.info("; Charge of membrane: %f" % mcharge)
+logger.info("; Total charge: %f" % charge)
 
 def _point(y, phi):
     r_val = math.sqrt(1 - y * y)
@@ -1410,6 +1408,6 @@ with open(outfile, 'w', encoding='utf-8') as file:
 
 if options["-p"]:
     top = open(options["-p"].value, "a")
-    logger.info("\n".join(["%-10s %7d" % i for i in molecules]), file=top)
+    print("\n".join(["%-10s %7d" % i for i in molecules]), file=top)
     top.close()
 

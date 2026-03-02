@@ -35,7 +35,7 @@ def setup(sysdir, sysname):
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_en(append=False) 
+    mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
     # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
     #     p="backbone", pf="500",  text=add_command, append=False) 
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
@@ -61,11 +61,10 @@ def setup(sysdir, sysname):
     # FOR MEMBRANE SYSTEMS:
     mdsys.insert_membrane(
         f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=20, y=20, z=30, dm=0, 
+        x=20, y=20, z=26, dm=9, 
         u='POPC:1', l='POPC:1', sol='W',
     )
     mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
-    exit()
     mdsys.add_bulk_ions(conc=0.10, pname='NA', nname='CL')
 
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:

@@ -280,5 +280,6 @@ def run_martinize_rna(wdir, **kwargs):
 def insert_membrane(**kwargs):
     """Insert a membrane using the insane tool.
     """
+    logger.info("Inserting membrane using INSANE")
     script = "reforge.martini.insane3"
     cli.run("python3 -m", script, **kwargs)
