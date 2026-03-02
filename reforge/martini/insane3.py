@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
 import sys, math, random
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 version   = "---"
 previous  = "20140603.11.TAW"
@@ -472,6 +476,7 @@ class Structure:
                 for i in self.rest:
                     if i.startswith("TITLE"):
                         self.title = i
+                        
                 self.box = [0,0,0,0,0,0,0,0,0]
                 for i in self.rest:
                     if i.startswith("CRYST1"):
@@ -577,10 +582,13 @@ class Option:
         self.num = num
         self.value = default
         self.description = description
+
     def __bool__(self):
         return self.value is not None
+
     def __str__(self):
         return str(self.value) if self.value else ""
+
     def setvalue(self, v):
         if len(v) == 1:
             self.value = self.func(v[0])
@@ -686,14 +694,11 @@ Define additional lipid types (same format as in lipid-martini-itp-v01.py)
 args = sys.argv[1:]
 
 if '-h' in args or '--help' in args:
-    print("\n", __file__)
-    print(desc or "\nSomeone ought to write a description for this script...\n")
     for thing in options:
         if not isinstance(thing, str):
-            print("%10s  %s" % (thing[0], thing[1].description))
+            logger.info("%10s  %s" % (thing[0], thing[1].description))
         else:
-            print(thing)
-    print()
+            logger.info(thing)
     sys.exit()
 
 # Convert the option list to a dictionary, discarding all comments
@@ -722,7 +727,7 @@ for name, head, link, tail in zip(usrmols, usrheads, usrlinks, usrtails):
     lipidDefString = ""
 
     if len(tailsArray) != len(linkArray):
-        print("Error, Number of tails has to equal number of linkers", file=sys.stderr)
+        logger.info("Error, Number of tails has to equal number of linkers")
         sys.exit()
 
     # Find longest tail 
@@ -750,7 +755,7 @@ for name, head, link, tail in zip(usrmols, usrheads, usrlinks, usrtails):
         elif cLinker == 'A':
             lipidDefString += "AM" + str(i + 1) + " "
         else:
-            print("Error, linker type not supported", file=sys.stderr)
+            logger.info("Error, linker type not supported")
             sys.exit()
 
     # Add tails 
@@ -1075,8 +1080,8 @@ if lipL:
     maxd = float(max([max(i) for i in grid_up + grid_lo]))
     if maxd == 0:
         if protein:
-            print("; The protein seems not to be inside the membrane.", file=sys.stderr)
-            print("; Run with -orient to put it in.", file=sys.stderr)
+            logger.info("; The protein seems not to be inside the membrane.")
+            logger.info("; Run with -orient to put it in.")
         maxd = 1
 
     fudge = options["-fudge"].value
@@ -1127,7 +1132,7 @@ if lipL:
             hx, hy = (int(0.5 * lo_lipids_x), int(0.5 * lo_lipids_y))
         hr = int(options["-hole"].value / min(lo_lipdx, lo_lipdy) + 0.5)
         ys = int(lo_lipids_x * box[1][0] / box[0][0] + 0.5)
-        print("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr, file=sys.stderr)
+        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr)
         hr -= 1
         for ii in range(hx - hr - 1, hx + hr + 1):
             for jj in range(hx - hr - 1, hx + hr + 1):
@@ -1154,7 +1159,7 @@ if lipL:
             hx, hy = (int(0.5 * up_lipids_x), int(0.5 * up_lipids_y))
         hr = int(options["-hole"].value / min(up_lipdx, up_lipdy) + 0.5)
         ys = int(up_lipids_x * box[1][0] / box[0][0] + 0.5)
-        print("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr, file=sys.stderr)
+        logger.info("; Making a hole with radius %f nm centered at grid cell (%d,%d)" % (options["-hole"].value, hx, hy), hr)
         hr -= 1
         for ii in range(hx - hr - 1, hx + hr + 1):
             for jj in range(hx - hr - 1, hx + hr + 1):
@@ -1190,9 +1195,9 @@ if lipL:
     upper = [i[1:] for i in upper[max(0, asym):]]
     lower = [i[1:] for i in lower[max(0, -asym):]]
 
-    print("; X: %.3f (%d bins) Y: %.3f (%d bins) in upper leaflet" % (pbcx, up_lipids_x, pbcy, up_lipids_y), file=sys.stderr)
-    print("; X: %.3f (%d bins) Y: %.3f (%d bins) in lower leaflet" % (pbcx, lo_lipids_x, pbcy, lo_lipids_y), file=sys.stderr)
-    print("; %d lipids in upper leaflet, %d lipids in lower leaflet" % (len(upper), len(lower)), file=sys.stderr)
+    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in upper leaflet" % (pbcx, up_lipids_x, pbcy, up_lipids_y))
+    logger.info("; X: %.3f (%d bins) Y: %.3f (%d bins) in lower leaflet" % (pbcx, lo_lipids_x, pbcy, lo_lipids_y))
+    logger.info("; %d lipids in upper leaflet, %d lipids in lower leaflet" % (len(upper), len(lower)))
 
     lipU, numU = zip(*[parse_mol(i) for i in lipU])
     totU = float(sum(numU))
@@ -1207,7 +1212,7 @@ if lipL:
     leaf_lo = (-1, list(zip(lip_lo, lower)), lo_lipdx, lo_lipdy)
 
     molecules = list(zip(lipU, num_up)) + list(zip(lipL, num_lo))
-    print(molecules)
+    logger.info(molecules)
     kick = options["-rand"].value
 
     for leaflet, leaf_lip, lipdx, lipdy in [leaf_up, leaf_lo]:
@@ -1255,13 +1260,13 @@ for j in protein.atoms:
 
 charge = mcharge + pcharge
 plen = len(protein) if protein else 0
-print("; NDX Solute %d %d" % (1, plen), file=sys.stderr)
-print("; Charge of protein: %f" % pcharge, file=sys.stderr)
+logger.info("; NDX Solute %d %d" % (1, plen))
+logger.info("; Charge of protein: %f" % pcharge)
 
 mlen = len(membrane) if membrane else 0
-print("; NDX Membrane %d %d" % (1 + plen, plen + mlen), file=sys.stderr)
-print("; Charge of membrane: %f" % mcharge, file=sys.stderr)
-print("; Total charge: %f" % charge, file=sys.stderr)
+logger.info("; NDX Membrane %d %d" % (1 + plen, plen + mlen))
+logger.info("; Charge of membrane: %f" % mcharge)
+logger.info("; Total charge: %f" % charge)
 
 def _point(y, phi):
     r_val = math.sqrt(1 - y * y)

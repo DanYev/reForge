@@ -35,8 +35,9 @@ def setup(sysdir, sysname):
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-        p="backbone", pf="500",  text=add_command, append=True) 
+    mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
+    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
+    #     p="backbone", pf="500",  text=add_command, append=False) 
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
@@ -48,8 +49,8 @@ def setup(sysdir, sysname):
         shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
+    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     
     # # PROTEIN+WATER SYSTEMS:
     # mdsys.make_box(d="2.0", bt="dodecahedron")
@@ -60,11 +61,11 @@ def setup(sysdir, sysname):
     # FOR MEMBRANE SYSTEMS:
     mdsys.insert_membrane(
         f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=18, y=18, z=18, dm=-15, 
+        x=20, y=20, z=26, dm=9, 
         u='POPC:1', l='POPC:1', sol='W',
     )
     mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
-    mdsys.add_bulk_ions(conc=0.15, pname='NA', nname='CL')
+    mdsys.add_bulk_ions(conc=0.10, pname='NA', nname='CL')
 
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()

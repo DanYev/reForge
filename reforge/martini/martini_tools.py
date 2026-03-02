@@ -56,13 +56,7 @@ def append_to(in_file, out_file):
     # Convert to Path objects
     in_path = Path(in_file)
     out_path = Path(out_file)
-    
     logger.debug(f"Appending {in_path} to {out_path} (excluding first line)")
-    
-    # Check if input file exists
-    if not in_path.exists():
-        logger.warning(f"Source file does not exist: {in_path}")
-        exit(1)
     
     # Create parent directory for output file if it doesn't exist
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -202,10 +196,10 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     kwargs.setdefault("f", aapdb)
     kwargs.setdefault("x", cgpdb)
     kwargs.setdefault("o", "protein.top")
+    kwargs.setdefault("merge", "all")
     kwargs.setdefault("cys", 0.3)
     kwargs.setdefault("p", "backbone")
     kwargs.setdefault("pf", "500")
-    kwargs.setdefault("sep", "")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
     kwargs.setdefault("from", "amber")
@@ -222,12 +216,11 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     line = ("-elastic -ef {} -el {} -eu {} -ss {} {}").format(ef, el, eu, ss, text)
     with cd(wdir):
         cli.run("martinize2", line, **kwargs)
-        _handle_vsites(topdir, name, vsites_name="virtual_sites")
-        # Move the generated itp file to the topology directory
-        protein_itp_src = Path("molecule_0.itp")
-        protein_itp_dst = topdir / f"{name}.itp"
-        shutil.move(protein_itp_src, protein_itp_dst)
-        logger.debug(f"Moved {protein_itp_src} to {protein_itp_dst}")
+        try:
+            _handle_vsites(topdir, name, vsites_name="virtual_sites")
+        except Exception as e:
+            logger.warning(f"Virtual site files not found for protein '{name}': {e}")
+            logger.warning("Proceeding without handling virtual sites.")
     logger.info(f"martinize_en completed successfully for protein '{name}'")
 
 
@@ -241,7 +234,6 @@ def _handle_vsites(topdir, name, vsites_name="go"):
     logger.debug(f"Moving files to topology directory: {topdir}")
     append_to(vs_atomtypes_src, vs_atomtypes_dst)
     append_to(vs_nbparams_src, vs_nbparams_dst)
-
 
 
 def run_martinize_nucleotide(wdir, aapdb, cgpdb, **kwargs):
@@ -287,5 +279,6 @@ def run_martinize_rna(wdir, **kwargs):
 def insert_membrane(**kwargs):
     """Insert a membrane using the insane tool.
     """
+    logger.info("Inserting membrane using INSANE")
     script = "reforge.martini.insane3"
     cli.run("python3 -m", script, **kwargs)
