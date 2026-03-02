@@ -36,9 +36,9 @@ def setup(sysdir, sysname):
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-        p="backbone", pf="500",  text=add_command, append=True) 
-    shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
-    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
+        p="backbone", pf="500",  text=add_command, append=False) 
+    # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
+    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS 
     anp_dir = mdsys.root / "ligands" / "ANP"
@@ -60,11 +60,12 @@ def setup(sysdir, sysname):
     # FOR MEMBRANE SYSTEMS:
     mdsys.insert_membrane(
         f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=18, y=18, z=18, dm=-15, 
+        x=18, y=18, z=24, dm=-15, 
         u='POPC:1', l='POPC:1', sol='W',
     )
     mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
-    mdsys.add_bulk_ions(conc=0.15, pname='NA', nname='CL')
+    exit()
+    mdsys.add_bulk_ions(conc=0.10, pname='NA', nname='CL')
 
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
