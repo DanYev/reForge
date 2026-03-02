@@ -59,7 +59,7 @@ if __name__ == "__main__":
     sysnames = ["EGFR_FL", ]
     runs = ["mdrun_test" ]
 
-    submit = True
+    submit = False
 
     ##### For MD #####
     pyscript = str(pdir / 'cg_pro_lig.py')

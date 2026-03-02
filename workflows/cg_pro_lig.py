@@ -49,8 +49,8 @@ def setup(sysdir, sysname):
         shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
+    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     
     # # PROTEIN+WATER SYSTEMS:
     # mdsys.make_box(d="2.0", bt="dodecahedron")

@@ -924,6 +924,9 @@ def format_posres_section(posres: BondList) -> list[str]:
     
     lines = [
         "\n#ifdef POSRES\n",
+        "\n#ifndef POSRES_FC\n",
+        "\n#define POSRES_FC 1000\n",
+        "\n#endif\n",
         " [ position_restraints ]\n",
     ]
     for restraint in posres:
