@@ -1,0 +1,18 @@
+[ molecule ]
+MG
+
+[from]
+amber charmm
+
+[to]
+martini3001
+
+[ martini ]
+  MG
+
+[ mapping ]
+amber charmm
+
+[ atoms ]
+     1      MG     MG
+

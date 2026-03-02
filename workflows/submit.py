@@ -55,21 +55,22 @@ if __name__ == "__main__":
     shscript = str(pdir / 'run.sh')
 
     sysdir = "systems"
-    sysnames = ["EGFR_kinase_AB_tail", ]
-    runs = ["mdrun_3", "mdrun_4" ]
+    # sysnames = ["EGFR_kinase_AB_tail", ]
+    sysnames = ["EGFR_FL", ]
+    runs = ["mdrun_test" ]
 
     submit = True
 
     ##### For MD #####
     pyscript = str(pdir / 'cg_pro_lig.py')
-    # sys_job('setup', submit=False, mem='16G')
-    # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
+    sys_job('setup', submit=False, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='8', mem='8G', t='02-00:00:00', p='general', q='grp_sozkan')
+    # run_job('md_npt', submit=submit, G='1', c='4', mem='2G', t='00-04:00:00', p='htc', q='public')
     # run_job('trjconv', submit=True)
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####
-    # pyscript = str(pdir / 'analysis.py')
+    pyscript = str(pdir / 'analysis.py')
     # sys_job('pca_trajs', submit=submit) # PCA
     # sys_job('clust_cov', submit=submit) # Clustering
     # run_job('rms_analysis', submit=submit) # RMSF/RMSD
@@ -79,3 +80,6 @@ if __name__ == "__main__":
     # sys_job('get_averages', submit=submit, c='1', mem='4G') # Big arrays: mem > 2 * c * array size
     # sys_job('enm_analysis', submit=submit, G='1', mem='8G') # ENM
 
+    # ##### Bioemu #####
+    # pyscript = str(pdir / 'sample_bioemu.py')
+    # run_job('sample_emu', submit=submit, G='1', c='1', mem='8G', t='00-04:00:00', p='htc', q='public')

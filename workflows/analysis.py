@@ -1,13 +1,14 @@
 import inspect
+import logging
 import multiprocessing as mp
 import os
-from pathlib import Path
 import sys
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import MDAnalysis as mda
+from pathlib import Path
 from MDAnalysis.analysis import rms
-import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import BisectingKMeans, KMeans
 from sklearn.mixture import GaussianMixture
@@ -15,10 +16,10 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.preprocessing import StandardScaler
 from reforge import io, mdm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
-from reforge.utils import clean_dir, get_logger
+from reforge.utils import clean_dir
 import plots
 
-logger = get_logger()
+logger = logging.getLogger(__name__)
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
@@ -332,45 +333,6 @@ def ca_hessian_from_md(sysdir, sysname):
     hess = hess / 1.25 # kb*T at 300K in kJ/mol
     outfile = system.datdir / "md_hess.npy"
     np.save(outfile, hess)
-
-
-################################################################################
-### Bioemu ###
-################################################################################
-
-def sample_emu(sysdir, sysname, runname):
-    from bioemu.sample import main as sample
-    mdrun = MDRun(sysdir, sysname, runname)
-    mdrun.prepare_files()
-    sequence = _pdb_to_seq(mdrun.sysdir / INPDB)
-    sample(sequence=sequence, num_samples=1000, batch_size_100=20, output_dir=mdrun.rundir)
-
-
-def initiate_systems_from_emu(*args):
-    logger.info("Preparing directories from EMU samples")
-    emu_dir = Path("systems") / "emu"
-    newsys_dir = Path("systems") / "1btl_nve"
-    samples = emu_dir / "samples.xtc"
-    top = emu_dir / "topology.pdb"
-    u = mda.Universe(top, samples)
-    step = 10  # every 10 frames
-    for i, ts in enumerate(u.trajectory[1::step]):
-        idx = i 
-        outdir = newsys_dir / f"sample_{idx:03d}"
-        outdir.mkdir(parents=True, exist_ok=True)
-        outpdb = outdir / "sample.pdb"
-        with mda.Writer(outpdb, u.atoms.n_atoms) as W:
-            W.write(u.atoms)
-        logger.info(f"Saved initial structure {i} to {outpdb}")
-
-
-def _pdb_to_seq(pdb):
-    u = mda.Universe(pdb)
-    logger.info('Selecting protein atoms for sequence extraction')
-    protein = u.select_atoms("protein")
-    seq = "".join(res.resname for res in protein.residues)  # three-letter codes
-    seq_oneletter = "".join(mda.lib.util.convert_aa_code(res.resname) for res in protein.residues)
-    return seq_oneletter
 
 
 if __name__ == "__main__":

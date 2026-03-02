@@ -10,7 +10,7 @@ from reforge.utils import clean_dir
 from reforge.forge.topology import Topology
 import mdtraj
 
-# logger = logging.getLogger("reforge")
+logger = logging.getLogger(__name__)
 
 # Global settings
 DT = 0.020  # Time step in picoseconds
@@ -28,33 +28,43 @@ def setup(sysdir, sysname):
     # Martinizing
     molname = "protein_0"
     idr_regions = f"A-282:475 B-282:475"
-    idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=280, idr_end=475)
+    idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=0, idr_end=10000)
     idr_regions_str = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
-    # add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
-    add_command = f"-id-regions {idr_regions_str}" # martinize2 -h for help
+    add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
+    # add_command = f"-id-regions {idr_regions_str}" # martinize2 -h for help
+    if not idr_regions:
+        add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-        p="backbone", pf="500",  text=add_command, append=False) 
+        p="backbone", pf="500",  text=add_command, append=True) 
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
-    # LIGANDS [list of lists of (ATOM1, ATOM2, DISTANCE, FORCE_CONSTANT) tuples for each ligand]
-    shutil.copytree(mdsys.sysdir / "ligands", mdsys.root / "ligands", dirs_exist_ok=True)
-    anp_dir = Path("/home/dyangali/LigPar/systems/ANP/mapping")
+    # LIGANDS 
+    anp_dir = mdsys.root / "ligands" / "ANP"
     for x in ["A", "B"]:
         Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
-        shutil.copy(anp_dir / "ANP_updated.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
+        shutil.copy(anp_dir / "ANP.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
         shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
-    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["P04", "N05", "D01", "MG"])
+    _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     
-    # 1.3. Coarse graining is *hopefully* done. Need to add solvent and ions
-    mdsys.make_box(d="5.0", bt="dodecahedron")
-    solvent = mdsys.root / "water.gro"
-    mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
-    mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
+    # # PROTEIN+WATER SYSTEMS:
+    # mdsys.make_box(d="2.0", bt="dodecahedron")
+    # solvent = mdsys.root / "water.gro"
+    # mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
+    # mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
+
+    # FOR MEMBRANE SYSTEMS:
+    mdsys.insert_membrane(
+        f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
+        x=18, y=18, z=18, dm=-15, 
+        u='POPC:1', l='POPC:1', sol='W',
+    )
+    mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
+    mdsys.add_bulk_ions(conc=0.15, pname='NA', nname='CL')
 
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
@@ -64,7 +74,6 @@ def setup(sysdir, sysname):
 def _get_idr_regions(input_pdb, min_length=3, idr_start=0, idr_end=1000):
     struct = mdtraj.load_pdb(input_pdb)
     dssp = mdtraj.compute_dssp(struct, simplified=False)
-    print(dssp[0][idr_start:idr_end])
     coil_token = ' '
     idr_regions = []
     curr_region = False
@@ -90,56 +99,32 @@ def _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names) -> None:
     mdsys : GmxSystem
         The molecular dynamics system object
     ligand_bead_names : list, optional
-        List of ligand bead names (e.g., ["204", "N06", "D01", "MG"]).
+        List of ligand bead names (e.g., ["D01", "MG"]).
         If None, uses a default list.
     """
-    # Load solute structure
     u = mda.Universe(str(mdsys.solupdb))
-    
-    # Get protein atoms (exclude CA virtual sites)
     protein_atoms = u.select_atoms("name BB* or name SC*") # Martini backbone and sidechain beads
-    if len(protein_atoms) == 0:
-        logger.warning("No protein atoms found")
-        return
-    
-    restraints = []
-    
+    restraints = [] 
     # For each ligand bead name, find matching atoms and their closest protein partner
     for bead_name in ligand_bead_names:
-        ligand_atoms = u.select_atoms(f"name {bead_name}")
-        
-        if len(ligand_atoms) == 0:
-            logger.warning(f"No ligand atoms found with name: {bead_name}")
-            continue
-        
-        for lig_atom in ligand_atoms:
-            lig_pos = lig_atom.position
-            
+        ligand_beads = u.select_atoms(f"name {bead_name}")
+        for ligand_bead in ligand_beads:
+            lig_pos = ligand_bead.position
             # Find closest protein atom
-            distances = np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
+            distances = 0.1 * np.array([np.linalg.norm(lig_pos - p.position) for p in protein_atoms])
             closest_idx = np.argmin(distances)
             closest_protein = protein_atoms[closest_idx]
-            
-            distance_angstrom = distances[closest_idx]
-            distance_nm = distance_angstrom / 10.0
-            
+            distance = distances[closest_idx]
             # Use serial numbers from PDB (1-indexed)
-            ligand_id = lig_atom.index + 1
+            ligand_id = ligand_bead.index + 1
             protein_id = closest_protein.index + 1
-            
-            restraints.append(((ligand_id, protein_id), (1, distance_nm, 1000), "BONDED DISTANCE RESTRAINT"))
+            restraints.append(((ligand_id, protein_id), (1, distance, 1000), "BONDED DISTANCE RESTRAINT"))
             logger.info(f"Bond: protein atom {protein_id} ({closest_protein.name}) <-> "
-                       f"ligand atom {ligand_id} ({lig_atom.name}), distance: {distance_angstrom:.2f} Å")
-    
-    if not restraints:
-        logger.warning("No restraints generated")
-        return
-    
+                        f"ligand atom {ligand_id} ({ligand_bead.name}), distance: {distance:.2f} nm")
     # Update topology with generated restraints
     itp_file = mdsys.topdir / f"{molname}.itp"
     target_topo = Topology.from_itp(itp_file)
-    for restraint in restraints:
-        target_topo.bonds.append(restraint)
+    target_topo.bonds.extend(restraints)
     target_topo.write_to_itp(itp_file)
     logger.info("Saved topology with %d bonded restraints to %s", len(restraints), itp_file)
 
@@ -153,9 +138,7 @@ def md_npt(sysdir, sysname, runname, nsteps=None):
     mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
-    if nsteps is None:
-        nsteps = NSTEPS
-    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=nsteps, ) # bonded="gpu")
+    mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu")
     
     
 def extend(sysdir, sysname, runname, nsteps=None):    
@@ -169,7 +152,7 @@ def extend(sysdir, sysname, runname, nsteps=None):
     
 def trjconv(sysdir, sysname, runname, **kwargs):
     kwargs.setdefault("b", 0) # in ps
-    kwargs.setdefault("dt", 1000) # in ps
+    kwargs.setdefault("dt", 200) # in ps
     kwargs.setdefault("e", 1e7) # in ps
     mdrun = GmxRun(sysdir, sysname, runname)
     k = 1 # k=1 to remove solvent, k=2 for backbone analysis, k=4 to include ions

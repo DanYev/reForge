@@ -1,0 +1,9 @@
+ ;;;;;; Magnesium ion
+
+[moleculetype]
+; molname       nrexcl
+   MGI           1  
+
+[atoms]
+;id     type    resnr   residu  atom    cgnr    charge   mass
+ 1      TMG      1       MG      MG     1       2.0      24.305 ;

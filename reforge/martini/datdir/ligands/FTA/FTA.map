@@ -1,0 +1,40 @@
+[ molecule ]
+FTA
+
+[from]
+amber charmm
+
+[to]
+martini3001
+
+[ martini ]
+  N01 C02 C03 C04 C05 C06 N07 C08 N09 P10 P11
+
+[ mapping ]
+amber charmm
+
+[ atoms ]
+     1      N1     N01
+     2      C7     N01
+     3      C1     C02
+     4      C2     C02
+     5      C3     C03
+     6      C4     C03
+     7      C5     C04
+     8      C6     C04
+     9      C8     C05
+    10      C9     C05
+    11     C10     C06
+    12     C11     C06
+    13     C12     N07
+    14      N2     N07
+    15     C13     C08
+    16     C14     C08
+    17     C15     N09
+    18      N3     N09
+    19     C16     P10
+    20      N4     P10
+    21      N7     P10
+    22      N5     P11
+    23      N6     P11
+
