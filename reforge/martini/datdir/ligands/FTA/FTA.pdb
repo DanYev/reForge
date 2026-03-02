@@ -1,0 +1,26 @@
+REMARK   Generated from AutoMartini
+REMARK   Molecule: FTA
+ATOM      1 N01  FTA A   1       1.295  11.516  20.150  1.00  0.00            
+ATOM      2 C02  FTA A   1       3.369  10.501  20.809  1.00  0.00            
+ATOM      3 C03  FTA A   1       4.477   8.457  21.926  1.00  0.00            
+ATOM      4 C04  FTA A   1       1.630   8.527  22.282  1.00  0.00            
+ATOM      5 C05  FTA A   1       1.176  13.110  17.697  1.00  0.00            
+ATOM      6 C06  FTA A   1       3.519  13.683  20.019  1.00  0.00            
+ATOM      7 N07  FTA A   1       2.640  15.650  17.797  1.00  0.00            
+ATOM      8 C08  FTA A   1       4.546  16.491  17.133  1.00  0.00            
+ATOM      9 N09  FTA A   1       5.393  18.945  16.900  1.00  0.00            
+ATOM     10 P10  FTA A   1       3.332  17.160  14.618  1.00  0.00            
+ATOM     11 P11  FTA A   1       2.750  17.242  12.793  1.00  0.00            
+TER
+CONECT    1    2    5    6
+CONECT    2    1    3    4
+CONECT    3    2    4
+CONECT    4    2    3
+CONECT    5    1    6    7
+CONECT    6    1    5    7
+CONECT    7    5    6    8
+CONECT    8    7    9   10
+CONECT    9    8
+CONECT   10    8   11
+CONECT   11   10
+END

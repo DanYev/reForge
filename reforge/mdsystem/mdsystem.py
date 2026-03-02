@@ -455,9 +455,11 @@ class MartiniMixin:
         """
         self.cgdir.mkdir(parents=True, exist_ok=True)
         self.topdir.mkdir(parents=True, exist_ok=True)
+        self.ligdir.mkdir(parents=True, exist_ok=True)
         # Copy water.gro and atommass.dat from master data directory
         shutil.copy(self.MDATDIR / "water.gro", self.root)
         shutil.copy(self.MDATDIR / "atommass.dat", self.root)
+        shutil.copytree(self.MDATDIR / "ligands", self.ligdir, dirs_exist_ok=True)
         # Copy .itp files from the master ITP directory to the system topology directory
         for file in self.MITPDIR.iterdir():
             if file.name.endswith(".itp"):
@@ -473,7 +475,7 @@ class MartiniMixin:
         ----------
             append (bool, optional): If True, filters out maps that already exist in self.mapdir.
         """
-        print("Getting GO-maps", file=sys.stderr)
+        logger.info("Getting GO-maps")
         pdbs = sorted([self.prodir / f.name for f in self.prodir.iterdir()])
         map_names = [f.name.replace("pdb", "map") for f in self.prodir.iterdir()]
         if append:
@@ -482,7 +484,7 @@ class MartiniMixin:
         if pdbs:
             getgo.get_go(self.mapdir, pdbs)
         else:
-            print("Maps already there", file=sys.stderr)
+            logger.info("Map is already there")
 
     def martinize_proteins_go(self, append=False, **kwargs):
         """Performs virtual site-based GoMartini coarse-graining on protein PDBs.

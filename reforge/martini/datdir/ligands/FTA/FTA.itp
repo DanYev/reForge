@@ -1,0 +1,103 @@
+; GENERATED WITH Auto_Martini for FTA
+; Developed by: Kiran Kanekal, Tristan Bereau, and Andrew Abi-Mansour
+; updated to Martini 3 force field by Magdalena Szczuka
+; supervised by Matthieu Chavent, Pierre Poulain and Paulo C. T. Souza 
+; SMILES code : [H]C(=C(C#N)c1nnn([H])n1)N([H])c1c([H])c([H])c(N([H])c2c([H])c([H])c([H])c([H])c2[H])c([H])c1[H]
+; Partitioning: {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3, 7: 0, 8: 4, 9: 4, 10: 5, 11: 5, 12: 6, 13: 6, 14: 7, 15: 7, 16: 8, 17: 8, 18: 9, 19: 9, 20: 10, 21: 10, 22: 9, 23: 0, 24: 1, 25: 2, 26: 2, 27: 3, 28: 3, 29: 4, 30: 4, 31: 5, 32: 5, 33: 6, 34: 7, 35: 10}
+; Ringbeads: [[1, 2, 3], [0, 4, 5, 6], [9, 10]]
+
+[moleculetype]
+; molname       nrexcl
+  FTA           2
+
+[atoms]
+; id      type   resnr residue atom    cgnr    charge  mass ;  smiles    ; atom_num
+   1       TN5d    1   FTA     N01       1        0    36   ;   CN      ; atoms: N1, C7,         
+   2       TC5     1   FTA     C02       2        0    36   ;   C=C     ; atoms: C1, C2,         
+   3       TC5     1   FTA     C03       3        0    36   ;   C=C     ; atoms: C3, C4,         
+   4       TC5     1   FTA     C04       4        0    36   ;   C=C     ; atoms: C5, C6,         
+   5       TC5     1   FTA     C05       5        0    36   ;   C=C     ; atoms: C8, C9,         
+   6       TC5     1   FTA     C06       6        0    36   ;   C=C     ; atoms: C10, C11,         
+   7       TN5d    1   FTA     N07       7        0    36   ;   CN      ; atoms: C12, N2,         
+   8       TC4     1   FTA     C08       8        0    36   ;   C=C     ; atoms: C13, C14,         
+   9       TN2     1   FTA     N09       9        0    36   ;   C#N     ; atoms: C15, N3,         
+   10      SP1d    1   FTA     P10       10       0    54   ;   NCN     ; atoms: C16, N4, N7,         
+   11      TP2d    1   FTA     P11       11       0    36   ;   NN      ; atoms: N5, N6,         
+
+
+[bonds]
+;  i  j     funct   length   force.c.
+   1  2        1      0.240       20000.0 ; ring-ring link
+   1  5        1      0.302       7156.4
+   1  6        1      0.301       7190.4
+
+
+[constraints]
+;  i   j     funct   length
+   2  3        1      0.260
+   2  4        1      0.303
+   3  4        1      0.292
+   5  7        1      0.284
+   6  7        1      0.322
+   7  8        1      0.225
+   8  9        1      0.250
+   8 10        1      0.298
+  10 11        1      0.181
+   5  6        1      0.338 ; ring_diagonal
+
+
+[angles]
+;  i  j  k    funct  angle  force.c.
+   1  2  3       10    145.7  1257.7
+   1  2  4       10    84.1   1445.6
+   5  7  8        1    157.0  293.7
+   6  7  8       10    93.2   1089.4
+   7  8  9        1    160.6  697.1
+   7  8 10       10    84.6   1266.9
+   8 10 11        1    155.6  989.2
+   9  8 10       10    77.0   1454.7
+
+
+[dihedrals]
+;  i  j  k  l  funct  parameters...
+   1  2  3  4    9    -179.6   39.2     1
+   1  2  4  3    9    0.2    120.9     1
+   1  5  6  7    9    -0.1    95.8     1
+   1  5  7  8    11    19.1947   1  -0.964912   0.13196   0.522638  -0.201145
+   1  6  5  7    9    0.1     95.8     1
+   1  6  7  8    9    -0.8    35.8     1
+   2  1  5  7    11    13.0726   1   0.0429363  -0.330126   0.198884   0.332179
+   2  1  6  7    11    13.3821   1  -0.177916  -0.442753   0.440277   0.422886
+   3  2  1  5    11    12.8503   1  -0.0856413  -0.824088   0.190808   0.956998
+   3  2  1  6    11    14.0915   0.989543  -0.179454  -0.987729   0.282607   1
+   4  2  1  5    11    14.6088   0.891886  -0.127432  -0.842437   0.274105   1
+   4  2  1  6    11    16.0963   0.886698  -0.211407  -0.97379   0.347194   1
+   5  7  8  9    11    17.5951   1   0.998539   0.414541  -0.510511  -0.400745
+   5  7  8 10    11    23.9383   1   0.69208  -0.446936  -0.321981   0.19231
+   6  7  8  9    11    32.137   0.920632   0.266634  -1   0.0523267   0.677072
+   6  7  8 10    9    -1.2    29.2     1
+   7  8 10 11    11    29.3868   1  -0.084864  -0.666954  -0.283091   0.275809
+   9  8 10 11    11    30.3599   1  -0.0170947  -0.696526   0.383382   0.291836
+
+
+
+[exclusions]
+  1 7
+
+#ifndef POSRES_FC
+#define POSRES_FC 1000.0
+#endif
+[ position_restraints ]
+#ifdef POSRES
+    1 1 POSRES_FC POSRES_FC POSRES_FC
+    2 1 POSRES_FC POSRES_FC POSRES_FC
+    3 1 POSRES_FC POSRES_FC POSRES_FC
+    4 1 POSRES_FC POSRES_FC POSRES_FC
+    5 1 POSRES_FC POSRES_FC POSRES_FC
+    6 1 POSRES_FC POSRES_FC POSRES_FC
+    7 1 POSRES_FC POSRES_FC POSRES_FC
+    8 1 POSRES_FC POSRES_FC POSRES_FC
+    9 1 POSRES_FC POSRES_FC POSRES_FC
+   10 1 POSRES_FC POSRES_FC POSRES_FC
+   11 1 POSRES_FC POSRES_FC POSRES_FC
+#endif
