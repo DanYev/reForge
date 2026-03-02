@@ -162,7 +162,6 @@
   10 12
   11 12
   
-
 #ifndef POSRES_FC
 #define POSRES_FC 1000.0
 #endif
