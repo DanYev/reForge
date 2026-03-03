@@ -1,0 +1,48 @@
+[ molecule ]
+ANP
+
+[from]
+amber charmm
+
+[to]
+martini3001
+
+[ martini ]
+  D01 102 103 N04 N05 N06 N07 P08 N09 P10 P11 P12
+
+[ mapping ]
+amber charmm
+
+[ atoms ]
+     1      P1     D01
+     2      O1     D01
+     3      O4     D01
+     4      O5     D01
+     5      P2     102
+     6      O2     102
+     7      O6     102
+     8     O12     102
+     9      P3     103
+    10      O3     103
+    11      N5     103
+    12      O7     103
+    13      C1     N04
+    14      N1     N04
+    15      N3     N05
+    16      C5     N05
+    17      N2     N06
+    18      C4     N06
+    19      C2     N07
+    20      N4     N07
+    21      C6     P08
+    22     C10     P08
+    23     O11     P08
+    24      C3     N09
+    25      N6     N09
+    26      C8     P10
+    27      O9     P10
+    28      C7     P11
+    29      O8     P11
+    30      C9     P12
+    31     O10     P12
+
