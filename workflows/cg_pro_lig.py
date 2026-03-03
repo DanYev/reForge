@@ -35,11 +35,11 @@ def setup(sysdir, sysname):
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
-    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-    #     p="backbone", pf="500",  text=add_command, append=False) 
-    shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
-    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
+    # mdsys.martinize_proteins_en(append=True) # SWITCH APPEND TO TRUE IF ALREADY DONE
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
+        p="backbone", pf="500",  text=add_command, append=False) 
+    # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
+    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS 
     anp_dir = mdsys.root / "ligands" / "ANP"
