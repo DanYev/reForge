@@ -14,7 +14,6 @@ from pathlib import Path
 from MDAnalysis import Universe
 from MDAnalysis.analysis.dssp import translate, DSSP
 from reforge import cli
-from reforge.martini import martinize_rna
 from reforge.martini.martinize_rna import martinize_rna
 from reforge.utils import cd
 
@@ -108,7 +107,7 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
 
 
 def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0", 
-    go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, **kwargs):
+    go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, from_ff="amber", **kwargs):
     """Run virtual site-based GoMartini via martinize2.
 
     Parameters
@@ -141,29 +140,29 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0",
     kwargs.setdefault("cys", 0.3)
     kwargs.setdefault("p", "backbone")
     kwargs.setdefault("pf", "500")
-    kwargs.setdefault("sep", " ")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
-    kwargs.setdefault("from", "amber")
+    kwargs.setdefault("from", from_ff)
     kwargs.setdefault("maxwarn", "1000")
     text = kwargs.pop("text", "")
     # Convert paths to Path objects
     wdir_path = Path(wdir)
     topdir_path = Path(topdir)
     logger.info(f"Starting martinize_go for protein '{name}'")
-    logger.info(f"Working directory: {wdir_path}")
     logger.info(f"Topology directory: {topdir_path}")
     logger.info(f"Input AA PDB: {aapdb}")
-    logger.info(f"Input CG PDB: {cgpdb}")
+    logger.info(f"Output CG PDB: {cgpdb}")
+    go_write_path = wdir_path / "maps" / f"{name}.map"
+    go_write_path.parent.mkdir(parents=True, exist_ok=True)
+    relative_map_path = go_write_path.relative_to(wdir_path)
+    line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
+            "-go-write-file {} -dssp").format(
+                name, go_eps, go_low, go_up, go_res_dist, relative_map_path)
+    kwline = " ".join([f"-{k} {v}" for k, v in kwargs.items()])
+    line = f"{line} {kwline} {text}"
     with cd(wdir):
-        go_write_path = wdir_path / "maps" / f"{name}.map"
-        go_write_path.parent.mkdir(parents=True, exist_ok=True)
-        relative_map_path = go_write_path.relative_to(wdir_path)
-        line = ("-name {} -go-eps {} -go-low {} -go-up {} -go-res-dis {} "
-                "-go-write-file {} -dssp {}").format(
-                    name, go_eps, go_low, go_up, go_res_dist, relative_map_path, text)
-        logger.info(f"Running martinize2 with command: {line}")
-        cli.run("martinize2", line, **kwargs)
+        logger.info(f"Running martinize2 %s", line)
+        cli.run("martinize2", line)
         _handle_vsites(topdir, name, vsites_name="go")
         # Move protein itp file to topology directory
         protein_itp_src = f"{name}.itp"
@@ -173,7 +172,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0",
     logger.info(f"martinize_go completed successfully for protein '{name}'")
 
 
-def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
+def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", from_ff="amber", **kwargs):
     """Run protein elastic network generation via martinize2.
 
     Parameters
@@ -202,7 +201,7 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     kwargs.setdefault("pf", "500")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
-    kwargs.setdefault("from", "amber")
+    kwargs.setdefault("from", from_ff)
     kwargs.setdefault("maxwarn", "1000")
     ef = kwargs.pop("ef", 700)
     el = kwargs.pop("el", 0.3)
@@ -212,10 +211,13 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     wdir = Path(wdir)
     topdir = Path(topdir)
     logger.info(f"Starting martinize_en for protein %s", name)
-    ss = dssp(aapdb)
-    line = ("-elastic -ef {} -el {} -eu {} -ss {} {}").format(ef, el, eu, ss, text)
+    # ss = dssp(aapdb)
+    line = ("-elastic -ef {} -el {} -eu {} -dssp").format(ef, el, eu)
+    kwline = " ".join([f"-{k} {v}" for k, v in kwargs.items()])
+    line = f"{line} {kwline} {text}"
     with cd(wdir):
-        cli.run("martinize2", line, **kwargs)
+        logger.info(f"Running martinize2 %s", line)
+        cli.run("martinize2", line)
         try:
             _handle_vsites(topdir, name, vsites_name="virtual_sites")
         except Exception as e:

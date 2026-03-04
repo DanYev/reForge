@@ -10,6 +10,7 @@ Author: DY
 
 import importlib.resources
 import os
+import reforge.forge.topology as topology
 
 # Split each argument into a list of tokens.
 def nsplit(*x):
@@ -45,7 +46,7 @@ class NucleicForceField:
         """
         itpdir = importlib.resources.files("reforge") / "forge" / "forcefields"
         file_path = os.path.join(itpdir, directory, f"{mol}_{resname}_{version}.itp")
-        itp_data = itpio.read_itp(file_path)
+        itp_data = topology.read_itp(file_path)
         return itp_data
 
     @staticmethod

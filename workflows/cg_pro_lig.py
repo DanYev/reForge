@@ -3,14 +3,17 @@ import os
 import shutil
 import numpy as np
 import MDAnalysis as mda
+import mdtraj
 from pathlib import Path
-from reforge import logger
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+logger.info("Importing reforge modules...")
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun, get_ntomp
 from reforge.utils import clean_dir
 from reforge.forge.topology import Topology
-import mdtraj
 
-logger = logging.getLogger(__name__)
 
 # Global settings
 DT = 0.020  # Time step in picoseconds
@@ -21,25 +24,25 @@ NSTEPS = int(total_time * 1e3 / DT)  # Number of MD steps for production run
 def setup(sysdir, sysname):
     ### FOR CG PROTEIN+/RNA SYSTEMS ###
     mdsys = GmxSystem(sysdir, sysname)
-    input_pdb = Path(sysdir) / f"{sysname}.pdb"
-    # mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
-    # mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0) # Generates Amber ff names in PDB
+    input_pdb = Path("structures") / f"{sysname}.pdb"
+    mdsys.prepare_files(pour_martini=True) # be careful it can overwrite later files
+    mdsys.clean_pdb_mm(input_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0) # Generates Amber ff names in PDB
 
     # Martinizing
     molname = "protein_0"
     idr_regions = f"A-282:475 B-282:475"
-    idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=0, idr_end=10000)
-    idr_regions_str = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
+    idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=282, idr_end=475)
+    idr_regions = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
     add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
-    # add_command = f"-id-regions {idr_regions_str}" # martinize2 -h for help
+    # add_command = f"-id-regions {idr_regions}" # martinize2 -h for help
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    # mdsys.martinize_proteins_en(append=True) # SWITCH APPEND TO TRUE IF ALREADY DONE
+    # mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
         p="backbone", pf="500",  text=add_command, append=False) 
-    # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
-    shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
+    shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
+    # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS 
     anp_dir = mdsys.root / "ligands" / "ANP"
@@ -48,22 +51,23 @@ def setup(sysdir, sysname):
         shutil.copy(anp_dir / "ANP.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
         shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
     mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
+    # mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     
-    # # PROTEIN+WATER SYSTEMS:
-    # mdsys.make_box(d="2.0", bt="dodecahedron")
-    # solvent = mdsys.root / "water.gro"
-    # mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
-    # mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
+    # PROTEIN+WATER SYSTEMS:
+    mdsys.make_box(d="2.0", bt="dodecahedron")
+    solvent = mdsys.root / "water.gro"
+    mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
+    mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
 
-    # FOR MEMBRANE SYSTEMS:
-    mdsys.insert_membrane(
-        f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-        x=20, y=20, z=26, dm=9, 
-        u='POPC:1', l='POPC:1', sol='W',
-    )
+    # # FOR MEMBRANE SYSTEMS:
+    # mdsys.insert_membrane(
+    #     f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
+    #     x=20, y=20, z=26, dm=9, 
+    #     u='POPC:1', l='POPC:1', sol='W',
+    # )
     mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
     mdsys.add_bulk_ions(conc=0.10, pname='NA', nname='CL')
 
@@ -89,6 +93,7 @@ def _get_idr_regions(input_pdb, min_length=3, idr_start=0, idr_end=1000):
             if idr_region_end - idr_region_start + 1 >= min_length:  # Only consider regions of length >= min_length
                 idr_regions.append(f"{idr_region_start}:{idr_region_end}")
     idr_regions_str = " ".join(map(str, idr_regions))
+    logger.info(f"Identified IDR regions in {input_pdb}: {idr_regions_str}")
     return idr_regions_str
 
 

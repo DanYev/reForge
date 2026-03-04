@@ -16,7 +16,8 @@ sysname = 'egfr_sys'
 runname = 'egfr_run'
 mdsys = GmxSystem(sysdir, sysname)
 mdrun = GmxRun(sysdir, sysname, runname)
-in_pdb = '../egfr_v3.pdb'
+pdb_name = egfr_pipe.INPDB
+in_pdb = Path("workflows").resolve() / "structures" / pdb_name
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
@@ -27,6 +28,8 @@ def cleanup_test_files():
     shutil.rmtree(mdsys.root) # Cleanup - only runs if tests complete successfully
 
 def test_setup():
+    mdsys.prepare_files() 
+    shutil.copy(in_pdb, mdsys.root / pdb_name)
     egfr_pipe.setup(sysdir, sysname)
     top_path = mdsys.root / "system.top"
     pdb_path = mdsys.root / "system.pdb"

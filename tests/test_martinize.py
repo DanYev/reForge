@@ -12,16 +12,17 @@ Requirements:
 
 Author: DY
 """
-from pathlib import Path
 import pytest
 import shutil
+from pathlib import Path
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 
 # Global variables for tests
 mdsys = GmxSystem("tests", "test_sys")
 mdrun = GmxRun("tests", "test_sys", "test_run")
-protein_pdb = mdsys.root / ".." / "1btl.pdb"
-rna_pdb = mdsys.root / ".." / "dsRNA.pdb"
+structure_dir = Path("workflows") / "structures"
+protein_pdb = structure_dir / "1PZP.pdb"
+rna_pdb = structure_dir / "dsRNA.pdb"
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
