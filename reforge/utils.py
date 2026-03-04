@@ -29,6 +29,18 @@ from typing import Callable, Optional, TypeVar, Union
 logger = logging.getLogger(__name__)
 
 
+def get_logger(name="reforge", level=logging.INFO):
+    """FOR BACKWARDS COMPATIBILITY. Get a logger with the specified name and level."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    return logger
+
+
 def timeit(*args, **kwargs):
     """Backwards-compatible timeit decorator"""
     # If called with no args, it's being used as @timeit
