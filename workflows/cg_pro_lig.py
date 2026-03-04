@@ -38,20 +38,20 @@ def setup(sysdir, sysname):
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
-    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-        # p="backbone", pf="500",  text=add_command, append=True) 
+    # mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
+        p="backbone", pf="500",  text=add_command, append=False) 
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
     # LIGANDS 
-    # anp_dir = mdsys.root / "ligands" / "ANP"
-    # for x in ["A", "B"]:
-    #     Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
-    #     shutil.copy(anp_dir / "ANP.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
-    #     shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
-    # mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with=molname)
+    anp_dir = mdsys.root / "ligands" / "ANP"
+    for x in ["A", "B"]:
+        Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
+        shutil.copy(anp_dir / "ANP.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
+        shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
+    # mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])

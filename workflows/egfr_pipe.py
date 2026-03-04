@@ -6,8 +6,8 @@ from reforge.utils import clean_dir, get_logger
 
 logger = get_logger()
 
-# INPDB = "egfr_v3.pdb"
-INPDB = "hTRPM8_desen.pdb"
+INPDB = "egfr.pdb"
+# INPDB = "hTRPM8_desen.pdb"
 
 def setup(sysdir, sysname):
     ### FOR CG PROTEIN+LIPID BILAYERS ###
