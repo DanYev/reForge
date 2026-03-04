@@ -70,9 +70,9 @@ else
         # "tests/test_mdm.py"
         # "tests/test_pdbtools.py"
         # "tests/test_martinize.py"
-        "tests/test_gmxmd.py"
+        # "tests/test_gmxmd.py"
         # "tests/test_mmmd.py"
-        # "tests/test_egfr_setup.py"
+        "tests/test_egfr_setup.py"
     )
     
     # Run each test and track results

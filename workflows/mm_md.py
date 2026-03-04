@@ -12,7 +12,7 @@ from reforge.utils import clean_dir, get_logger
 logger = get_logger()
 
 # Global settings
-INPDB = '1btl.pdb'
+INPDB = 'input.pdb'
 MARTINI=False  # True for CG systems, False for AA systems
 # Production parameters
 TEMPERATURE = 300 * unit.kelvin  # for equilibraion
@@ -42,7 +42,7 @@ def setup(*args):
 
 def setup_aa(sysdir, sysname):
     mdsys = MmSystem(sysdir, sysname)
-    inpdb = mdsys.sysdir / INPDB
+    inpdb = mdsys.root / INPDB
     mdsys.prepare_files()
     mdsys.clean_pdb(inpdb, add_missing_atoms=True, add_hydrogens=True)
     pdb = app.PDBFile(str(mdsys.inpdb))
