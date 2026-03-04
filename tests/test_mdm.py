@@ -39,7 +39,7 @@ def test_fft_ccf_serial():
     x = np.random.rand(n_coords, n_samples).astype(np.float64)
     y = np.random.rand(n_coords, n_samples).astype(np.float64)
     # Call the fft_ccf wrapper in serial mode
-    result = fft_ccf(x, y, mode='serial', ntmax=64, center=True)
+    result = ccf(x, y, mode='serial', ntmax=64, center=True)
     # Expect a result as a NumPy array
     assert isinstance(result, np.ndarray)
     # (Additional shape checks can be added based on your implementation.)

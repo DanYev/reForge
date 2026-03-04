@@ -27,6 +27,8 @@ import shutil
 import pytest
 from reforge.pdbtools import *
 
+TEST_PDB = "workflows/structures/dsRNA.pdb"
+
 # ---------------------------------------------------------------------------
 # Tests for the Atom class
 # ---------------------------------------------------------------------------
@@ -243,8 +245,6 @@ def test_collection_properties(sample_atomlist_collection):
 # ---------------------------------------------------------------------------
 # Tests for higher-level pdbtools functions using dsRNA.pdb
 # ---------------------------------------------------------------------------
-
-TEST_PDB = "tests/dsRNA.pdb"
 
 def test_pdb2system():
     """Test that pdb2system successfully parses a PDB file and returns a non-empty system."""
