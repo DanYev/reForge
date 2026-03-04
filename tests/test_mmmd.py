@@ -29,7 +29,7 @@ def cleanup_test_files():
     if mdsys.root.exists():
         shutil.rmtree(mdsys.root)
     yield mdsys  # This runs the tests
-    # shutil.rmtree(mdsys.root) # Need them for the next tests
+    shutil.rmtree(mdsys.root) # Need them for the next tests
 
 def test_setup_aa():
     mdsys.prepare_files()
