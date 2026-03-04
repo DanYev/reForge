@@ -1017,54 +1017,147 @@ class Topology:
 ## Main Functions ##
 ###################################
 
-def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='molecule.pdb',
-                            force_field='reg', molecule_name='molecule', merge_chains='yes',
-                            elastic_network='yes', elastic_force=200, elastic_lower=0.3, 
-                            elastic_upper=1.2, position_restraints='backbone', 
-                            restraint_force=1000, debug=False):
+def martinize_rna(
+    f=None,
+    ot: str = "molecule.itp",
+    os: str = "molecule.pdb",
+    ff: str = "reg",
+    mol: str = "molecule",
+    merge="yes",
+    elastic="yes",
+    ef: float = 200,
+    el: float = 0.3,
+    eu: float = 1.2,
+    p: str = "backbone",
+    pf: float = 1000,
+    debug: bool = False,
+    **kwargs,
+):
+    """Martinize RNA (AA -> Martini 3 CG).
+
+    This function mirrors the CLI argument names ("-f", "-ot", ...), so it can be
+    called both from the command line and programmatically.
+
+    Parameters
+    ----------
+    f : str | pathlib.Path
+        Input all-atom RNA structure PDB.
+    ot : str | pathlib.Path
+        Output topology file path.
+    os : str | pathlib.Path
+        Output CG structure file path.
+    ff : str
+        Force field variant (currently only "reg").
+    mol : str
+        Molecule name in the topology.
+    merge : str | bool
+        Merge separate chains if detected ("yes"/"no" or bool).
+    elastic : str | bool
+        Add elastic network ("yes"/"no" or bool).
+    ef : float
+        Elastic network force constant (kJ/mol/nm^2).
+    el : float
+        Elastic network lower cutoff (nm).
+    eu : float
+        Elastic network upper cutoff (nm).
+    p : str
+        Position restraints selection (no/backbone/all). Currently informational.
+    pf : float
+        Position restraint force constant (kJ/mol/nm^2).
+    debug : bool
+        Enable debug logging.
+
+    Notes
+    -----
+    For backward compatibility, the legacy long keyword names are also accepted:
+    `input_pdb`, `output_topology`, `output_structure`, `force_field`, `molecule_name`,
+    `merge_chains`, `elastic_network`, `elastic_force`, `elastic_lower`, `elastic_upper`,
+    `position_restraints`, `restraint_force`.
     """
-    Martinize RNA function that can be imported and used programmatically.
-    
-    Converts an all-atom RNA structure to coarse-grained Martini representation using
-    embedded force field definitions and mapping logic without external dependencies.
-    
-    Parameters:
-    -----------
-    input_pdb : str
-        Path to input all-atom RNA structure PDB file
-    output_topology : str, optional
-        Output topology file path (default: 'molecule.itp')
-    output_structure : str, optional
-        Output CG structure file path (default: 'molecule.pdb')
-    force_field : str, optional
-        Force field variant: 'reg' for regular (default: 'reg')
-    molecule_name : str, optional
-        Molecule name in topology file (default: 'molecule')
-    merge_chains : str, optional
-        Merge separate chains if detected: 'yes'/'no' (default: 'yes')
-    elastic_network : str, optional
-        Add elastic network: 'yes'/'no' (default: 'yes')
-    elastic_force : float, optional
-        Elastic network force constant in kJ/mol/nm² (default: 200)
-    elastic_lower : float, optional
-        Elastic network lower cutoff in nm (default: 0.3)
-    elastic_upper : float, optional
-        Elastic network upper cutoff in nm (default: 1.2)
-    position_restraints : str, optional
-        Position restraints: 'no'/'backbone'/'all' (default: 'backbone')
-    restraint_force : float, optional
-        Position restraint force constant in kJ/mol/nm² (default: 1000)
-    debug : bool, optional
-        Enable debug logging (default: False)
-        
-    Returns:
-    --------
-    tuple : (str, str)
-        Paths to generated structure and topology files
-    """
+
+    # --- Backward-compatible alias handling (legacy long keywords)
+    aliases = {
+        "input_pdb": "f",
+        "output_topology": "ot",
+        "output_structure": "os",
+        "force_field": "ff",
+        "molecule_name": "mol",
+        "merge_chains": "merge",
+        "elastic_network": "elastic",
+        "elastic_force": "ef",
+        "elastic_lower": "el",
+        "elastic_upper": "eu",
+        "position_restraints": "p",
+        "restraint_force": "pf",
+    }
+
+    # If both short + legacy long are provided, fail fast.
+    for legacy_key, short_key in aliases.items():
+        if legacy_key in kwargs:
+            if locals()[short_key] is not None and short_key == "f":
+                raise TypeError(f"Specify only one of '{short_key}' or '{legacy_key}'")
+            if short_key != "f" and legacy_key in kwargs:
+                # Detect if caller explicitly passed the short kwarg by checking whether
+                # it differs from the function default.
+                # We avoid hardcoding defaults twice by relying on the current local value
+                # and the legacy value; if they're different, the caller intended to set it.
+                # If they're the same, we simply accept the legacy value.
+                pass
+
+    if f is None and "input_pdb" in kwargs:
+        f = kwargs.pop("input_pdb")
+    if "output_topology" in kwargs:
+        ot = kwargs.pop("output_topology")
+    if "output_structure" in kwargs:
+        os = kwargs.pop("output_structure")
+    if "force_field" in kwargs:
+        ff = kwargs.pop("force_field")
+    if "molecule_name" in kwargs:
+        mol = kwargs.pop("molecule_name")
+    if "merge_chains" in kwargs:
+        merge = kwargs.pop("merge_chains")
+    if "elastic_network" in kwargs:
+        elastic = kwargs.pop("elastic_network")
+    if "elastic_force" in kwargs:
+        ef = kwargs.pop("elastic_force")
+    if "elastic_lower" in kwargs:
+        el = kwargs.pop("elastic_lower")
+    if "elastic_upper" in kwargs:
+        eu = kwargs.pop("elastic_upper")
+    if "position_restraints" in kwargs:
+        p = kwargs.pop("position_restraints")
+    if "restraint_force" in kwargs:
+        pf = kwargs.pop("restraint_force")
+
+    if kwargs:
+        unknown = ", ".join(sorted(kwargs.keys()))
+        raise TypeError(f"Unknown keyword argument(s): {unknown}")
+
+    if f is None:
+        raise TypeError("Missing required argument: 'f' (input PDB)")
+
+    # Normalize booleans to the CLI-style yes/no strings.
+    if isinstance(merge, bool):
+        merge = "yes" if merge else "no"
+    if isinstance(elastic, bool):
+        elastic = "yes" if elastic else "no"
+
+    input_pdb = str(f)
+    output_topology = str(ot)
+    output_structure = str(os)
+    force_field = ff
+    molecule_name = mol
+    merge_chains = merge
+    elastic_network = elastic
+    elastic_force = ef
+    elastic_lower = el
+    elastic_upper = eu
+    position_restraints = p
+    restraint_force = pf
+
     if debug:
         logger.setLevel(logging.DEBUG)
-    
+
     logger.info("=== Starting RNA AA->CG Conversion ===")
     logger.info(f"Input PDB: {input_pdb}")
     logger.info(f"Output structure: {output_structure}")
@@ -1072,48 +1165,48 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
     logger.info(f"Force field: {force_field} (v3.0.0)")
     logger.info(f"Molecule name: {molecule_name}")
     logger.info(f"Elastic network: {elastic_network}")
-    
+
     if force_field == "reg":
         logger.info("Initializing Martini 3.0 RNA force field")
-        ff = Martini30RNA()
+        ff_obj = Martini30RNA()
     else:
         raise ValueError(f"Unsupported force field option: {force_field}")
-    
+
     # Parse PDB file
     logger.info(f"Parsing PDB file: {input_pdb}")
     system = pdb2system(input_pdb)
     logger.info(f"Loaded system with {len(system.atoms)} atoms")
-    
+
     logger.info("Moving O3' atoms to next residues")
     move_o3(system)  # Adjust O3 atoms as required
-    
+
     # Count chains
     chains = list(system.chains())
     logger.info(f"Found {len(chains)} chains to process")
-    
+
     # Process chains
     structure = AtomList()
     topologies = []
     start_idx = 1
-    
+
     for i, chain in enumerate(chains):
         logger.info(f"Processing chain {i+1}/{len(chains)}")
-        cg_atoms, chain_top = process_chain(chain, ff, start_idx, molecule_name, restraint_force)
+        cg_atoms, chain_top = process_chain(chain, ff_obj, start_idx, molecule_name, restraint_force)
         structure.extend(cg_atoms)
         topologies.append(chain_top)
         start_idx += len(cg_atoms)
-    
+
     logger.info(f"Total CG atoms generated: {len(structure)}")
-    
+
     # Write CG structure
     logger.info(f"Writing CG structure to: {output_structure}")
     structure.write_pdb(output_structure)
-    
+
     # Merge topologies
     merged_topology = merge_topologies(topologies)
-    
+
     # Add elastic network if requested
-    if elastic_network == 'yes':
+    if elastic_network == "yes":
         logger.info(f"Adding elastic network (el={elastic_lower}, eu={elastic_upper}, ef={elastic_force})")
         merged_topology.elastic_network(
             structure,
@@ -1123,29 +1216,23 @@ def martinize_rna(input_pdb, output_topology='molecule.itp', output_structure='m
             ef=elastic_force,
         )
         logger.info(f"Added {len(merged_topology.elnet)} elastic bonds")
-    
+
     # Generate arguments string for header
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Format the parsed arguments with their actual values
     args_formatted = (
-        f"input_pdb='{input_pdb}', output_topology='{output_topology}', "
-        f"output_structure='{output_structure}', force_field='{force_field}', "
-        f"molecule_name='{molecule_name}', merge_chains='{merge_chains}', "
-        f"elastic_network='{elastic_network}', elastic_force={elastic_force}, "
-        f"elastic_lower={elastic_lower}, elastic_upper={elastic_upper}, "
-        f"position_restraints='{position_restraints}', restraint_force={restraint_force}, "
-        f"debug={debug}"
+        f"f='{input_pdb}', ot='{output_topology}', os='{output_structure}', ff='{force_field}', "
+        f"mol='{molecule_name}', merge='{merge_chains}', elastic='{elastic_network}', ef={elastic_force}, "
+        f"el={elastic_lower}, eu={elastic_upper}, p='{position_restraints}', pf={restraint_force}, debug={debug}"
     )
-    
+
     # Write topology file
     logger.info(f"Writing topology file to: {output_topology}")
     merged_topology.write_to_itp(output_topology, arguments=args_formatted, timestamp=timestamp)
-    
+
     logger.info("=== RNA Martinization completed successfully ===")
     logger.info(f"Coarse-grained structure written to: {output_structure}")
     logger.info(f"Topology file written to: {output_topology}")
-    
+
     return output_structure, output_topology
 
 
@@ -1306,18 +1393,18 @@ Please cite:
     
     # Call the main martinization function
     martinize_rna(
-        input_pdb=args.f,
-        output_topology=args.ot,
-        output_structure=args.os,
-        force_field=args.ff,
-        molecule_name=args.mol,
-        merge_chains=args.merge,
-        elastic_network=args.elastic,
-        elastic_force=args.ef,
-        elastic_lower=args.el,
-        elastic_upper=args.eu,
-        position_restraints=args.p,
-        restraint_force=args.pf,
+        f=args.f,
+        ot=args.ot,
+        os=args.os,
+        ff=args.ff,
+        mol=args.mol,
+        merge=args.merge,
+        elastic=args.elastic,
+        ef=args.ef,
+        el=args.el,
+        eu=args.eu,
+        p=args.p,
+        pf=args.pf,
         debug=args.debug
     )
 
