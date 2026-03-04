@@ -35,11 +35,11 @@ def cleanup_test_files():
     if mdsys.root.exists():
         shutil.rmtree(mdsys.root, ignore_errors=True)
 
-# def test_prepare():
-#     mdsys.prepare_files(pour_martini=True)
-#     mdsys.clean_pdb_mm(protein_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
-#     mdsys.split_chains()
-#     assert (Path(mdsys.prodir) / "chain_A.pdb").exists()
+def test_prepare():
+    mdsys.prepare_files(pour_martini=True)
+    mdsys.clean_pdb_mm(protein_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
+    mdsys.split_chains()
+    assert (Path(mdsys.prodir) / "chain_A.pdb").exists()
 
 # def test_martini_en():
 #     mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)
