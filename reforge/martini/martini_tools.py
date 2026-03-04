@@ -108,7 +108,7 @@ def fix_go_map(wdir, in_map, out_map="go.map"):
 
 
 def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0", 
-    go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, **kwargs):
+    go_eps=9.414, go_low=0.3, go_up=1.1, go_res_dist=3, from_ff="amber", **kwargs):
     """Run virtual site-based GoMartini via martinize2.
 
     Parameters
@@ -143,7 +143,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0",
     kwargs.setdefault("pf", "500")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
-    kwargs.setdefault("from", "amber")
+    kwargs.setdefault("from", from_ff)
     kwargs.setdefault("maxwarn", "1000")
     text = kwargs.pop("text", "")
     # Convert paths to Path objects
@@ -173,7 +173,7 @@ def run_martinize_go(wdir, topdir, aapdb, cgpdb, name="protein_0",
     logger.info(f"martinize_go completed successfully for protein '{name}'")
 
 
-def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
+def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", from_ff="amber", **kwargs):
     """Run protein elastic network generation via martinize2.
 
     Parameters
@@ -202,7 +202,7 @@ def run_martinize_en(wdir, topdir, aapdb, cgpdb, name="protein_0", **kwargs):
     kwargs.setdefault("pf", "500")
     kwargs.setdefault("resid", "input")
     kwargs.setdefault("ff", "martini3001")
-    kwargs.setdefault("from", "amber")
+    kwargs.setdefault("from", from_ff)
     kwargs.setdefault("maxwarn", "1000")
     ef = kwargs.pop("ef", 700)
     el = kwargs.pop("el", 0.3)
