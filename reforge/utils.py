@@ -35,7 +35,8 @@ def get_logger(name="reforge", level=logging.INFO):
     logger.setLevel(level)
     if not logger.hasHandlers():
         handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter("%(levelname)s - [%(filename)s:%(lineno)d] - %(message)s", 
+            datefmt="%H:%M:%S")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
     return logger
