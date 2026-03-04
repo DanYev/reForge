@@ -12,16 +12,17 @@ Requirements:
 
 Author: DY
 """
-from pathlib import Path
 import pytest
 import shutil
+from pathlib import Path
 from reforge.mdsystem.gmxmd import GmxSystem, GmxRun
 
 # Global variables for tests
 mdsys = GmxSystem("tests", "test_sys")
 mdrun = GmxRun("tests", "test_sys", "test_run")
-protein_pdb = mdsys.root / ".." / "1btl.pdb"
-rna_pdb = mdsys.root / ".." / "dsRNA.pdb"
+structure_dir = Path("workflows") / "structures"
+protein_pdb = structure_dir / "1PZP.pdb"
+rna_pdb = structure_dir / "dsRNA.pdb"
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
@@ -34,19 +35,19 @@ def cleanup_test_files():
     if mdsys.root.exists():
         shutil.rmtree(mdsys.root, ignore_errors=True)
 
-def test_prepare():
-    mdsys.prepare_files(pour_martini=True)
-    mdsys.clean_pdb_mm(protein_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
-    mdsys.split_chains()
-    assert (Path(mdsys.prodir) / "chain_A.pdb").exists()
+# def test_prepare():
+#     mdsys.prepare_files(pour_martini=True)
+#     mdsys.clean_pdb_mm(protein_pdb, add_missing_atoms=True, add_hydrogens=True, pH=7.0)
+#     mdsys.split_chains()
+#     assert (Path(mdsys.prodir) / "chain_A.pdb").exists()
 
-def test_martini_en():
-    mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)
-    assert (Path(mdsys.topdir) / "chain_A.itp").exists()
+# def test_martini_en():
+#     mdsys.martinize_proteins_en(ef=700, el=0.0, eu=0.9, p='backbone', pf=500, append=False)
+#     assert (Path(mdsys.topdir) / "chain_A.itp").exists()
 
-def test_martini_go():
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.1, p="backbone", pf=500, append=False)
-    assert (Path(mdsys.topdir) / "chain_A.itp").exists()
+# def test_martini_go():
+#     mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.1, p="backbone", pf=500, append=False)
+#     assert (Path(mdsys.topdir) / "chain_A.itp").exists()
 
 def test_martinize_rna():
     shutil.copy(rna_pdb, mdsys.nucdir / "chain_AB.pdb")

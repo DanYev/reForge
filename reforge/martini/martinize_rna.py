@@ -23,6 +23,7 @@ from reforge.forge import cgmap, topology
 from reforge.forge.topology import Topology
 from reforge.pdbtools import AtomList, pdb2system
 
+logger = logging.getLogger(__name__)
 
 def martinize_rna(f, ot='molecule.itp', os='molecule.pdb',
                   ff='reg', mol='molecule', merge='yes',
