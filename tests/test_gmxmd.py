@@ -21,7 +21,7 @@ sysname = 'gmx_sys'
 runname = 'gmx_run'
 mdsys = GmxSystem(sysdir, sysname)
 mdrun = GmxRun(sysdir, sysname, runname)
-in_pdb = Path('tests').resolve() / 'dsRNA.pdb'
+in_pdb = Path('workflows').resolve() / 'structures' / 'dsRNA.pdb'
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_files():
@@ -37,7 +37,7 @@ def test_prepare_files():
 
 def test_sort_input_pdb():
     mdsys.sort_input_pdb(in_pdb)
-    assert (Path(mdsys.root) / "inpdb.pdb").exists()
+    assert (mdsys.root / "inpdb.pdb").exists()
 
 def test_gmx():
     mdsys.gmx('')
@@ -47,13 +47,13 @@ def test_clean_pdb_gmx():
 
 def test_split_chains():
     mdsys.split_chains()
-    assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
-    assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
+    assert (mdsys.nucdir / "chain_A.pdb").exists()
+    assert (mdsys.nucdir / "chain_B.pdb").exists()
 
 def test_clean_chains_gmx():
     mdsys.clean_chains_gmx(clinput='6\n7\n', ignh='yes')
-    assert (Path(mdsys.nucdir) / "chain_A.pdb").exists()
-    assert (Path(mdsys.nucdir) / "chain_B.pdb").exists()
+    assert (mdsys.nucdir / "chain_A.pdb").exists()
+    assert (mdsys.nucdir / "chain_B.pdb").exists()
 
 def test_setup_martini():
     gmx_md.setup_martini(sysdir, sysname)
@@ -63,12 +63,12 @@ def test_setup_martini():
     assert pdb_path.exists()
 
 def test_md_npt():
-    gmx_md.md_npt(sysdir, sysname, runname, nsteps=1000)
+    gmx_md.md_npt(sysdir, sysname, runname, nsteps=10000)
     md_path = mdrun.rundir / "md.xtc"
     assert md_path.exists()
 
 def test_extend():
-    gmx_md.extend(sysdir, sysname, runname, nsteps=1000)
+    gmx_md.extend(sysdir, sysname, runname, nsteps=10000)
 
 def test_trjconv():
     gmx_md.trjconv(sysdir, sysname, runname)
