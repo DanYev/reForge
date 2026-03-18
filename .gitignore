@@ -6,6 +6,7 @@ examples/
 *.egg-info/
 *.log
 *.so
+reforge/**/*.pdb
 
 # Documentation outputs
 docs/examples/__pychache__/
