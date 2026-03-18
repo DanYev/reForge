@@ -37,7 +37,6 @@ Date: YYYY-MM-DD
 import logging
 import os
 import numpy as np
-import cupy as cp
 from reforge.rfgmath import rcmath, rpymath
 
 logger = logging.getLogger(__name__)
