@@ -705,8 +705,8 @@ class RestraintMinimizer:
     """Minimize backmapped structures with CG bead position restraints."""
     
     def __init__(self, aa_structure_file, cg_structure_file, mapping_dir, force_field,
-                 output_file, max_iterations=1000, tolerance=10.0, restraint_strength=1000.0, 
-                 temp_cg_pdb=None, implicit_solvent=False, fix_pdb_used=False):
+                 output_file, max_iterations=1000, tolerance=10.0, restraint_strength=10.0, 
+                 temp_cg_pdb=None, implicit_solvent=False, fix_pdb_used=False, nsteps=100000):
         self.aa_structure_file = aa_structure_file
         self.cg_structure_file = cg_structure_file
         self.temp_cg_pdb = temp_cg_pdb  # Pre-created filtered temporary CG PDB without CA atoms, water, and ions
@@ -718,6 +718,7 @@ class RestraintMinimizer:
         self.restraint_strength = restraint_strength
         self.implicit_solvent = implicit_solvent
         self._fix_pdb_used = fix_pdb_used
+        self.nsteps = nsteps
         self.aa_structure = None
         self.cg_structure = None
         self.mapping_parser = MappingParser(mapping_dir, force_field)
@@ -900,15 +901,22 @@ class RestraintMinimizer:
         logger.info(f"Final potential energy: {final_energy.value_in_unit(unit.kilojoules_per_mole):.3e} kJ/mol")
         energy_change = final_energy - initial_energy
         logger.info(f"Energy change: {energy_change.value_in_unit(unit.kilojoules_per_mole):.3e} kJ/mol")
-        
+
         state = simulation.context.getState(getPositions=True)
-        minimized_positions = state.getPositions()
-        
+        positions = state.getPositions()
+        with open("em.pdb", 'w') as f:
+            app.PDBFile.writeFile(pdb.topology, positions, f)
+        logger.info(f"Minimized structure saved: em.pdb")
+
+        # Equilibrate
+        logger.info(f"Starting short equilibration ({self.nsteps} steps) to relax restraints...")
+        simulation.step(self.nsteps)
+        state = simulation.context.getState(getPositions=True)
+        positions = state.getPositions()
         with open(self.output_file, 'w') as f:
-            app.PDBFile.writeFile(pdb.topology, minimized_positions, f)
-        
-        logger.info(f"Minimized structure saved: {self.output_file}")
-        
+            app.PDBFile.writeFile(pdb.topology,positions, f)
+        logger.info(f"Equilibrated structure saved: {self.output_file}")
+
         return self.output_file
     
     def add_position_restraints(self, system, topology):
@@ -1384,14 +1392,16 @@ INPUT REQUIREMENTS:
                        help='Maximum minimization iterations (default: 1000)')
     parser.add_argument('--tolerance', type=float, default=10.0,
                        help='Energy tolerance for minimization in kJ/mol (default: 10.0)')
-    parser.add_argument('--restraint-strength', type=float, default=1000.0,
-                       help='Restraint force constant for non-CA atoms in kJ/mol/nm² (default: 1000.0)')
+    parser.add_argument('--restraint-strength', type=float, default=10.0,
+                       help='Restraint force constant for non-CA atoms in kJ/mol/nm² (default: 10.0)')
     parser.add_argument('--debug', action='store_true',
                        help='Enable debug logging to debug_bm.log and keep intermediate files')
     parser.add_argument('--fix-pdb', action='store_true',
                        help='Apply PDBFixer to initial backmapped structure (adds missing atoms/hydrogens)')
     parser.add_argument('--implicit-solvent', action='store_true',
                        help='Use implicit solvent (GB/OBC) instead of vacuum for minimization (default: vacuum)')
+    parser.add_argument('--nsteps', type=int, default=100000,
+                       help='Number of steps for short equilibration (default: 100000)')
     
     args = parser.parse_args()
     
