@@ -41,3 +41,5 @@ If you use this script in your research, please cite:
 
 Copyright (c) 2025, DY
 Licensed under the GNU General Public License v3.0
+[![DOI](https://zenodo.org/badge/944535799.svg)](https://doi.org/10.5281/zenodo.19207978)
+
