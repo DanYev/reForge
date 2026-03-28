@@ -285,6 +285,23 @@ class MmReporter(object):
         self._atomGroup = None
         self._writer_kwargs = writer_kwargs or {}
 
+    def _flush_writer(self):
+        """Flush writer buffers if supported by the writer implementation."""
+        if self._mdaWriter is None:
+            return
+        try:
+            self._mdaWriter.flush()
+            return
+        except AttributeError:
+            pass
+        # Some MDAnalysis writers expose the underlying file handle via _file.
+        file_handle = getattr(self._mdaWriter, "_file", None)
+        if file_handle is not None:
+            try:
+                file_handle.flush()
+            except AttributeError:
+                pass
+
     def describeNextReport(self, simulation):
         """Get information about the next report this object will generate.
         Parameters
@@ -359,6 +376,7 @@ class MmReporter(object):
         self._mdaUniverse.trajectory.ts.dimensions = box_dimensions
         # write to the trajectory file with box dimensions
         self._mdaWriter.write(self._atomGroup)
+        # self._flush_writer()
         self._nextModel += 1
 
     def __del__(self):

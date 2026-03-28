@@ -65,4 +65,5 @@ def test_trjconv():
     assert top_file.exists()
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    test_md_nve()
+    # pytest.main([__file__, "-v"])
