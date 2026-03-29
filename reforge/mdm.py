@@ -39,6 +39,11 @@ import os
 import numpy as np
 from reforge.rfgmath import rcmath, rpymath
 
+try:
+    import cupy as cp
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -315,6 +320,7 @@ def hessian(vecs, cutoff, spring_constant=1e3, dd=0):
     np.ndarray
         The computed Hessian matrix.
     """
+    logger.info("Calculating Hessian with cutoff %.2f, spring constant %.2e, and dd %d", cutoff, spring_constant, dd)
     return rcmath.hessian(vecs, cutoff, spring_constant, dd)
 
 
@@ -344,6 +350,7 @@ def inverse_matrix(matrix, device="cpu_sparse", k_singular=6, n_modes=100, dtype
     np.ndarray or cp.ndarray
         The computed inverse matrix.
     """
+    logger.info("Computing inverse matrix using method '%s'", device)
     if dtype is None:
         dtype = matrix.dtype
 
