@@ -301,7 +301,7 @@ def group_group_dci(pert_mat, groups=None, asym=False):
 ## Elastic Network Model (ENM)
 ##############################################################
 
-def hessian(vecs, cutoff, spring_constant=1e3, dd=0):
+def hessian(vecs, cutoff, spring_constant=1e3, dd=0, dtype=np.float64):
     """Compute the Hessian matrix using an elastic network model.
 
     Parameters
@@ -321,7 +321,7 @@ def hessian(vecs, cutoff, spring_constant=1e3, dd=0):
         The computed Hessian matrix.
     """
     logger.info("Calculating Hessian with cutoff %.2f, spring constant %.2e, and dd %d", cutoff, spring_constant, dd)
-    return rcmath.hessian(vecs, cutoff, spring_constant, dd)
+    return rcmath.hessian(vecs, cutoff, spring_constant, dd, dtype=dtype)
 
 
 def inverse_matrix(matrix, device="cpu_sparse", k_singular=6, n_modes=100, dtype=None, **kwargs):
