@@ -13,14 +13,14 @@ logger = get_logger()
 
 # Global settings
 INPDB = 'input.pdb'
-MARTINI=False  # True for CG systems, False for AA systems
+MARTINI = False  # True for CG systems, False for AA systems
 # Production parameters
 TEMPERATURE = 300 * unit.kelvin  # for equilibraion
 GAMMA = 1 / unit.picosecond
 PRESSURE = 1 * unit.bar
 # Either steps or time
 TSTEP = 2 * unit.femtoseconds
-TOTAL_TIME = 100 * unit.picoseconds
+TOTAL_TIME = 10000 * unit.picoseconds
 TOTAL_STEPS = 100000 
 # Reporting: save every NOUT steps
 TRJ_NOUT = 1000     # normally you want 10000 or 100000 here
@@ -29,7 +29,7 @@ CHK_NOUT = 100000
 OUT_SELECTION = "protein" 
 TRJEXT = 'trr' # 'xtc' if don't need velocities or 'trr' if do
 # Analysis and trjconv
-SELECTION = "name CA" 
+SELECTION = "protein" 
 
 
 def setup(*args):

@@ -882,7 +882,7 @@ class RestraintMinimizer:
         integrator = mm.LangevinMiddleIntegrator(
             300 * unit.kelvin,
             1 / unit.picosecond,
-            0.002 * unit.picoseconds
+            0.001 * unit.picoseconds
         )
         
         simulation = app.Simulation(pdb.topology, system, integrator)
@@ -921,7 +921,7 @@ class RestraintMinimizer:
     
     def add_position_restraints(self, system, topology):
         """Add position restraints to the system."""
-        logger.info(f"Adding position restraints (CA: 10000, others: {self.restraint_strength} kJ/mol/nm²)...")
+        logger.info(f"Adding position restraints (CA: 500 kJ/mol/nm², others: {self.restraint_strength} kJ/mol/nm²)...")
         
         restraint_force = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
         restraint_force.addPerParticleParameter("k")
@@ -941,7 +941,7 @@ class RestraintMinimizer:
                 pos_nm = restraint_pos / 10.0
                 
                 if atom.name == 'CA':
-                    force_constant = 10000.0
+                    force_constant = 500.0
                     ca_restraints += 1
                 else:
                     force_constant = self.restraint_strength
@@ -960,7 +960,7 @@ class RestraintMinimizer:
         
         if restraint_count > 0:
             system.addForce(restraint_force)
-            logger.info(f"Added {restraint_count} position restraints ({ca_restraints} CA atoms @ 10000, "
+            logger.info(f"Added {restraint_count} position restraints ({ca_restraints} CA atoms @ 500 kJ/mol/nm², "
                        f"{restraint_count - ca_restraints} others @ {self.restraint_strength} kJ/mol/nm²)")
         else:
             logger.warning("No position restraints were added!")
@@ -1386,8 +1386,8 @@ INPUT REQUIREMENTS:
                        help='Directory containing mapping files (default: _map_files_v3)')
     parser.add_argument('-f', '--force-field', default='amber',
                        help='Force field: amber, charmm36, etc. (default: amber)')
-    parser.add_argument('--min-segment-length', type=int, default=3,
-                       help='Minimum segment length for SS-based segmentation (default: 3)')
+    parser.add_argument('--min-segment-length', type=int, default=10,
+                       help='Minimum segment length for SS-based segmentation (default: 10)')
     parser.add_argument('--max-iterations', type=int, default=1000,
                        help='Maximum minimization iterations (default: 1000)')
     parser.add_argument('--tolerance', type=float, default=10.0,
