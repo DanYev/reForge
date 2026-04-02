@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import numpy as np
@@ -7,9 +8,9 @@ from openmm import app, unit
 from reforge.martini import martini_openmm
 from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.mdsystem.mmmd import MmSystem, MmRun, MmReporter, convert_trajectories
-from reforge.utils import clean_dir, get_logger
+from reforge.utils import clean_dir
 
-logger = get_logger()
+logger = logging.getLogger("reforge")
 
 # Global settings
 INPDB = 'input.pdb'
@@ -220,7 +221,7 @@ def extend(sysdir, sysname, runname, until_time=None):
     mdrun.extend(simulation, curr_prefix=curr_prefix, next_prefix=next_prefix, until_time=until_time)
 
 
-def trjconv(sysdir, sysname, runname):
+def trjconv(sysdir, sysname, runname, trjext='xtc'):
     system = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     logger.info(f"WDIR: %s", mdrun.rundir)
@@ -228,14 +229,14 @@ def trjconv(sysdir, sysname, runname):
     top = mdrun.rundir / "md.pdb"
     # top = mdrun.syspdb  # use original topology if needed
     traj = mdrun.rundir / f"md.{TRJEXT}"
-    ext_trajs = sorted([f for f in mdrun.rundir.glob(f"md_*.{TRJEXT}")])
+    ext_trajs = sorted([f for f in mdrun.rundir.glob(f"md_*.{trjext}")])
     trajs = [traj] + ext_trajs
     logger.info(f'Input trajectory files: {trajs}')
     # CONVERT
     out_top = mdrun.rundir / "topology.pdb"
-    out_traj = mdrun.rundir / f"samples.{TRJEXT}"
+    out_traj = mdrun.rundir / f"samples.{trjext}"
     logger.info(f'Converting trajectory with selection: {SELECTION}')
-    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=1)
+    convert_trajectories(top, trajs, out_top, out_traj, selection=SELECTION, step=10)
     logger.info("Done!")
 
 

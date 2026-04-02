@@ -19,7 +19,7 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir
 import plots
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("reforge")
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
