@@ -23,6 +23,7 @@ logger = logging.getLogger("reforge")
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
+TRJEXT = "xtc" # or trr
 
 def workflow(sysdir, sysname, runname):
     cov_analysis(sysdir, sysname)
