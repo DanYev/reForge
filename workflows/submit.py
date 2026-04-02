@@ -66,14 +66,14 @@ if __name__ == "__main__":
     # sys_job('setup', submit=False, mem='16G')
     # run_job('md_npt', submit=submit, G='1', c='8', mem='8G', t='02-00:00:00', p='general', q='grp_sozkan')
     # run_job('md_npt', submit=submit, G='1', c='2', mem='2G', t='00-04:00:00', p='htc', q='public')
-    run_job('trjconv', submit=submit)
+    # run_job('trjconv', submit=submit)
     # run_job('extend', submit=submit, G='1', c='4', mem='2G')
 
     ##### Analysis #####
     pyscript = str(pdir / 'analysis.py')
     # sys_job('pca_trajs', submit=submit) # PCA
     # sys_job('clust_cov', submit=submit) # Clustering
-    # run_job('rms_analysis', submit=submit) # RMSF/RMSD
+    run_job('rms_analysis', submit=submit) # RMSF/RMSD
     # run_job('cov_analysis', submit=submit) # DFI/DCI
     # sys_job('get_means_sems', submit=submit) 
     # run_job('tdlrt_analysis', submit=submit) # TDLRT

@@ -4,10 +4,8 @@ import pandas as pd
 import sys
 import logging
 from reforge import io, mdm
-from reforge.mdsystem import gmxmd
-from reforge.plotting import *
 
-logger = logging.getLogger()
+logger = logging.getLogger("reforge")
 
 
 def pull_data(datdir, metric):

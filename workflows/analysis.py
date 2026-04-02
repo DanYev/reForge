@@ -19,10 +19,11 @@ from reforge.mdsystem.mdsystem import MDSystem, MDRun
 from reforge.utils import clean_dir
 import plots
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("reforge")
 
 INPDB = 'input.pdb'
 SELECTION = "name CA" 
+TRJEXT = "xtc" # or trr
 
 def workflow(sysdir, sysname, runname):
     cov_analysis(sysdir, sysname)
@@ -180,15 +181,16 @@ def get_means_sems(sysdir, sysname):
 ### RMSD/RMSF Analysis ###
 ################################################################################
 
-def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
+def rms_analysis(sysdir, sysname, runname, selection=SELECTION, 
+    start=None, stop=None, step=1):
     mdsys = MDSystem(sysdir, sysname)
     mdrun = MDRun(sysdir, sysname, runname)
     rmsdir = mdrun.rmsdir
     rmsdir.mkdir(exist_ok=True)    
     top = mdrun.rundir / "topology.pdb"
-    trajs = io.pull_files(mdsys.mddir, f"samples.*")
+    traj = mdrun.rundir / f"samples.{TRJEXT}"
     # Load trajectory
-    u = mda.Universe(str(top), trajs)
+    u = mda.Universe(str(top), str(traj))
     atoms = u.select_atoms(selection)  
     # Calculate RMSD
     logger.info(f'Calculating RMSD and RMSF for selection: {selection}')
@@ -196,7 +198,7 @@ def rms_analysis(sysdir, sysname, runname, selection=SELECTION, step=1):
     rmsd_analysis.run(step=step)
     # Calculate RMSF
     rmsf_analysis = rms.RMSF(atoms)
-    rmsf_analysis.run(step=step)
+    rmsf_analysis.run(start=start, stop=stop, step=step)
     # Get residue IDs
     residue_ids = np.array([atom.resid for atom in atoms])
     # Save arrays
