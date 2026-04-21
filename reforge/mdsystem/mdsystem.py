@@ -25,6 +25,7 @@ import shutil
 import subprocess as sp
 import tempfile
 import logging
+import string
 import MDAnalysis as mda
 import numpy as np
 from collections import defaultdict
@@ -212,25 +213,52 @@ class MDSystem:
         """Splits the input PDB file into separate files for each chain.
 
         Nucleotide chains are saved to self.nucdir, while protein chains are saved to self.prodir.
-        The determination is based on the residue names.
+        Chain grouping is determined with MDAnalysis using `segid` first and
+        falling back to `chainID` when segment identifiers are unavailable.
         """
         def it_is_nucleotide(atoms):
             # Check if the chain is nucleotide based on residue name.
             return atoms.resnames[0] in self.NUC_RESNAMES
+
+        def get_grouping_values(atoms):
+            for attr_name, label in (("segids", "segid"), ("chainIDs", "chainID")):
+                try:
+                    values = [str(value).strip() for value in getattr(atoms, attr_name)]
+                except Exception:  # pragma: no cover - depends on topology attrs in input PDB
+                    continue
+                if values and any(values):
+                    return values, label
+            raise ValueError(
+                f"Could not determine chain groups for {self.inpdb} from segids or chainIDs."
+            )
+
         logger.info("Splitting chains from the input PDB...")
-        system = pdbtools.pdb2system(self.inpdb)
-        for chain in system.chains():
-            atoms = chain.atoms
-            if it_is_nucleotide(atoms):
-                out_pdb = self.nucdir / f"chain_{chain.chid}.pdb"
+        universe = mda.Universe(str(self.inpdb))
+        atoms = universe.atoms
+        group_values, grouping_label = get_grouping_values(atoms)
+        grouped_indices = defaultdict(list)
+        for atom_index, group_value in zip(atoms.indices, group_values):
+            grouped_indices[group_value].append(atom_index)
+
+        logger.info("Identified %d chain group(s) using %s.", len(grouped_indices), grouping_label)
+        for entity_index, (group_id, atom_indices) in enumerate(grouped_indices.items(), start=1):
+            safe_group_id = "".join(
+                char if char.isalnum() or char in ("-", "_") else "_"
+                for char in group_id
+            )
+            entity_name = f"entity_{entity_index:02d}_{safe_group_id}"
+            chain_atoms = atoms[atom_indices]
+            if it_is_nucleotide(chain_atoms):
+                out_pdb = self.nucdir / f"{entity_name}.pdb"
             else:
-                out_pdb = self.prodir / f"chain_{chain.chid}.pdb"
-            atoms.write_pdb(out_pdb)
+                out_pdb = self.prodir / f"{entity_name}.pdb"
+            chain_atoms.write(str(out_pdb))
 
     def clean_chains_mm(self, **kwargs):
         """Cleans chain-specific PDB files using PDBfixer (OpenMM).
 
-        Kwargs are passed to pdbtools.clean_pdb. Also renames chain IDs based on the file name.
+        Kwargs are passed to pdbtools.clean_pdb. Chain IDs are reassigned
+        sequentially after cleaning.
         """
         kwargs.setdefault("add_missing_atoms", True)
         kwargs.setdefault("add_hydrogens", True)
@@ -239,9 +267,14 @@ class MDSystem:
         files = list(self.prodir.iterdir())
         files += list(self.nucdir.iterdir())
         files = sorted(files, key=lambda p: p.name)
-        for file in files:
+        chain_labels = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+        if len(files) > len(chain_labels):
+            raise ValueError(
+                f"Found {len(files)} split entity files, but only {len(chain_labels)} "
+                "single-character chain labels are available."
+            )
+        for new_chain_id, file in zip(chain_labels, files):
             pdbtools.clean_pdb(file, file, **kwargs)
-            new_chain_id = file.name.split("chain_")[1][0]
             pdbtools.rename_chain_in_pdb(file, new_chain_id)
 
     def clean_chains_gmx(self, **kwargs):
@@ -258,9 +291,14 @@ class MDSystem:
         files = [p for p in self.prodir.iterdir() if not p.name.startswith("#")]
         files += [p for p in self.nucdir.iterdir() if not p.name.startswith("#")]
         files = sorted(files, key=lambda p: p.name)
+        chain_labels = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+        if len(files) > len(chain_labels):
+            raise ValueError(
+                f"Found {len(files)} split entity files, but only {len(chain_labels)} "
+                "single-character chain labels are available."
+            )
         with cd(self.root):
-            for file in files:
-                new_chain_id = file.name.split("chain_")[1][0]
+            for new_chain_id, file in zip(chain_labels, files):
                 cli.gmx("pdb2gmx", f=file, o=file, **kwargs)
                 pdbtools.rename_chain_and_histidines_in_pdb(file, new_chain_id)
             clean_dir(self.prodir)
