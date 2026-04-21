@@ -1,0 +1,37 @@
+[ molecule ]
+LIB
+
+[ from ]
+amber charmm
+
+[ to ]
+martini3001
+
+[ martini ]
+  N01 N02 C03 N04 N05 N06 P07 N08 C09 C10 C11 C12 C13 C14 X15 C16 C17 C18 C19 C20
+
+[ mapping ]
+amber charmm
+
+[ atoms ]
+     1   C1 O1     N01
+     2   N1 C2     N02
+     3   S1 C3     C03
+     4   C4 O2     N04
+     5   N2 C5     N05
+     6   N3 C6     N06
+     7   O3 C7     P07
+     8   N4 C8     N08
+     9  C9 C10     C09
+    10  C11 C12     C10
+    11  C13 C14     C11
+    12  C15 C16     C12
+    13  C17 C18     C13
+    14  C19 C20     C14
+    15  C21 F1     X15
+    16  C22 C23     C16
+    17  C24 C25     C17
+    18  C26 C27     C18
+    19  C28 C29     C19
+    20  C30 C31     C20
+
