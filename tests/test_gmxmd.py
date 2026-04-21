@@ -47,13 +47,13 @@ def test_clean_pdb_gmx():
 
 def test_split_chains():
     mdsys.split_chains()
-    assert (mdsys.nucdir / "chain_A.pdb").exists()
-    assert (mdsys.nucdir / "chain_B.pdb").exists()
+    assert (mdsys.nucdir / "entity_01_A.pdb").exists()
+    assert (mdsys.nucdir / "entity_02_B.pdb").exists()
 
 def test_clean_chains_gmx():
     mdsys.clean_chains_gmx(clinput='6\n7\n', ignh='yes')
-    assert (mdsys.nucdir / "chain_A.pdb").exists()
-    assert (mdsys.nucdir / "chain_B.pdb").exists()
+    assert (mdsys.nucdir / "entity_01_A.pdb").exists()
+    assert (mdsys.nucdir / "entity_02_B.pdb").exists()
 
 def test_setup_martini():
     gmx_md.setup_martini(sysdir, sysname)

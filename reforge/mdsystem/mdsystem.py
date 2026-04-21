@@ -25,6 +25,7 @@ import shutil
 import subprocess as sp
 import tempfile
 import logging
+import string
 import MDAnalysis as mda
 import numpy as np
 from collections import defaultdict
@@ -212,25 +213,52 @@ class MDSystem:
         """Splits the input PDB file into separate files for each chain.
 
         Nucleotide chains are saved to self.nucdir, while protein chains are saved to self.prodir.
-        The determination is based on the residue names.
+        Chain grouping is determined with MDAnalysis using `segid` first and
+        falling back to `chainID` when segment identifiers are unavailable.
         """
         def it_is_nucleotide(atoms):
             # Check if the chain is nucleotide based on residue name.
             return atoms.resnames[0] in self.NUC_RESNAMES
+
+        def get_grouping_values(atoms):
+            for attr_name, label in (("segids", "segid"), ("chainIDs", "chainID")):
+                try:
+                    values = [str(value).strip() for value in getattr(atoms, attr_name)]
+                except Exception:  # pragma: no cover - depends on topology attrs in input PDB
+                    continue
+                if values and any(values):
+                    return values, label
+            raise ValueError(
+                f"Could not determine chain groups for {self.inpdb} from segids or chainIDs."
+            )
+
         logger.info("Splitting chains from the input PDB...")
-        system = pdbtools.pdb2system(self.inpdb)
-        for chain in system.chains():
-            atoms = chain.atoms
-            if it_is_nucleotide(atoms):
-                out_pdb = self.nucdir / f"chain_{chain.chid}.pdb"
+        universe = mda.Universe(str(self.inpdb))
+        atoms = universe.atoms
+        group_values, grouping_label = get_grouping_values(atoms)
+        grouped_indices = defaultdict(list)
+        for atom_index, group_value in zip(atoms.indices, group_values):
+            grouped_indices[group_value].append(atom_index)
+
+        logger.info("Identified %d chain group(s) using %s.", len(grouped_indices), grouping_label)
+        for entity_index, (group_id, atom_indices) in enumerate(grouped_indices.items(), start=1):
+            safe_group_id = "".join(
+                char if char.isalnum() or char in ("-", "_") else "_"
+                for char in group_id
+            )
+            entity_name = f"entity_{entity_index:02d}_{safe_group_id}"
+            chain_atoms = atoms[atom_indices]
+            if it_is_nucleotide(chain_atoms):
+                out_pdb = self.nucdir / f"{entity_name}.pdb"
             else:
-                out_pdb = self.prodir / f"chain_{chain.chid}.pdb"
-            atoms.write_pdb(out_pdb)
+                out_pdb = self.prodir / f"{entity_name}.pdb"
+            chain_atoms.write(str(out_pdb))
 
     def clean_chains_mm(self, **kwargs):
         """Cleans chain-specific PDB files using PDBfixer (OpenMM).
 
-        Kwargs are passed to pdbtools.clean_pdb. Also renames chain IDs based on the file name.
+        Kwargs are passed to pdbtools.clean_pdb. Chain IDs are reassigned
+        sequentially after cleaning.
         """
         kwargs.setdefault("add_missing_atoms", True)
         kwargs.setdefault("add_hydrogens", True)
@@ -239,9 +267,14 @@ class MDSystem:
         files = list(self.prodir.iterdir())
         files += list(self.nucdir.iterdir())
         files = sorted(files, key=lambda p: p.name)
-        for file in files:
+        chain_labels = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+        if len(files) > len(chain_labels):
+            raise ValueError(
+                f"Found {len(files)} split entity files, but only {len(chain_labels)} "
+                "single-character chain labels are available."
+            )
+        for new_chain_id, file in zip(chain_labels, files):
             pdbtools.clean_pdb(file, file, **kwargs)
-            new_chain_id = file.name.split("chain_")[1][0]
             pdbtools.rename_chain_in_pdb(file, new_chain_id)
 
     def clean_chains_gmx(self, **kwargs):
@@ -258,9 +291,14 @@ class MDSystem:
         files = [p for p in self.prodir.iterdir() if not p.name.startswith("#")]
         files += [p for p in self.nucdir.iterdir() if not p.name.startswith("#")]
         files = sorted(files, key=lambda p: p.name)
+        chain_labels = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+        if len(files) > len(chain_labels):
+            raise ValueError(
+                f"Found {len(files)} split entity files, but only {len(chain_labels)} "
+                "single-character chain labels are available."
+            )
         with cd(self.root):
-            for file in files:
-                new_chain_id = file.name.split("chain_")[1][0]
+            for new_chain_id, file in zip(chain_labels, files):
                 cli.gmx("pdb2gmx", f=file, o=file, **kwargs)
                 pdbtools.rename_chain_and_histidines_in_pdb(file, new_chain_id)
             clean_dir(self.prodir)
@@ -795,8 +833,11 @@ class MartiniMixin:
         logger.info("Saved topology with bonded restraints to %s", itp_file)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
-        """Merges coarse-grained PDB files into a single solute PDB file.
-        
+        """Merges coarse-grained PDB files into a single solute PDB file using MDAnalysis.
+
+        Each file's atoms are assigned a segid derived from the file stem, and TER
+        records are written between chains in the output PDB.
+
         Parameters
         ----------
         add_resolved_ions : bool, optional
@@ -805,31 +846,40 @@ class MartiniMixin:
             Additional keyword arguments (currently unused)
         """
         logger.info("Merging CG PDB files into a single solute PDB...")
-        mol_files = [p.name for p in self.cgdir.iterdir() if not p.name.startswith("ligand")]
-        mol_files = sort_for_gmx(mol_files)
-        mol_files = [self.cgdir / fname for fname in mol_files]
-        ligand_files = [p.name for p in self.cgdir.iterdir() if p.name.startswith("ligand")]
-        ligand_files = sort_for_gmx(ligand_files)
-        ligand_files = [self.cgdir / fname for fname in ligand_files]
+        # Files are named in the correct order; use sorted() for deterministic traversal
+        mol_files = sorted(
+            [p for p in self.cgdir.iterdir() if not p.name.startswith("ligand")],
+            key=lambda p: p.name,
+        )
+        ligand_files = sorted(
+            [p for p in self.cgdir.iterdir() if p.name.startswith("ligand")],
+            key=lambda p: p.name,
+        )
         cg_pdb_files = mol_files + ligand_files
-        all_atoms = pdbtools.AtomList()
-        for file in cg_pdb_files:
-            atoms = pdbtools.pdb2atomlist(file)
-            all_atoms.extend(atoms)
-        # Add resolved ions if requested (already sorted by type in ionpdb)
+
+        # Add resolved ions if requested
         if add_resolved_ions:
             logger.info("Adding resolved ions to structure...")
             if self.ionpdb.exists():
-                ion_atoms = pdbtools.pdb2atomlist(self.ionpdb)
-                # Convert HETATM to ATOM records
-                for atom in ion_atoms:
-                    atom.record = 'ATOM'
-                all_atoms.extend(ion_atoms)
-                logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
+                cg_pdb_files.append(self.ionpdb)
+                logger.info(f"Including ions from {self.ionpdb}")
             else:
                 logger.warning(f"Ion PDB file not found: {self.ionpdb}")
-        all_atoms.renumber()
-        all_atoms.write_pdb(self.solupdb)
+
+        universes = []
+        for file in cg_pdb_files:
+            file = Path(file)
+            # Filename convention: entity_{entityID}_{segID}.pdb  → take last underscore field
+            parts = file.stem.split("_")
+            segid = parts[-1] if len(parts) >= 2 else file.stem
+            u = mda.Universe(str(file))
+            # add_TopologyAttr for 'segid' expects one value per segment
+            u.add_TopologyAttr('segid', [segid] * len(u.segments))
+            universes.append(u.atoms)
+
+        merged = mda.Merge(*universes)
+        with mda.Writer(str(self.solupdb), multiframe=False) as writer:
+            writer.write(merged.atoms)
 
     def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
         """Creates the system topology file by including all relevant ITP files and
