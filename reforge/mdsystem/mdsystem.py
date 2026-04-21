@@ -833,8 +833,11 @@ class MartiniMixin:
         logger.info("Saved topology with bonded restraints to %s", itp_file)
 
     def make_cg_structure(self, add_resolved_ions=False, **kwargs):
-        """Merges coarse-grained PDB files into a single solute PDB file.
-        
+        """Merges coarse-grained PDB files into a single solute PDB file using MDAnalysis.
+
+        Each file's atoms are assigned a segid derived from the file stem, and TER
+        records are written between chains in the output PDB.
+
         Parameters
         ----------
         add_resolved_ions : bool, optional
@@ -843,31 +846,40 @@ class MartiniMixin:
             Additional keyword arguments (currently unused)
         """
         logger.info("Merging CG PDB files into a single solute PDB...")
-        mol_files = [p.name for p in self.cgdir.iterdir() if not p.name.startswith("ligand")]
-        mol_files = sort_for_gmx(mol_files)
-        mol_files = [self.cgdir / fname for fname in mol_files]
-        ligand_files = [p.name for p in self.cgdir.iterdir() if p.name.startswith("ligand")]
-        ligand_files = sort_for_gmx(ligand_files)
-        ligand_files = [self.cgdir / fname for fname in ligand_files]
+        # Files are named in the correct order; use sorted() for deterministic traversal
+        mol_files = sorted(
+            [p for p in self.cgdir.iterdir() if not p.name.startswith("ligand")],
+            key=lambda p: p.name,
+        )
+        ligand_files = sorted(
+            [p for p in self.cgdir.iterdir() if p.name.startswith("ligand")],
+            key=lambda p: p.name,
+        )
         cg_pdb_files = mol_files + ligand_files
-        all_atoms = pdbtools.AtomList()
-        for file in cg_pdb_files:
-            atoms = pdbtools.pdb2atomlist(file)
-            all_atoms.extend(atoms)
-        # Add resolved ions if requested (already sorted by type in ionpdb)
+
+        # Add resolved ions if requested
         if add_resolved_ions:
             logger.info("Adding resolved ions to structure...")
             if self.ionpdb.exists():
-                ion_atoms = pdbtools.pdb2atomlist(self.ionpdb)
-                # Convert HETATM to ATOM records
-                for atom in ion_atoms:
-                    atom.record = 'ATOM'
-                all_atoms.extend(ion_atoms)
-                logger.info(f"Added {len(ion_atoms)} ions from {self.ionpdb}")
+                cg_pdb_files.append(self.ionpdb)
+                logger.info(f"Including ions from {self.ionpdb}")
             else:
                 logger.warning(f"Ion PDB file not found: {self.ionpdb}")
-        all_atoms.renumber()
-        all_atoms.write_pdb(self.solupdb)
+
+        universes = []
+        for file in cg_pdb_files:
+            file = Path(file)
+            # Filename convention: entity_{entityID}_{segID}.pdb  → take last underscore field
+            parts = file.stem.split("_")
+            segid = parts[-1] if len(parts) >= 2 else file.stem
+            u = mda.Universe(str(file))
+            # add_TopologyAttr for 'segid' expects one value per segment
+            u.add_TopologyAttr('segid', [segid] * len(u.segments))
+            universes.append(u.atoms)
+
+        merged = mda.Merge(*universes)
+        with mda.Writer(str(self.solupdb), multiframe=False) as writer:
+            writer.write(merged.atoms)
 
     def make_cg_topology(self, add_resolved_ions=False, prefix="chain"):
         """Creates the system topology file by including all relevant ITP files and
