@@ -234,7 +234,13 @@ class MDSystem:
 
         logger.info("Splitting chains from the input PDB...")
         universe = mda.Universe(str(self.inpdb))
-        atoms = universe.atoms
+        try:
+            atoms = universe.select_atoms("not (record_type HETATM)")
+        except Exception:
+            atoms = universe.atoms
+        n_hetatm = len(universe.atoms) - len(atoms)
+        if n_hetatm:
+            logger.info("Ignoring %d HETATM atom(s) during chain splitting.", n_hetatm)
         group_values, grouping_label = get_grouping_values(atoms)
         grouped_indices = defaultdict(list)
         for atom_index, group_value in zip(atoms.indices, group_values):
@@ -358,8 +364,6 @@ class MDSystem:
                     wout.write(line)
                     written += 1
         logger.info(f"Ion PDB file created: {outpdb} (wrote {written} ions with resname '{resname_formatted.strip()}')")
-
-
 
     def count_resolved_ions(self, ions=("MG", "ZN", "CA", "K")):
         """Counts the number of resolved ions in the system PDB file.
@@ -860,11 +864,10 @@ class MartiniMixin:
         # Add resolved ions if requested
         if add_resolved_ions:
             logger.info("Adding resolved ions to structure...")
-            if self.ionpdb.exists():
-                cg_pdb_files.append(self.ionpdb)
-                logger.info(f"Including ions from {self.ionpdb}")
-            else:
-                logger.warning(f"Ion PDB file not found: {self.ionpdb}")
+            if not self.ionpdb.exists():
+                MDSystem.make_ions_pdb(self)  # Ensure ion PDB is created
+            cg_pdb_files.append(self.ionpdb)
+            logger.info(f"Including ions from {self.ionpdb}")
 
         universes = []
         for file in cg_pdb_files:
