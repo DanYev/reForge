@@ -903,6 +903,7 @@ class MartiniMixin:
             # Include section
             f.write('#define GO_VIRT"\n')
             f.write("#define RUBBER_BANDS\n")
+            f.write("#define POSRES_FC 500.00\n")
             f.write('#include "topol/martini_v3.0.0.itp"\n')
             f.write('#include "topol/martini_v3.0.0_rna.itp"\n')
             f.write('#include "topol/martini_ions.itp"\n')
