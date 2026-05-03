@@ -104,6 +104,7 @@ class GmxSystem(MDSystem, MartiniMixin):
         """
         kwargs.setdefault("d", 1.0)
         kwargs.setdefault("bt", "dodecahedron")
+        kwargs.setdefault("center", "0 0 0")
         with cd(self.root):
             cli.gmx("editconf", f=self.solupdb, o=self.solupdb, **kwargs)
 
