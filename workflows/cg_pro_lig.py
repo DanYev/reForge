@@ -31,16 +31,16 @@ def setup(sysdir, sysname):
     # Martinizing
     molname = "protein_0"
     idr_regions = f"A-282:475 B-282:475"
-    idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=282, idr_end=475)
-    idr_regions = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
+    # idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=282, idr_end=475)
+    # idr_regions = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
     add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
     # add_command = f"-id-regions {idr_regions}" # martinize2 -h for help
     if not idr_regions:
         add_command = ""
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    # mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
-    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-        p="backbone", pf="500",  text=add_command, append=False) 
+    mdsys.martinize_proteins_en(append=False) # SWITCH APPEND TO TRUE IF ALREADY DONE
+    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
+    #     p="backbone", pf="500",  text=add_command, append=True) 
     shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     # shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
