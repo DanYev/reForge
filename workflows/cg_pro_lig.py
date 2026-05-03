@@ -34,13 +34,10 @@ def setup(sysdir, sysname):
     # idr_regions = _get_idr_regions(mdsys.inpdb, min_length=5, idr_start=282, idr_end=475)
     # idr_regions = " ".join([f"A-{r}" for r in idr_regions.split()]) + " " + " ".join([f"B-{r}" for r in idr_regions.split()])
     add_command = f"-water-bias -water-bias-eps idr:0.5 -id-regions {idr_regions}" # martinize2 -h for help
-    # add_command = f"-id-regions {idr_regions}" # martinize2 -h for help
-    if not idr_regions:
-        add_command = ""
+    # mdsys.martinize_proteins_en(append=True) # SWITCH APPEND TO TRUE IF ALREADY DONE
     shutil.copy(mdsys.inpdb, mdsys.prodir / f"{molname}.pdb")
-    mdsys.martinize_proteins_en(append=True) # SWITCH APPEND TO TRUE IF ALREADY DONE
-    # mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.2, ff="martini3001",
-    #     p="backbone", pf="500",  text=add_command, append=True) 
+    mdsys.martinize_proteins_go(go_eps=12.0, go_low=0.3, go_up=1.1, ff="martini3001",
+        p="backbone", pf="500",  text=add_command, append=True) 
     # shutil.copy(mdsys.topdir / f"{molname}.itp", mdsys.topdir / "tmp.itp") 
     shutil.copy(mdsys.topdir / "tmp.itp", mdsys.topdir / f"{molname}.itp") 
 
@@ -50,30 +47,29 @@ def setup(sysdir, sysname):
         Path(mdsys.root / "ligands"/ f"AN{x}").mkdir(parents=True, exist_ok=True)
         shutil.copy(anp_dir / "ANP.itp", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.itp")
         shutil.copy(anp_dir / "ANP.map", mdsys.root / "ligands"/ f"AN{x}"/ f"AN{x}.map")
-    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "MG"], merge_with=molname)
+    # !!!!!!
+    # LIGANDS MUST BE IN ALPHABETICAL ORDER FOR NOW. I'LL FIX THIS LATER
+    mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANA", "ANB", "LIB", "MG",], merge_with=molname)
+    # !!!!!!!
     # mdsys.martinize_ligands(input_pdb=input_pdb, ligands=["ANP", "MG"], merge_with=molname)
     mdsys.make_cg_structure() # CG structure. Returns mdsys.solupdb ("solute.pdb") file
     mdsys.make_cg_topology() # CG topology. Returns mdsys.systop ("mdsys.top") file
     _add_protein_ligand_bonds(mdsys, molname, ligand_bead_names=["N04", "N07", "D01", "MG"])
     
     # PROTEIN+WATER SYSTEMS:
-    mdsys.make_box(d="2.0", bt="dodecahedron")
+    mdsys.make_box(d="5.0", bt="dodecahedron", center="0 0 0")
     solvent = mdsys.root / "water.gro"
     mdsys.solvate(cp=mdsys.solupdb, cs=solvent, radius="0.17") # all kwargs go to gmx solvate command
     mdsys.add_bulk_ions(conc=0.10, pname="NA", nname="CL")
-
-    # # FOR MEMBRANE SYSTEMS:
-    # mdsys.insert_membrane(
-    #     f=mdsys.solupdb, o=mdsys.sysgro, p=mdsys.systop, 
-    #     x=20, y=20, z=26, dm=9, 
-    #     u='POPC:1', l='POPC:1', sol='W',
-    # )
-    mdsys.gmx('editconf', f=mdsys.sysgro, o=mdsys.syspdb)
-    mdsys.add_bulk_ions(conc=0.10, pname='NA', nname='CL')
+    # CENTERING AND PBC CORRECTIONS
+    s = mdsys.sysgro
+    mdsys.gmx("trjconv", s=s, f=s, o=s, pbc="whole", center="", clinput="1\n 0\n")
+    mdsys.gmx("trjconv", s=s, f=s, o=s, pbc="atom", ur="compact", clinput="0\n")
 
     # 1.4. Need index files to make selections with GROMACS. Very annoying but wcyd. Order:
     # 1.System 2.Solute 3.Backbone 4.Solvent 5...chains. Can add custom groups using AtomList.write_to_ndx()
     mdsys.make_system_ndx(backbone_atoms=["BB", "BB2"])
+
 
 
 def _get_idr_regions(input_pdb, min_length=3, idr_start=0, idr_end=1000):
@@ -139,9 +135,11 @@ def md_npt(sysdir, sysname, runname, nsteps=None):
     mdrun = GmxRun(sysdir, sysname, runname)
     mdrun.prepare_files()
     ntomp = get_ntomp()
-    mdrun.empp(f=mdrun.mdpdir / "em_cg.mdp")
+    mdrun.empp(f=mdrun.mdpdir / "em_cg.mdp", c=mdrun.sysgro, r=mdrun.sysgro)
     mdrun.mdrun(deffnm="em", ntomp=ntomp)
-    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="em.gro", r="em.gro", maxwarn="1") 
+    mdrun.hupp(f=mdrun.mdpdir / "hu_cg.mdp", c="em.gro", r="em.gro")
+    mdrun.mdrun(deffnm="hu", ntomp=ntomp)
+    mdrun.eqpp(f=mdrun.mdpdir / "eq_cg.mdp", c="hu.gro", r="hu.gro")
     mdrun.mdrun(deffnm="eq", ntomp=ntomp)
     mdrun.mdpp(f=mdrun.mdpdir / "md_cg.mdp", maxwarn="1")    
     mdrun.mdrun(deffnm="md", ntomp=ntomp, nsteps=NSTEPS, ) # bonded="gpu")
