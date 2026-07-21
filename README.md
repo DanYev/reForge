@@ -2,7 +2,8 @@
 
 ## DNA/RNA scripts
 
-The RNA/DNA Martini scripts have been migrated to a dedicated repository: **[Martini-3-DNA-RNA](https://github.com/DanYev/Martini-3-DNA-RNA)**. Please refer there for the latest scripts, force field files, usage instructions, and citation information.
+> [!IMPORTANT]
+> The RNA/DNA Martini scripts have been migrated to a dedicated repository: **[Martini-3-DNA-RNA](https://github.com/DanYev/Martini-3-DNA-RNA)**. Please refer there for the latest scripts, force field files, usage instructions, and citation information.
 
 ## Usage
 
