@@ -140,6 +140,7 @@ class MDSystem:
             pdbtools.sort_pdb(in_pdb, self.inpdb)
 
     def clean_pdb_mm(self, pdb_file, 
+                    find_missing_residues=False,
                     add_missing_atoms=False, 
                     add_hydrogens=False, 
                     remove_heterogens=True, 
@@ -166,7 +167,10 @@ class MDSystem:
         logger.info("Removing heterogens and checking for missing residues...")
         if remove_heterogens:
             pdb.removeHeterogens(keep_water)
-        pdb.findMissingResidues()
+        if find_missing_residues:
+            pdb.findMissingResidues()
+        else:
+            pdb.missingResidues = {}
         logger.info("Replacing non-standard residues...")
         pdb.findNonstandardResidues()
         pdb.replaceNonstandardResidues()
@@ -869,18 +873,16 @@ class MartiniMixin:
             cg_pdb_files.append(self.ionpdb)
             logger.info(f"Including ions from {self.ionpdb}")
 
-        universes = []
-        for file in cg_pdb_files:
-            file = Path(file)
+        all_atoms = []
+        for f in cg_pdb_files:
+            f = Path(f)
             # Filename convention: entity_{entityID}_{segID}.pdb  → take last underscore field
-            parts = file.stem.split("_")
-            segid = parts[-1] if len(parts) >= 2 else file.stem
-            u = mda.Universe(str(file))
-            # add_TopologyAttr for 'segid' expects one value per segment
-            u.add_TopologyAttr('segid', [segid] * len(u.segments))
-            universes.append(u.atoms)
-
-        merged = mda.Merge(*universes)
+            parts = f.stem.split("_")
+            segid = parts[-1] if len(parts) >= 2 else f.stem
+            u = mda.Universe(str(f))
+            u.atoms.segments.segids = segid
+            all_atoms.append(u.atoms)
+        merged = mda.Merge(*all_atoms)
         with mda.Writer(str(self.solupdb), multiframe=False) as writer:
             writer.write(merged.atoms)
 
