@@ -81,7 +81,7 @@ class Atom:
     def from_pdb_line(cls, line):
         """Parse a PDB line and return an Atom instance."""
         record = line[0:6].strip()
-        atid = int(line[6:11])
+        atid = line[6:11]
         name = line[12:16].strip()
         alt_loc = line[16].strip()
         resname = line[17:20].strip()
